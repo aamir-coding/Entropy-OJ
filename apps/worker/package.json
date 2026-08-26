@@ -1,0 +1,25 @@
+{
+  "name": "@anti-oj/worker",
+  "version": "1.0.0",
+  "description": "Dockerized Sandboxed Evaluation Worker for Anti Online Judge",
+  "main": "dist/worker.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/worker.js",
+    "dev": "tsx watch src/worker.ts",
+    "build:image": "docker build -t oj-runner:latest -f docker/Dockerfile.runner docker",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "@anti-oj/shared": "*",
+    "bullmq": "^5.41.6",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.5.0",
+    "mongoose": "^8.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

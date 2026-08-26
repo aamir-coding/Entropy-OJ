@@ -1,0 +1,30 @@
+{
+  "name": "anti-online-judge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-Grade Sandboxed MERN Online Judge Platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm --workspace=packages/shared run build",
+    "dev:server": "npm --workspace=apps/server run dev",
+    "dev:worker": "npm --workspace=apps/worker run dev",
+    "dev:client": "npm --workspace=apps/client run dev",
+    "seed:server": "npm --workspace=apps/server run seed",
+    "test:shared": "npm --workspace=packages/shared run test",
+    "test:server": "npm --workspace=apps/server run test",
+    "test:worker": "npm --workspace=apps/worker run test"
+  },
+  "keywords": [
+    "online-judge",
+    "mern",
+    "docker",
+    "bullmq",
+    "redis",
+    "monaco"
+  ],
+  "author": "",
+  "license": "ISC"
+}
