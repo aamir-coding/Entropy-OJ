@@ -38,44 +38,51 @@ export const AuthModal: React.FC = () => {
     <div className="modal-backdrop" onClick={closeAuthModal}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-            {authModalMode === 'login' ? 'Welcome Back' : 'Create an Account'}
-          </h2>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-elevated)' }}>
+          <div>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
+              {authModalMode === 'login' ? 'Welcome back' : 'Create account'}
+            </h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+              {authModalMode === 'login' ? 'Sign in to track your progress' : 'Start solving problems today'}
+            </p>
+          </div>
           <button
             onClick={closeAuthModal}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '0.25rem', borderRadius: 'var(--radius-sm)', transition: 'color var(--transition-fast)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '1.5rem' }}>
+        <div style={{ padding: '1.375rem 1.5rem' }}>
           {error && (
             <div
               style={{
-                background: 'rgba(244, 63, 94, 0.12)',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                padding: '0.75rem 1rem',
+                background: 'var(--verdict-wa-bg)',
+                border: '1px solid var(--verdict-wa-border)',
+                padding: '0.625rem 0.875rem',
                 borderRadius: 'var(--radius-md)',
-                color: '#fb7185',
-                fontSize: '0.875rem',
+                color: 'var(--verdict-wa)',
+                fontSize: '0.8125rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                marginBottom: '1.25rem',
+                marginBottom: '1rem',
               }}
             >
-              <AlertCircle size={16} />
+              <AlertCircle size={15} />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {authModalMode === 'register' && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem', letterSpacing: '0.01em' }}>
                   Full Name
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -95,8 +102,8 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Email Address
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem', letterSpacing: '0.01em' }}>
+                Email
               </label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -114,7 +121,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.3rem', letterSpacing: '0.01em' }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -138,11 +145,11 @@ export const AuthModal: React.FC = () => {
               type="submit"
               disabled={isSubmitting}
               className="btn btn-primary"
-              style={{ width: '100%', marginTop: '0.5rem', padding: '0.625rem' }}
+              style={{ width: '100%', marginTop: '0.25rem', padding: '0.6rem', fontSize: '0.875rem' }}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={15} className="animate-spin" />
                   <span>Processing...</span>
                 </>
               ) : (
@@ -152,18 +159,18 @@ export const AuthModal: React.FC = () => {
           </form>
 
           {/* Toggle Switch */}
-          <div style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+          <div style={{ marginTop: '1.125rem', textAlign: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)', paddingTop: '1rem', borderTop: '1px solid var(--border-faint)' }}>
             {authModalMode === 'login' ? (
               <p>
-                Don't have an account?{' '}
+                No account?{' '}
                 <button
                   onClick={() => {
                     setError(null);
                     openAuthModal('register');
                   }}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}
                 >
-                  Sign Up
+                  Create one
                 </button>
               </p>
             ) : (
@@ -174,7 +181,7 @@ export const AuthModal: React.FC = () => {
                     setError(null);
                     openAuthModal('login');
                   }}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}
                 >
                   Sign In
                 </button>

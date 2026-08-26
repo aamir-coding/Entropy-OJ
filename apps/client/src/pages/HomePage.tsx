@@ -58,84 +58,87 @@ export const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="page-wrapper" style={{ padding: '2rem 0 4rem' }}>
+    <div className="page-wrapper" style={{ padding: '1.75rem 0 4rem' }}>
       <div className="container">
         {/* Hero Banner */}
         <div
           className="glass-panel"
           style={{
-            padding: '2.5rem 2rem',
-            marginBottom: '2rem',
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.7) 100%)',
+            padding: '2rem 2rem',
+            marginBottom: '1.25rem',
+            background: 'var(--bg-card)',
             position: 'relative',
             overflow: 'hidden',
           }}
         >
-          {/* Subtle Background Glow Accent */}
+          {/* Ambient glow */}
           <div
             style={{
               position: 'absolute',
-              top: '-50px',
-              right: '-50px',
-              width: '300px',
-              height: '300px',
-              background: 'radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%)',
+              top: '-60px',
+              right: '-40px',
+              width: '320px',
+              height: '320px',
+              background: 'radial-gradient(circle, rgba(77,171,247,0.10) 0%, transparent 65%)',
               pointerEvents: 'none',
             }}
           />
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-            <div style={{ maxWidth: '650px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span className="badge badge-tag" style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
-                  <Shield size={12} /> Dockerized Isolation Engine
+            <div style={{ maxWidth: '600px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.875rem' }}>
+                <span className="badge badge-tag" style={{ background: 'rgba(77,171,247,0.10)', color: 'var(--accent-cyan)', borderColor: 'rgba(77,171,247,0.22)' }}>
+                  <Shield size={11} /> Dockerized Sandbox
                 </span>
-                <span className="badge badge-tag" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--verdict-ac)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-                  <Code size={12} /> C++17 & Python 3
+                <span className="badge badge-tag" style={{ background: 'rgba(52,211,153,0.10)', color: 'var(--verdict-ac)', borderColor: 'rgba(52,211,153,0.22)' }}>
+                  <Code size={11} /> C++17 & Python 3
                 </span>
               </div>
-              <h1 style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '0.75rem' }}>
-                Solve. Submit. <span style={{ color: 'var(--accent-cyan)' }}>Receive Live Verdicts.</span>
+              <h1 style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
+                Solve. Submit.{' '}
+                <span style={{ color: 'var(--accent-cyan)' }}>Live Verdicts.</span>
               </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6 }}>
-                Master algorithmic data structures with an isolated execution sandbox, microsecond CPU time measurement, and real-time judge feedback.
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.65, maxWidth: '520px' }}>
+                Master algorithmic data structures with an isolated execution sandbox, microsecond CPU timing, and real-time judge feedback.
               </p>
             </div>
 
-            {/* Quick Stats Grid */}
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            {/* Quick Stats */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <div
-                className="glass-card"
                 style={{
-                  padding: '1.25rem 1.5rem',
-                  minWidth: '140px',
+                  padding: '1.125rem 1.375rem',
+                  minWidth: '130px',
                   textAlign: 'center',
-                  background: 'rgba(15, 23, 42, 0.8)',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-faint)',
+                  borderRadius: 'var(--radius-lg)',
                 }}
               >
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   {problems.length}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Total Problems
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
+                  Problems
                 </div>
               </div>
 
               {user && stats && (
                 <div
-                  className="glass-card"
                   style={{
-                    padding: '1.25rem 1.5rem',
-                    minWidth: '140px',
+                    padding: '1.125rem 1.375rem',
+                    minWidth: '130px',
                     textAlign: 'center',
-                    background: 'rgba(15, 23, 42, 0.8)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-faint)',
+                    borderRadius: 'var(--radius-lg)',
                   }}
                 >
-                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--verdict-ac)' }}>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--verdict-ac)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                     {stats.solvedProblemsCount}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                    Solved By You
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
+                    Solved
                   </div>
                 </div>
               )}
@@ -147,21 +150,21 @@ export const HomePage: React.FC = () => {
         <div
           className="glass-panel"
           style={{
-            padding: '1.25rem 1.5rem',
-            marginBottom: '1.5rem',
+            padding: '1rem 1.25rem',
+            marginBottom: '1rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1rem',
+            gap: '0.75rem',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             {/* Search Input */}
-            <div style={{ position: 'relative', flex: '1', minWidth: '280px', maxWidth: '420px' }}>
+            <div style={{ position: 'relative', flex: '1', minWidth: '260px', maxWidth: '380px' }}>
               <Search
-                size={16}
+                size={14}
                 style={{
                   position: 'absolute',
-                  left: '0.875rem',
+                  left: '0.75rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--text-muted)',
@@ -172,22 +175,22 @@ export const HomePage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search problem title or code..."
+                placeholder="Search problems..."
                 className="input-control"
-                style={{ paddingLeft: '2.5rem' }}
+                style={{ paddingLeft: '2.25rem', fontSize: '0.8125rem' }}
               />
             </div>
 
             {/* Difficulty Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               {['All', 'Easy', 'Medium', 'Hard'].map((diff) => {
                 const isActive = selectedDifficulty === diff;
                 let activeStyle = {};
                 if (isActive) {
-                  if (diff === 'Easy') activeStyle = { background: 'var(--diff-easy-bg)', color: 'var(--diff-easy)', borderColor: 'var(--diff-easy)' };
-                  else if (diff === 'Medium') activeStyle = { background: 'var(--diff-medium-bg)', color: 'var(--diff-medium)', borderColor: 'var(--diff-medium)' };
-                  else if (diff === 'Hard') activeStyle = { background: 'var(--diff-hard-bg)', color: 'var(--diff-hard)', borderColor: 'var(--diff-hard)' };
-                  else activeStyle = { background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' };
+                  if (diff === 'Easy') activeStyle = { background: 'var(--diff-easy-bg)', color: 'var(--diff-easy)', borderColor: 'rgba(52,211,153,0.4)' };
+                  else if (diff === 'Medium') activeStyle = { background: 'var(--diff-medium-bg)', color: 'var(--diff-medium)', borderColor: 'rgba(251,191,36,0.4)' };
+                  else if (diff === 'Hard') activeStyle = { background: 'var(--diff-hard-bg)', color: 'var(--diff-hard)', borderColor: 'rgba(251,113,133,0.4)' };
+                  else activeStyle = { background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', borderColor: 'rgba(77,171,247,0.4)' };
                 }
 
                 return (
@@ -197,8 +200,8 @@ export const HomePage: React.FC = () => {
                     onClick={() => setSelectedDifficulty(diff)}
                     className="btn btn-outline"
                     style={{
-                      padding: '0.35rem 0.85rem',
-                      fontSize: '0.8125rem',
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.75rem',
                       ...activeStyle,
                     }}
                   >
@@ -210,9 +213,9 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Tags Chips Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem' }}>
-              <Filter size={12} /> Tags:
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', paddingTop: '0.625rem', borderTop: '1px solid var(--border-faint)' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: '0.2rem', marginRight: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Filter size={11} /> Tags
             </span>
             {allTags.map((tag) => {
               const isSelected = selectedTag === tag;
@@ -222,15 +225,16 @@ export const HomePage: React.FC = () => {
                   id={`filter-tag-${tag.toLowerCase().replace(/\s+/g, '-')}`}
                   onClick={() => setSelectedTag(tag)}
                   style={{
-                    background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                    color: isSelected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                    border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                    background: isSelected ? 'rgba(77,171,247,0.14)' : 'rgba(255,255,255,0.03)',
+                    color: isSelected ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    border: `1px solid ${isSelected ? 'rgba(77,171,247,0.35)' : 'var(--border-faint)'}`,
                     borderRadius: 'var(--radius-full)',
-                    padding: '0.2rem 0.65rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
+                    padding: '0.175rem 0.6rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
+                    transition: 'all var(--transition-fast)',
+                    letterSpacing: 0,
                   }}
                 >
                   {tag}
@@ -243,29 +247,29 @@ export const HomePage: React.FC = () => {
         {/* Problem List Table */}
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           {loading ? (
-            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <div className="animate-spin" style={{ display: 'inline-block', marginBottom: '1rem' }}>
-                <Clock size={32} className="text-sky-400" />
+                <Clock size={28} style={{ color: 'var(--accent-cyan)' }} />
               </div>
-              <p>Loading problem catalog...</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading problem catalog...</p>
             </div>
           ) : problems.length === 0 ? (
-            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <HelpCircle size={40} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
-              <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>No matching problems found</h3>
-              <p style={{ fontSize: '0.875rem' }}>Try clearing filters or search query.</p>
+            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <HelpCircle size={36} style={{ margin: '0 auto 1rem', color: 'var(--text-faint)' }} />
+              <h3 style={{ fontSize: '1rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>No matching problems</h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Try clearing filters or your search query.</p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(30, 41, 59, 0.6)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '60px' }}>Status</th>
-                    <th style={{ padding: '0.875rem 1.25rem' }}>Title</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '120px' }}>Difficulty</th>
-                    <th style={{ padding: '0.875rem 1.25rem' }}>Tags</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '160px' }}>Acceptance</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '120px', textAlign: 'right' }}>Action</th>
+                  <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '0.75rem 1.125rem', width: '56px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                    <th style={{ padding: '0.75rem 1.125rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</th>
+                    <th style={{ padding: '0.75rem 1.125rem', width: '110px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Difficulty</th>
+                    <th style={{ padding: '0.75rem 1.125rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tags</th>
+                    <th style={{ padding: '0.75rem 1.125rem', width: '150px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acceptance</th>
+                    <th style={{ padding: '0.75rem 1.125rem', width: '100px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,25 +285,25 @@ export const HomePage: React.FC = () => {
                       <tr
                         key={prob._id}
                         style={{
-                          borderBottom: '1px solid var(--border-subtle)',
-                          transition: 'background-color 0.15s ease',
+                          borderBottom: '1px solid var(--border-faint)',
+                          transition: 'background-color var(--transition-fast)',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(51, 65, 85, 0.2)')}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.025)')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         {/* Status Icon */}
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '0.875rem 1.125rem' }}>
                           {prob.userStatus === 'Solved' ? (
-                            <CheckCircle size={18} className="text-emerald-400" />
+                            <CheckCircle size={16} style={{ color: 'var(--verdict-ac)' }} />
                           ) : prob.userStatus === 'Attempted' ? (
-                            <Clock size={18} className="text-amber-400" />
+                            <Clock size={16} style={{ color: 'var(--verdict-tle)' }} />
                           ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '1.25rem' }}>—</span>
+                            <span style={{ color: 'var(--text-faint)', fontSize: '1rem' }}>—</span>
                           )}
                         </td>
 
                         {/* Title & Code */}
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '0.875rem 1.125rem' }}>
                           <Link
                             to={`/problems/${prob.problemCode}`}
                             id={`problem-link-${prob.problemCode}`}
@@ -307,18 +311,20 @@ export const HomePage: React.FC = () => {
                               color: 'var(--text-primary)',
                               fontWeight: 600,
                               textDecoration: 'none',
-                              fontSize: '0.9375rem',
+                              fontSize: '0.875rem',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
+                              letterSpacing: '-0.01em',
                             }}
                           >
                             <span>{prob.name}</span>
                             <span
                               style={{
-                                fontSize: '0.75rem',
-                                color: 'var(--text-muted)',
+                                fontSize: '0.68rem',
+                                color: 'var(--text-faint)',
                                 fontFamily: 'var(--font-mono)',
+                                fontWeight: 500,
                               }}
                             >
                               #{prob.problemCode}
@@ -327,13 +333,13 @@ export const HomePage: React.FC = () => {
                         </td>
 
                         {/* Difficulty */}
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '0.875rem 1.125rem' }}>
                           <span className={`badge ${diffBadgeClass}`}>{prob.difficulty}</span>
                         </td>
 
                         {/* Tags */}
-                        <td style={{ padding: '1rem 1.25rem' }}>
-                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                        <td style={{ padding: '0.875rem 1.125rem' }}>
+                          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                             {prob.tags.map((tag) => (
                               <span key={tag} className="badge badge-tag">
                                 {tag}
@@ -343,14 +349,14 @@ export const HomePage: React.FC = () => {
                         </td>
 
                         {/* Acceptance */}
-                        <td style={{ padding: '1rem 1.25rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <td style={{ padding: '0.875rem 1.125rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                             <div
                               style={{
                                 flex: 1,
-                                height: '6px',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: '3px',
+                                height: '4px',
+                                background: 'var(--bg-elevated)',
+                                borderRadius: '2px',
                                 overflow: 'hidden',
                               }}
                             >
@@ -358,30 +364,30 @@ export const HomePage: React.FC = () => {
                                 style={{
                                   width: `${prob.acceptanceRate}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, #0ea5e9, #10b981)',
-                                  borderRadius: '3px',
+                                  background: 'linear-gradient(90deg, var(--accent-cyan), var(--verdict-ac))',
+                                  borderRadius: '2px',
                                 }}
                               />
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: '42px' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', minWidth: '38px', fontFamily: 'var(--font-mono)' }}>
                               {prob.acceptanceRate}%
                             </span>
                           </div>
                         </td>
 
                         {/* Solve CTA */}
-                        <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                        <td style={{ padding: '0.875rem 1.125rem', textAlign: 'right' }}>
                           <Link
                             to={`/problems/${prob.problemCode}`}
                             className="btn btn-outline"
                             style={{
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.75rem',
-                              borderRadius: 'var(--radius-sm)',
+                              padding: '0.3rem 0.65rem',
+                              fontSize: '0.72rem',
+                              borderRadius: 'var(--radius-md)',
                             }}
                           >
                             <span>Solve</span>
-                            <ChevronRight size={14} />
+                            <ChevronRight size={12} />
                           </Link>
                         </td>
                       </tr>
