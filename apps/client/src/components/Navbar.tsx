@@ -9,10 +9,11 @@ import {
   ChevronDown,
   Terminal,
   Activity,
+  Shield,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { user, stats, logout, openAuthModal } = useAuth();
+  const { user, stats, isAdmin, logout, openAuthModal } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'checking'>('checking');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -171,6 +172,28 @@ export const Navbar: React.FC = () => {
               <Terminal size={13} />
               <span>Problems</span>
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: '#60a5fa',
+                  textDecoration: 'none',
+                  padding: '0.35rem 0.7rem',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: 'rgba(59, 130, 246, 0.12)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                <Shield size={13} />
+                <span>Admin Studio</span>
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -275,6 +298,11 @@ export const Navbar: React.FC = () => {
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
                       {user.email}
                     </div>
+                    {isAdmin && (
+                      <div style={{ marginTop: '0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+                        <Shield size={10} /> ADMIN
+                      </div>
+                    )}
                     {stats && (
                       <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <span>🏆</span>
@@ -282,6 +310,36 @@ export const Navbar: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      role="menuitem"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: 'var(--radius-lg)',
+                        fontSize: '0.8125rem',
+                        color: '#60a5fa',
+                        textDecoration: 'none',
+                        background: 'rgba(59, 130, 246, 0.08)',
+                        border: '1px solid rgba(59, 130, 246, 0.15)',
+                        transition: 'color var(--transition-fast), background-color var(--transition-fast)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.18)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.08)';
+                      }}
+                    >
+                      <Shield size={14} style={{ color: '#60a5fa' }} />
+                      <span>Problem Studio (Admin)</span>
+                    </Link>
+                  )}
 
                   <Link
                     to="/profile"

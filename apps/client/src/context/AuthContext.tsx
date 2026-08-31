@@ -6,6 +6,7 @@ interface AuthContextType {
   user: IUser | null;
   stats: UserStats | null;
   loading: boolean;
+  isAdmin: boolean;
   isAuthModalOpen: boolean;
   authModalMode: 'login' | 'register';
   openAuthModal: (mode?: 'login' | 'register') => void;
@@ -49,7 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res.data.success) {
       setUser(res.data.data.user);
       setIsAuthModalOpen(false);
-      // Asynchronously fetch stats
       api.get('/auth/me').then((meRes) => {
         if (meRes.data.success) {
           setStats(meRes.data.data.stats);
@@ -89,12 +89,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthModalOpen(false);
   }, []);
 
+  const isAdmin = Boolean(user && user.role === 'admin');
+
   return (
     <AuthContext.Provider
       value={{
         user,
         stats,
         loading,
+        isAdmin,
         isAuthModalOpen,
         authModalMode,
         openAuthModal,

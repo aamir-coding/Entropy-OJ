@@ -5,6 +5,7 @@ export interface IUser {
   _id: string;
   fullName: string;
   email: string;
+  role?: 'user' | 'admin';
   createdAt: string | Date;
 }
 
@@ -60,6 +61,49 @@ export interface ITestCase {
   output: string;
   isSample: boolean;
   order: number;
+}
+
+export interface IAdminTestCaseInput {
+  _id?: string;
+  input: string;
+  output: string;
+  isSample: boolean;
+  order?: number;
+  explanation?: string;
+}
+
+export interface IAdminProblemDetail extends IProblem {
+  testCases: ITestCase[];
+}
+
+export interface IAdminProblemListItem extends IProblemListItem {
+  sampleCasesCount: number;
+  hiddenCasesCount: number;
+  totalCasesCount: number;
+  createdAt: string | Date;
+}
+
+export interface IAdminValidateTestCaseResult {
+  testCaseIndex: number;
+  isSample: boolean;
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  passed: boolean;
+  verdict: Verdict;
+  executionTimeMs: number;
+  memoryUsedKb: number;
+  error?: string;
+}
+
+export interface IAdminValidateSolutionResponse {
+  verdict: Verdict;
+  compileOutput?: string;
+  totalTestCases: number;
+  passedTestCases: number;
+  executionTimeMs: number;
+  memoryUsedKb: number;
+  results: IAdminValidateTestCaseResult[];
 }
 
 export interface ISolution {

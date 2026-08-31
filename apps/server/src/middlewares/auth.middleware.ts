@@ -52,6 +52,26 @@ export async function requireAuth(
 }
 
 /**
+ * RBAC middleware: ensures the authenticated user has the 'admin' role.
+ */
+export async function requireAdmin(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  await requireAuth(req, res, () => {
+    if (req.user?.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Access denied. Administrator privileges required.',
+      });
+      return;
+    }
+    next();
+  });
+}
+
+/**
  * Optional auth middleware to identify authenticated users on public endpoints
  * without blocking unauthenticated visitors.
  */

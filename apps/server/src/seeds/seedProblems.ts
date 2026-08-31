@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
+import { User } from '../models/User';
 import { env } from '../config/env';
 
 interface SeedProblemData {
@@ -342,6 +343,22 @@ export async function seedDatabase(): Promise<void> {
 
       await TestCase.insertMany(testCaseDocs);
       console.log(`  ✔ Seeded: [${createdProblem.difficulty}] ${createdProblem.name} (${testCaseDocs.length} test cases)`);
+    }
+
+    // Seed/update default Admin user
+    const existingAdmin = await User.findOne({ email: 'admin@anti-oj.com' });
+    if (!existingAdmin) {
+      await User.create({
+        fullName: 'Judge Administrator',
+        email: 'admin@anti-oj.com',
+        password: 'Admin123456!',
+        role: 'admin',
+      });
+      console.log('  ✔ Created Default Admin User: admin@anti-oj.com (Password: Admin123456!)');
+    } else if (existingAdmin.role !== 'admin') {
+      existingAdmin.role = 'admin';
+      await existingAdmin.save();
+      console.log('  ✔ Promoted existing user to Admin: admin@anti-oj.com');
     }
 
     console.log('[Seeder] ✅ Database seeding completed successfully!');

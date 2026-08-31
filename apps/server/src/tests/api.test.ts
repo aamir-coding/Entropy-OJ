@@ -237,4 +237,104 @@ describe('Server REST API Integration Tests', () => {
     assert.strictEqual(res.data.data.sampleResults[0].actualOutput.trim(), 'Hello World');
     assert.strictEqual(res.data.data.sampleResults[0].passed, false);
   });
+
+  it('GET /api/admin/problems should reject non-admin users with 403 Forbidden', async (t) => {
+    if (!isServicesAvailable) {
+      t.skip('MongoDB/Redis unavailable');
+      return;
+    }
+
+    // regular user authCookie
+    const res = await getJson('/api/admin/problems', { Cookie: authCookie });
+    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.data.success, false);
+    assert.match(res.data.error, /Administrator privileges required/);
+  });
+
+  it('Admin endpoints should allow full problem lifecycle for admin users', async (t) => {
+    if (!isServicesAvailable) {
+      t.skip('MongoDB/Redis unavailable');
+      return;
+    }
+
+    // Create an admin user & get admin cookie
+    const adminEmail = `admin-${Date.now()}@anti-oj.com`;
+    const adminUser = await User.create({
+      fullName: 'Test Admin',
+      email: adminEmail,
+      password: 'AdminPassword123!',
+      role: 'admin',
+    });
+
+    const loginRes = await postJson('/api/auth/login', {
+      email: adminEmail,
+      password: 'AdminPassword123!',
+    });
+    assert.strictEqual(loginRes.status, 200);
+    const setCookie = loginRes.headers.get('set-cookie');
+    assert.ok(setCookie);
+    const adminCookie = setCookie.split(';')[0];
+
+    // 1. GET /api/admin/problems
+    const listRes = await getJson('/api/admin/problems', { Cookie: adminCookie });
+    assert.strictEqual(listRes.status, 200);
+    assert.strictEqual(listRes.data.success, true);
+    assert.ok(Array.isArray(listRes.data.data));
+
+    // 2. POST /api/admin/problems (Create a new problem with sample & hidden test cases)
+    const newProblemSlug = `test-admin-prob-${Date.now()}`;
+    const createRes = await postJson(
+      '/api/admin/problems',
+      {
+        problemCode: newProblemSlug,
+        name: 'Test Admin Problem',
+        statement: '### Description\nSolve $A + B$',
+        difficulty: 'Easy',
+        tags: ['Math'],
+        timeLimitMs: 1000,
+        memoryLimitKb: 256 * 1024,
+        sampleCases: [{ input: '2 3', output: '5', explanation: '2+3=5' }],
+        testCases: [
+          { input: '2 3', output: '5', isSample: true },
+          { input: '10 20', output: '30', isSample: false },
+        ],
+      },
+      { Cookie: adminCookie }
+    );
+    assert.strictEqual(createRes.status, 201);
+    assert.strictEqual(createRes.data.success, true);
+
+    // 3. GET /api/admin/problems/:id (Retrieve problem including hidden testcases)
+    const detailRes = await getJson(`/api/admin/problems/${newProblemSlug}`, { Cookie: adminCookie });
+    assert.strictEqual(detailRes.status, 200);
+    assert.strictEqual(detailRes.data.data.problemCode, newProblemSlug);
+    assert.strictEqual(detailRes.data.data.testCases.length, 2);
+
+    // 4. POST /api/admin/problems/:id/validate (Run model solution against all test cases in sandbox)
+    const valRes = await postJson(
+      `/api/admin/problems/${newProblemSlug}/validate`,
+      {
+        language: 'python',
+        code: `import sys\na, b = map(int, sys.stdin.read().split())\nprint(a + b)`,
+      },
+      { Cookie: adminCookie }
+    );
+    assert.strictEqual(valRes.status, 200);
+    assert.strictEqual(valRes.data.success, true);
+    assert.strictEqual(valRes.data.data.verdict, 'Accepted');
+    assert.strictEqual(valRes.data.data.passedTestCases, 2);
+
+    // 5. DELETE /api/admin/problems/:id (Delete problem and cascade)
+    const deleteRes = await fetch(`${baseUrl}/api/admin/problems/${newProblemSlug}`, {
+      method: 'DELETE',
+      headers: { Cookie: adminCookie },
+    });
+    const deleteData = await deleteRes.json();
+    assert.strictEqual(deleteRes.status, 200);
+    assert.strictEqual(deleteData.success, true);
+
+    // Verify deleted
+    const verifyDeleted = await Problem.findOne({ problemCode: newProblemSlug });
+    assert.strictEqual(verifyDeleted, null);
+  });
 });
