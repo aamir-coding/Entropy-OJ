@@ -1,0 +1,140 @@
+# Remediation Master Plan: Production-Readiness Overhaul
+
+## Executive Summary & Architectural Rationale
+
+Following our comprehensive, four-part audit across the entire codebase (**60 total issues found**), this Master Plan establishes a deterministic, dependency-ordered roadmap for complete remediation.
+
+### The Dependency Execution Order
+
+Fixing multi-tier distributed systems requires a strict **bottom-up, reverse-dependency execution sequence**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Phase 1: packages/shared                                    │
+│  - TypeScript types, Enums, Zod schemas, dual ESM/CJS build  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+┌──────────────────────────────┐ ┌──────────────────────────────┐
+│  Phase 2: apps/worker        │ │  Phase 3: apps/server        │
+│  - Sandbox safety & limits   │ │  - Routing fixes & auth      │
+│  - Idempotency & DLQ         │ │  - Rate limits & aggregations│
+│  - Container leak prevention │ │  - Live sample run endpoint  │
+└──────────────────────────────┘ └──────────────┬───────────────┘
+                                                │
+                                                ▼
+                                 ┌──────────────────────────────┐
+                                 │  Phase 4: apps/client        │
+                                 │  - Real sample runner UI     │
+                                 │  - Error boundaries & polling│
+                                 │  - Design system CSS & a11y  │
+                                 └──────────────┬───────────────┘
+                                                │
+                                                ▼
+                                 ┌──────────────────────────────┐
+                                 │  Phase 5: Full Verification  │
+                                 │  - Type checks across repo   │
+                                 │  - Unit & integration tests  │
+                                 │  - Production bundle builds  │
+                                 └──────────────────────────────┘
+```
+
+#### Why This Order Prevents "Bug-Fix-Bug Loops":
+1. **`packages/shared` First**: Types (`ISolution`, `ISubmissionResponse`, `ProblemDifficulty`), constants (`Verdicts`, `PROBLEM_DIFFICULTIES`), and Zod schemas form the contract layer. If we fix consuming code before stabilizing the contract, we would build against broken shapes.
+2. **`apps/worker` Second**: Establishes correct sandbox evaluation, metric parsing, fail-safes, and container lifecycle management.
+3. **`apps/server` Third**: Resolves route shadowing, implements the real `POST /api/submissions/run` endpoint (backed by worker capabilities), adds BOLA/IDOR protection, and enforces atomic counters and strict rate limits.
+4. **`apps/client` Fourth**: Fixes UI bugs, replaces mock sample runners with real API connections, adds global error boundaries, removes Tailwind classes in favor of the custom CSS system, and enforces type safety against the now-stable backend contract.
+5. **Phase 5 Full Verification**: End-to-end integration and build validation across all workspaces.
+
+---
+
+## Phase Breakdown & Scope of Work
+
+### Phase 1: `packages/shared` — Shared Contracts & Build System
+*Target Files: `packages/shared/package.json`, `tsconfig.json`, `src/index.ts`, `src/constants/*`, `src/types/index.ts`, `src/validation/*`, `src/utils/*`*
+
+- [x] **[CRITICAL] Fix ESM/CJS Export Map**: Update `package.json` and TypeScript configuration so Vite client imports compiled code and declaration types without bundling raw TypeScript.
+- [x] **[HIGH] Decouple UI & Execution Configs**: Split `LanguageConfig` into `LanguageExecutionConfig` (backend) and `LanguageUIConfig` (client Monaco/starter templates).
+- [x] **[HIGH] Relocate Judge Logic**: Move `diffOutput.ts` to worker sandbox or export cleanly as a dedicated utility without bloating UI consumers.
+- [x] **[HIGH] Unify `ISubmissionResponse` & `ISolution`**: Remove redundant `status` field in favor of canonical `verdict: Verdict`; ensure type inheritance.
+- [x] **[MEDIUM] Canonical `ProblemDifficulty` Object**: Create `ProblemDifficulties` `as const` object and derive types and Zod enums from a single source of truth.
+- [x] **[MEDIUM] Split `QueueConfig` and `ExecutionLimits`**: Decouple BullMQ queue constants from execution boundary constants.
+- [x] **[LOW] Password Strength in `auth.schema.ts`**: Update `registerSchema` to enforce 8+ chars with at least one letter and one number.
+- [x] **[LOW] Readonly Verdict Arrays**: Make `ALL_VERDICTS` `readonly` to prevent runtime array mutations.
+
+---
+
+### Phase 2: `apps/worker` — Sandbox Engine, Idempotency & Reliability
+*Target Files: `apps/worker/src/worker.ts`, `src/config/*`, `src/queue/submissionWorker.ts`, `src/sandbox/*`, `docker/runner.sh`, `docker/Dockerfile.runner`, `Dockerfile`*
+
+- [x] **[CRITICAL] Idempotency & Double-Count Prevention**: Add check to ensure non-PENDING submissions are not re-evaluated; make `acceptedSubmissions` counter increment conditional on state transition.
+- [x] **[CRITICAL] Zombie Docker Container Leak**: Assign deterministic container names (`oj-${submissionId}-${testCase}`) and trigger explicit `docker kill` on timeout / process abortion.
+- [x] **[CRITICAL] Shell Injection in `runner.sh`**: Strictly allowlist `$LANG` (exact string match `cpp` | `python`), quote `"$CMD"`, and sanitize arguments.
+- [x] **[CRITICAL] Process Lifecycle Guards**: Register `unhandledRejection` and `uncaughtException` in `worker.ts` for clean logging and fail-safe shutdown.
+- [x] **[HIGH] Dead Letter Queue (DLQ) Compensation**: In `worker.on('failed')`, update Solution record to `INTERNAL_ERROR` when max retries are exhausted.
+- [x] **[HIGH] Output File Disk Flooding Protection**: Cap stdout in `runner.sh` (`head -c 65536`) and set tmpfs memory bounds to prevent host disk exhaustion.
+- [x] **[HIGH] Strict Mongoose Models**: Align worker database models with server strict schemas.
+- [x] **[MEDIUM] Zero-Metrics Anomaly Detection**: Add fallback in evaluator so missing metrics are classified as `INTERNAL_ERROR` instead of false `WRONG_ANSWER`.
+- [x] **[MEDIUM] Redis Readiness Ping**: Add `await redisClient.ping()` during worker startup bootstrap.
+- [x] **[MEDIUM] Base-10 Exit Code Parsing**: Fix `parseInt(val, 10)` for GNU time exit status.
+- [x] **[MEDIUM] Windows Docker Path Normalization**: Support Windows path conversion for Docker Desktop volume mounting.
+- [x] **[LOW] Shutdown & Cleanup**: Await `redisClient.disconnect()`, add test skip guards when Docker is absent.
+
+---
+
+### Phase 3: `apps/server` — Routing, Security, Performance & Sample Runner
+*Target Files: `apps/server/src/server.ts`, `src/config/*`, `src/middlewares/*`, `src/controllers/*`, `src/models/*`, `src/routes/*`, `src/queues/*`, `src/seeds/*`*
+
+- [x] **[CRITICAL] Route Shadowing Fix**: Reorder `submission.routes.ts` so `/user/:userId` and `/problem/:problemId` are registered **before** `/:id`.
+- [x] **[CRITICAL] JWT Secret Hardening**: Remove hardcoded fallback secret in `env.ts`; enforce strict Zod startup validation for environment variables.
+- [x] **[CRITICAL] BOLA / Authorization in `getSubmissionById`**: Enforce 403 Forbidden when an unauthorized user attempts to view private submission details.
+- [x] **[CRITICAL] Submission Rate Limiting**: Implement strict per-user rate limit (e.g. 10/min) on `POST /submissions` and reject concurrent pending submissions.
+- [x] **[CROSS-BOUNDARY NEW FEATURE] Real Sample Runner API**: Implement `POST /api/submissions/run` to execute user code against sample test cases in real-time.
+- [x] **[HIGH] ReDoS & Query Sanitization**: Escape regex strings in `getProblems` and enforce max query string lengths.
+- [x] **[HIGH] N+1 Query Optimization in `getMe`**: Replace in-memory loops with a MongoDB aggregation pipeline for user statistics.
+- [x] **[HIGH] Field Projection in Problem Submissions**: Allowlist fields via `.select()` in `getProblemSubmissions`.
+- [x] **[HIGH] Atomic Creation & Queue Compensation**: Rollback created Solution document and decrement counter if `enqueueSubmission` throws.
+- [x] **[HIGH] Queue Graceful Shutdown**: Await `submissionQueue.close()` before disconnecting Redis on SIGTERM.
+- [x] **[MEDIUM] Compound Database Indexes**: Add `{ user: 1, problem: 1 }` and `{ user: 1, verdict: 1 }` indexes to `Solution`; add text index to `Problem`.
+- [x] **[MEDIUM] Decouple Auth & Global Rate Limiters**: Prevent double-counting on `/api/auth` endpoints.
+- [x] **[MEDIUM] 404 URL Sanitization**: Remove reflected request URLs from 404 responses.
+- [x] **[LOW] ESM Seeder & CSRF Protection**: Fix `seedProblems.ts` execution check for tsx/ESM; add `requireAuth` to logout.
+
+---
+
+### Phase 4: `apps/client` — Frontend Architecture, UI State & Design System
+*Target Files: `apps/client/src/main.tsx`, `src/App.tsx`, `src/api/*`, `src/context/*`, `src/components/*`, `src/pages/*`, `src/styles/*`*
+
+- [x] **[CRITICAL] Real "Run Samples" Integration**: Replace mock sample runner with live API call to `POST /api/submissions/run`, rendering actual stdout/stderr/metrics.
+- [x] **[CRITICAL] Memory Leak & Unmount-Safe Polling**: Implement mounted ref and clean interval termination in `ProblemDetailPage` submission polling.
+- [x] **[CRITICAL] Global & Route Error Boundaries**: Implement React `ErrorBoundary` component with dark-mode recovery UI.
+- [x] **[HIGH] React Hook Dependencies & Closures**: Wrap callbacks (`loadPastSubmissions`, `openAuthModal`) in `useCallback` and fix dependency arrays.
+- [x] **[HIGH] Form Reset on Mode Switch**: Reset form fields on switching between Login and Register in `AuthModal`.
+- [x] **[HIGH] Navbar Dropdown Outside-Click**: Add `mousedown` and `Escape` listeners to close dropdown.
+- [x] **[HIGH] Safe Clipboard API**: Wrap `navigator.clipboard.writeText` in `try/catch` with fallback feedback.
+- [x] **[MEDIUM] Replace Broken Tailwind Classes in `VerdictBadge`**: Use CSS custom properties (`var(--verdict-...)`) and styled SVG dimensions.
+- [x] **[MEDIUM] Search Input Debouncing**: Debounce problem search input in `HomePage` (300ms) to eliminate API spam.
+- [x] **[MEDIUM] Eliminate Redundant Auth API Calls**: Prevent double-fetch / duplicate state updates in `AuthContext`.
+- [x] **[MEDIUM] Strict TypeScript Types**: Replace `any[]` in `pastSubmissions` with `ISubmissionHistoryItem[]`.
+- [x] **[MEDIUM] Accessibility (a11y)**: Add `aria-label`, `htmlFor`, `role="dialog"`, `aria-expanded` across interactive components.
+- [x] **[MEDIUM] Error States**: Render user-friendly error banners with retry buttons on failed problem/submission loads.
+- [x] **[LOW] UX Enhancements**: Replace `window.confirm` with in-UI dialog; connect live `/health` check to Navbar badge.
+
+---
+
+### Phase 5: Verification, Integration Testing & Build Check
+- [x] Run `npm --workspace=packages/shared run build` and `npm --workspace=packages/shared run test`
+- [x] Run `npm --workspace=apps/server run build` and `npm --workspace=apps/server run test`
+- [x] Run `npm --workspace=apps/worker run build` and `npm --workspace=apps/worker run test`
+- [x] Run `npm --workspace=apps/client run build` (Vite production bundle verification)
+
+---
+
+## User Review & Phased Approval
+
+To maintain complete control and visibility:
+- **Phase 1** will be executed first once approved.
+- At the end of **each phase**, execution will pause and present a concise summary before requesting permission for the next phase.
+
+Shall we begin **Phase 1: `packages/shared`**?

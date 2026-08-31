@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../api/client';
 import {
   Code2,
   User,
@@ -13,7 +14,62 @@ import {
 export const Navbar: React.FC = () => {
   const { user, stats, logout, openAuthModal } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'checking'>('checking');
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Outside-click and Escape key handler for user dropdown
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [dropdownOpen]);
+
+  // System Health poll (every 60s)
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkHealth = async () => {
+      try {
+        const res = await api.get('/health');
+        if (isMounted && res.data?.status === 'healthy') {
+          setSystemHealth('healthy');
+        } else if (isMounted) {
+          setSystemHealth('degraded');
+        }
+      } catch {
+        if (isMounted) {
+          setSystemHealth('degraded');
+        }
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -39,6 +95,7 @@ export const Navbar: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}>
           <Link
             to="/"
+            aria-label="Anti Online Judge Homepage"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -119,32 +176,35 @@ export const Navbar: React.FC = () => {
 
         {/* Right Section: System Status & Auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          {/* Judge Status */}
+          {/* Live Judge Health Status */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.375rem',
               padding: '0.2rem 0.625rem',
-              background: 'rgba(52,211,153,0.08)',
-              border: '1px solid rgba(52,211,153,0.18)',
+              background: systemHealth === 'healthy' ? 'rgba(52,211,153,0.08)' : 'rgba(251,191,36,0.08)',
+              border: `1px solid ${systemHealth === 'healthy' ? 'rgba(52,211,153,0.18)' : 'rgba(251,191,36,0.18)'}`,
               borderRadius: 'var(--radius-full)',
               fontSize: '0.7rem',
               fontWeight: 600,
-              color: '#34d399',
+              color: systemHealth === 'healthy' ? '#34d399' : '#fbbf24',
               letterSpacing: '0.02em',
             }}
           >
-            <Activity size={11} className="animate-pulse" />
-            <span>Online</span>
+            <Activity size={11} className={systemHealth === 'healthy' ? 'animate-pulse' : ''} />
+            <span>{systemHealth === 'healthy' ? 'Judge Online' : 'System Degraded'}</span>
           </div>
 
           {/* User Auth state */}
           {user ? (
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={dropdownRef}>
               <button
                 id="user-profile-menu-btn"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
+                aria-haspopup="true"
+                aria-expanded={dropdownOpen}
+                aria-label="User profile and account settings"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -190,6 +250,7 @@ export const Navbar: React.FC = () => {
               {/* Dropdown Menu */}
               {dropdownOpen && (
                 <div
+                  role="menu"
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 0.5rem)',
@@ -206,7 +267,6 @@ export const Navbar: React.FC = () => {
                     zIndex: 200,
                     animation: 'modal-scale-in 150ms var(--ease-smooth)',
                   }}
-                  onMouseLeave={() => setDropdownOpen(false)}
                 >
                   <div style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.2rem' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
@@ -225,6 +285,7 @@ export const Navbar: React.FC = () => {
 
                   <Link
                     to="/profile"
+                    role="menuitem"
                     onClick={() => setDropdownOpen(false)}
                     style={{
                       display: 'flex',
@@ -252,6 +313,7 @@ export const Navbar: React.FC = () => {
 
                   <button
                     onClick={handleLogout}
+                    role="menuitem"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -301,4 +363,3 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
-

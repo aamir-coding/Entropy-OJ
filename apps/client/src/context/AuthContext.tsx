@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import { IUser, UserStats, RegisterInput, LoginInput } from '@anti-oj/shared';
 
@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const res = await api.get('/auth/me');
       if (res.data.success) {
@@ -38,47 +38,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshUser();
-  }, []);
+  }, [refreshUser]);
 
-  const login = async (input: LoginInput) => {
+  const login = useCallback(async (input: LoginInput) => {
     const res = await api.post('/auth/login', input);
     if (res.data.success) {
       setUser(res.data.data.user);
-      await refreshUser();
       setIsAuthModalOpen(false);
+      // Asynchronously fetch stats
+      api.get('/auth/me').then((meRes) => {
+        if (meRes.data.success) {
+          setStats(meRes.data.data.stats);
+        }
+      }).catch(() => {});
     }
-  };
+  }, []);
 
-  const register = async (input: RegisterInput) => {
+  const register = useCallback(async (input: RegisterInput) => {
     const res = await api.post('/auth/register', input);
     if (res.data.success) {
       setUser(res.data.data.user);
-      await refreshUser();
       setIsAuthModalOpen(false);
+      api.get('/auth/me').then((meRes) => {
+        if (meRes.data.success) {
+          setStats(meRes.data.data.stats);
+        }
+      }).catch(() => {});
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
     } finally {
       setUser(null);
       setStats(null);
     }
-  };
+  }, []);
 
-  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+  const openAuthModal = useCallback((mode: 'login' | 'register' = 'login') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
-  };
+  }, []);
 
-  const closeAuthModal = () => {
+  const closeAuthModal = useCallback(() => {
     setIsAuthModalOpen(false);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

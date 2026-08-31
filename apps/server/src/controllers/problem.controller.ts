@@ -5,6 +5,10 @@ import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { ProblemFilterInput, Verdicts, IProblemListItem } from '@anti-oj/shared';
 
+function escapeRegex(text: string): string {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
 export async function getProblems(
   req: AuthRequest,
   res: Response,
@@ -23,19 +27,22 @@ export async function getProblems(
       filter.tags = tag;
     }
 
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
+    if (search && typeof search === 'string' && search.trim().length > 0) {
+      const sanitized = escapeRegex(search.trim().slice(0, 100));
+      const searchRegex = new RegExp(sanitized, 'i');
       filter.$or = [{ name: searchRegex }, { problemCode: searchRegex }, { tags: searchRegex }];
     }
 
-    const skip = (page - 1) * limit;
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+    const safePage = Math.max(Number(page) || 1, 1);
+    const skip = (safePage - 1) * safeLimit;
 
     const [problems, totalCount] = await Promise.all([
       Problem.find(filter)
         .select('problemCode name difficulty tags totalSubmissions acceptedSubmissions createdAt')
         .sort({ createdAt: 1 })
         .skip(skip)
-        .limit(limit)
+        .limit(safeLimit)
         .lean(),
       Problem.countDocuments(filter),
     ]);
@@ -94,9 +101,9 @@ export async function getProblems(
         problems: items,
         pagination: {
           total: totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit),
+          page: safePage,
+          limit: safeLimit,
+          totalPages: Math.ceil(totalCount / safeLimit),
         },
       },
     });

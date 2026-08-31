@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json({
     success: false,
-    error: `Route not found: ${req.method} ${req.originalUrl}`,
+    error: `Resource not found: ${req.method} ${req.path}`,
   });
 }
 

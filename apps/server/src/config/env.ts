@@ -1,17 +1,31 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { z } from 'zod';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+const envSchema = z.object({
+  PORT: z.coerce.number().int().default(5000),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  MONGO_URI: z.string().min(1, 'MONGO_URI is required').default('mongodb://localhost:27017/anti_oj'),
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.coerce.number().int().default(6379),
+  REDIS_PASSWORD: z.string().optional().transform((val) => val || undefined),
+  JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters for security'),
+  JWT_EXPIRES_DAYS: z.coerce.number().int().min(1).default(7),
+  CLIENT_URL: z.string().default('http://localhost:5173'),
+  RUNNER_IMAGE: z.string().default('oj-runner:latest'),
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  console.error('[Config] ❌ Invalid server environment configuration:');
+  console.error(parsedEnv.error.format());
+  throw new Error('Invalid server environment configuration');
+}
+
 export const env = {
-  PORT: parseInt(process.env.PORT || '5000', 10),
-  NODE_ENV: process.env.NODE_ENV || 'development',
-  MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/anti_oj',
-  REDIS_HOST: process.env.REDIS_HOST || 'localhost',
-  REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
-  REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
-  JWT_SECRET: process.env.JWT_SECRET || 'super_secret_jwt_key_anti_online_judge_2026',
-  JWT_EXPIRES_DAYS: parseInt(process.env.JWT_EXPIRES_DAYS || '7', 10),
-  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
-  isProduction: process.env.NODE_ENV === 'production',
+  ...parsedEnv.data,
+  isProduction: parsedEnv.data.NODE_ENV === 'production',
 };

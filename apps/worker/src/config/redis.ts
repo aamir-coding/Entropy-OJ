@@ -7,6 +7,12 @@ export const redisConnectionOptions: RedisOptions = {
   password: env.REDIS_PASSWORD || undefined,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  retryStrategy(times) {
+    if (env.NODE_ENV === 'test') {
+      return null;
+    }
+    return Math.min(times * 200, 3000);
+  },
 };
 
 export const redisClient = new Redis(redisConnectionOptions);
@@ -16,5 +22,7 @@ redisClient.on('connect', () => {
 });
 
 redisClient.on('error', (err) => {
-  console.error('[Worker Redis] Connection error:', err.message);
+  if (env.NODE_ENV !== 'test') {
+    console.error('[Worker Redis] Connection error:', err.message);
+  }
 });

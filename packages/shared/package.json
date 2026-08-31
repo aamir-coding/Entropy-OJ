@@ -2,21 +2,23 @@
   "name": "@anti-oj/shared",
   "version": "1.0.0",
   "description": "Shared types, constants, schemas, and utilities for Anti Online Judge",
-  "main": "./dist/index.js",
-  "module": "./src/index.ts",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./src/index.ts",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "test": "node --test dist/**/*.test.js"
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm",
+    "watch": "tsc -p tsconfig.esm.json -w",
+    "test": "node --test dist/cjs/**/*.test.js"
   },
   "dependencies": {
     "zod": "^3.24.2"

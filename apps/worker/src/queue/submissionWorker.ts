@@ -1,49 +1,78 @@
 import { Worker, Job } from 'bullmq';
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 import {
   JudgeJobPayload,
   QueueConfig,
   Verdicts,
+  ALL_VERDICTS,
+  ALL_SUPPORTED_LANGUAGES,
+  Verdict,
 } from '@anti-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 import { evaluateSubmission } from '../sandbox/evaluator';
 import { env } from '../config/env';
 
-// Shared Mongoose schemas for worker direct database updates (Decision R8)
-const solutionSchema = new mongoose.Schema(
+interface ISolutionDoc extends Document {
+  user: mongoose.Types.ObjectId;
+  problem: mongoose.Types.ObjectId;
+  code: string;
+  language: string;
+  verdict: Verdict;
+  compileOutput?: string;
+  executionTime?: number;
+  memoryUsed?: number;
+  failedTestCaseNumber?: number;
+  totalTestCases?: number;
+  passedTestCases?: number;
+  submittedAt: Date;
+}
+
+interface IProblemDoc extends Document {
+  acceptedSubmissions: number;
+  totalSubmissions: number;
+}
+
+// Typed Mongoose schemas for worker updates
+const solutionSchema = new Schema<ISolutionDoc>(
   {
-    verdict: String,
-    compileOutput: String,
-    executionTime: Number,
-    memoryUsed: Number,
-    failedTestCaseNumber: Number,
-    totalTestCases: Number,
-    passedTestCases: Number,
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    problem: { type: Schema.Types.ObjectId, ref: 'Problem', required: true },
+    code: { type: String, required: true },
+    language: { type: String, enum: ALL_SUPPORTED_LANGUAGES, required: true },
+    verdict: { type: String, enum: ALL_VERDICTS, default: Verdicts.PENDING },
+    compileOutput: { type: String },
+    executionTime: { type: Number },
+    memoryUsed: { type: Number },
+    failedTestCaseNumber: { type: Number },
+    totalTestCases: { type: Number, default: 0 },
+    passedTestCases: { type: Number, default: 0 },
+    submittedAt: { type: Date, default: Date.now },
   },
-  { strict: false }
+  { strict: true, versionKey: false }
 );
 
-const testCaseSchema = new mongoose.Schema(
+const testCaseSchema = new Schema(
   {
-    problem: mongoose.Schema.Types.ObjectId,
-    input: String,
-    output: String,
-    isSample: Boolean,
-    order: Number,
+    problem: { type: Schema.Types.ObjectId, ref: 'Problem', required: true },
+    input: { type: String, required: true },
+    output: { type: String, required: true },
+    isSample: { type: Boolean, default: false },
+    order: { type: Number, default: 1 },
   },
-  { strict: false }
+  { strict: true, versionKey: false }
 );
 
-const problemSchema = new mongoose.Schema(
+const problemSchema = new Schema<IProblemDoc>(
   {
-    acceptedSubmissions: Number,
+    acceptedSubmissions: { type: Number, default: 0 },
+    totalSubmissions: { type: Number, default: 0 },
   },
-  { strict: false }
+  { strict: false, versionKey: false }
 );
 
-const SolutionModel = mongoose.models.Solution || mongoose.model('Solution', solutionSchema);
+const SolutionModel = (mongoose.models.Solution as mongoose.Model<ISolutionDoc>) || mongoose.model<ISolutionDoc>('Solution', solutionSchema);
 const TestCaseModel = mongoose.models.TestCase || mongoose.model('TestCase', testCaseSchema);
-const ProblemModel = mongoose.models.Problem || mongoose.model('Problem', problemSchema);
+const ProblemModel = (mongoose.models.Problem as mongoose.Model<IProblemDoc>) || mongoose.model<IProblemDoc>('Problem', problemSchema);
 
 export function createSubmissionWorker(): Worker<JudgeJobPayload> {
   const worker = new Worker<JudgeJobPayload>(
@@ -53,6 +82,19 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
       const startTime = Date.now();
 
       try {
+        // Idempotency Check: Verify Solution exists and is in PENDING state
+        const currentSolution = await SolutionModel.findById(job.data.submissionId);
+        if (!currentSolution) {
+          console.warn(`[Worker] Submission ${job.data.submissionId} not found in database. Skipping.`);
+          return;
+        }
+
+        // If this job was already evaluated to completion, do not re-run (idempotency guard)
+        if (currentSolution.verdict !== Verdicts.PENDING) {
+          console.log(`[Worker] Submission ${job.data.submissionId} already resolved with verdict [${currentSolution.verdict}]. Skipping re-evaluation.`);
+          return;
+        }
+
         // Fetch test cases for this problem from MongoDB
         const testCases = await TestCaseModel.find({ problem: job.data.problemId })
           .sort({ order: 1 })
@@ -70,19 +112,25 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         // Run sandboxed evaluation
         const result = await evaluateSubmission(job.data, testCases as any);
 
-        // Update Solution document in MongoDB
-        await SolutionModel.findByIdAndUpdate(job.data.submissionId, {
-          verdict: result.verdict,
-          compileOutput: result.compileOutput,
-          executionTime: result.executionTime,
-          memoryUsed: result.memoryUsed,
-          failedTestCaseNumber: result.failedTestCaseNumber,
-          totalTestCases: result.totalTestCases,
-          passedTestCases: result.passedTestCases,
-        });
+        // Atomic transition: Update Solution verdict only if currently PENDING
+        const updatedSolution = await SolutionModel.findOneAndUpdate(
+          { _id: job.data.submissionId, verdict: Verdicts.PENDING },
+          {
+            $set: {
+              verdict: result.verdict,
+              compileOutput: result.compileOutput,
+              executionTime: result.executionTime,
+              memoryUsed: result.memoryUsed,
+              failedTestCaseNumber: result.failedTestCaseNumber,
+              totalTestCases: result.totalTestCases,
+              passedTestCases: result.passedTestCases,
+            },
+          },
+          { new: false }
+        );
 
-        // If Accepted, increment problem acceptedSubmissions
-        if (result.verdict === Verdicts.ACCEPTED) {
+        // Only increment problem's acceptedSubmissions if this was a successful first-time transition to ACCEPTED
+        if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
           await ProblemModel.findByIdAndUpdate(job.data.problemId, {
             $inc: { acceptedSubmissions: 1 },
           });
@@ -115,8 +163,21 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
     console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY})`);
   });
 
-  worker.on('failed', (job, err) => {
-    console.error(`[Worker] Job ${job?.id} failed:`, err.message);
+  // DLQ / Final Failure Handler: Catch jobs that exhausted retries
+  worker.on('failed', async (job, err) => {
+    console.error(`[Worker] Job ${job?.id} failed (attempt ${job?.attemptsMade}):`, err.message);
+
+    if (job && job.attemptsMade >= (job.opts?.attempts || QueueConfig.DEFAULT_JOB_ATTEMPTS)) {
+      console.warn(`[Worker] Job ${job.id} exhausted all retries. Setting Solution to INTERNAL_ERROR.`);
+      try {
+        await SolutionModel.findByIdAndUpdate(job.data.submissionId, {
+          verdict: Verdicts.INTERNAL_ERROR,
+          compileOutput: `Job failed evaluation after ${job.attemptsMade} retry attempts: ${err.message}`,
+        });
+      } catch (dbErr: any) {
+        console.error(`[Worker] Failed to write final DLQ status to database:`, dbErr.message);
+      }
+    }
   });
 
   return worker;

@@ -7,6 +7,12 @@ export const redisConnectionOptions: RedisOptions = {
   password: env.REDIS_PASSWORD || undefined,
   maxRetriesPerRequest: null, // Required for BullMQ
   enableReadyCheck: false,
+  retryStrategy(times) {
+    if (env.NODE_ENV === 'test') {
+      return null; // Do not hang test runner if Redis is offline
+    }
+    return Math.min(times * 200, 3000);
+  },
 };
 
 export const redisClient = new Redis(redisConnectionOptions);
@@ -16,5 +22,7 @@ redisClient.on('connect', () => {
 });
 
 redisClient.on('error', (err) => {
-  console.error('[Redis] Connection error:', err.message);
+  if (env.NODE_ENV !== 'test') {
+    console.error('[Redis] Connection error:', err.message);
+  }
 });

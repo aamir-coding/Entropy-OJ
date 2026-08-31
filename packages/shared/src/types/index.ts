@@ -8,7 +8,17 @@ export interface IUser {
   createdAt: string | Date;
 }
 
-export type ProblemDifficulty = 'Easy' | 'Medium' | 'Hard';
+export const ProblemDifficulties = {
+  EASY: 'Easy',
+  MEDIUM: 'Medium',
+  HARD: 'Hard',
+} as const;
+
+export type ProblemDifficulty = (typeof ProblemDifficulties)[keyof typeof ProblemDifficulties];
+
+export const ALL_PROBLEM_DIFFICULTIES: readonly ProblemDifficulty[] = Object.freeze(
+  Object.values(ProblemDifficulties)
+) as readonly ProblemDifficulty[];
 
 export interface ISampleTestCase {
   input: string;
@@ -70,12 +80,12 @@ export interface ISolution {
 
 export interface ISubmissionResponse {
   submissionId: string;
-  status: Verdict;
+  verdict: Verdict;
+  status?: Verdict;
   problemId: string;
   problemCode: string;
   problemName: string;
   language: SupportedLanguage;
-  verdict: Verdict;
   compileOutput?: string;
   executionTime?: number;
   memoryUsed?: number;
@@ -134,6 +144,27 @@ export interface JudgeExecutionResult {
   failedTestCaseNumber?: number;
   totalTestCases: number;
   passedTestCases: number;
+}
+
+// Sample run contracts for live sample execution endpoint
+export interface ISampleCaseResult {
+  caseIndex: number;
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  passed: boolean;
+  verdict: Verdict;
+  executionTimeMs: number;
+  memoryUsedKb: number;
+  error?: string;
+}
+
+export interface ISampleRunResponse {
+  verdict: Verdict;
+  compileOutput?: string;
+  totalCases: number;
+  passedCases: number;
+  sampleResults: ISampleCaseResult[];
 }
 
 export interface ApiResponse<T = unknown> {

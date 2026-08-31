@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
-import { ProblemDifficulty, ISampleTestCase } from '@anti-oj/shared';
+import { ProblemDifficulty, ISampleTestCase, ALL_PROBLEM_DIFFICULTIES } from '@anti-oj/shared';
 
 export interface IProblemDocument extends Document {
   problemCode: string;
@@ -45,7 +45,7 @@ const problemSchema = new Schema<IProblemDocument>(
     },
     difficulty: {
       type: String,
-      enum: ['Easy', 'Medium', 'Hard'],
+      enum: ALL_PROBLEM_DIFFICULTIES as unknown as string[],
       default: 'Easy',
       index: true,
     },
@@ -88,6 +88,9 @@ const problemSchema = new Schema<IProblemDocument>(
     versionKey: false,
   }
 );
+
+// Full-text search index on name and statement
+problemSchema.index({ name: 'text', statement: 'text', tags: 'text' });
 
 export const Problem: Model<IProblemDocument> = mongoose.model<IProblemDocument>(
   'Problem',

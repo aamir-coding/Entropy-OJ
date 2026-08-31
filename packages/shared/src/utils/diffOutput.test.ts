@@ -48,4 +48,10 @@ describe('diffOutput & normalizeOutput Tests', () => {
     assert.strictEqual(result.actualLine, '100');
     assert.strictEqual(result.expectedLine, '999');
   });
+
+  it('should handle empty strings and whitespace-only outputs gracefully', () => {
+    assert.strictEqual(diffOutput('', '').isMatch, true);
+    assert.strictEqual(diffOutput('   \n\n  ', '').isMatch, true);
+    assert.strictEqual(diffOutput('', 'expected').isMatch, false);
+  });
 });

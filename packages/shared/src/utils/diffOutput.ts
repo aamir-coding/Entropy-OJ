@@ -4,11 +4,17 @@
  * 2. Trims trailing whitespace from each line.
  * 3. Removes trailing empty lines at the end of the file.
  * 4. Strictly preserves internal whitespace within lines.
+ * 5. Caps excessively large strings (up to 1MB) to prevent heap exhaustion.
  */
+export const MAX_NORMALIZE_SIZE_BYTES = 1024 * 1024; // 1 MB safety cap
+
 export function normalizeOutput(str: string): string {
   if (!str) return '';
 
-  return str
+  // Prevent memory explosion on huge strings
+  const boundedStr = str.length > MAX_NORMALIZE_SIZE_BYTES ? str.slice(0, MAX_NORMALIZE_SIZE_BYTES) : str;
+
+  return boundedStr
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .split('\n')

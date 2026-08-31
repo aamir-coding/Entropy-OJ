@@ -354,6 +354,5 @@ export async function seedDatabase(): Promise<void> {
   }
 }
 
-if (require.main === module) {
-  seedDatabase();
-}
+// Execute seeding if run directly
+seedDatabase();

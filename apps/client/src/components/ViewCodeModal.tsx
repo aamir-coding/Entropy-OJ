@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Terminal } from 'lucide-react';
+import { X, Copy, Check, Terminal, AlertCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
+import { Verdicts } from '@anti-oj/shared';
 
 interface ViewCodeModalProps {
   isOpen: boolean;
@@ -20,19 +21,30 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
   verdict,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   if (!isOpen) return null;
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+        setCopied(true);
+        setCopyError(false);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        throw new Error('Clipboard API not supported');
+      }
+    } catch {
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 3000);
+    }
   };
 
   const monacoLang = language === 'cpp' ? 'cpp' : 'python';
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="View submitted code">
       <div
         className="modal-content"
         style={{ maxWidth: '800px', width: '90%' }}
@@ -46,10 +58,11 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            background: 'var(--bg-elevated)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Terminal size={18} className="text-sky-400" />
+            <Terminal size={18} style={{ color: 'var(--accent-cyan)' }} />
             <div>
               <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>
                 {problemName ? `Submission: ${problemName}` : 'Submitted Code'}
@@ -58,7 +71,15 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
                 Language: <span style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>{language}</span>
                 {verdict && (
                   <span style={{ marginLeft: '0.75rem' }}>
-                    Verdict: <span style={{ fontWeight: 600, color: verdict === 'Accepted' ? '#10b981' : '#f43f5e' }}>{verdict}</span>
+                    Verdict:{' '}
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: verdict === Verdicts.ACCEPTED ? 'var(--verdict-ac)' : 'var(--verdict-wa)',
+                      }}
+                    >
+                      {verdict}
+                    </span>
                   </span>
                 )}
               </div>
@@ -69,13 +90,21 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
             <button
               onClick={handleCopy}
               className="btn btn-outline"
+              aria-label="Copy code to clipboard"
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
             >
-              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied' : 'Copy Code'}</span>
+              {copied ? (
+                <Check size={14} style={{ color: 'var(--verdict-ac)' }} />
+              ) : copyError ? (
+                <AlertCircle size={14} style={{ color: 'var(--verdict-wa)' }} />
+              ) : (
+                <Copy size={14} />
+              )}
+              <span>{copied ? 'Copied' : copyError ? 'Copy failed' : 'Copy Code'}</span>
             </button>
             <button
               onClick={onClose}
+              aria-label="Close modal"
               style={{
                 background: 'transparent',
                 border: 'none',

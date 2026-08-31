@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { VerdictBadge } from '../components/VerdictBadge';
 import { ViewCodeModal } from '../components/ViewCodeModal';
-import { ISubmissionHistoryItem, Verdicts } from '@anti-oj/shared';
+import { ISubmissionHistoryItem, Verdicts, Verdict } from '@anti-oj/shared';
 import {
-  User,
   Mail,
   Calendar,
   Trophy,
   CheckCircle2,
   Clock,
   HardDrive,
-  Code2,
   Terminal,
   Loader2,
   FileCode,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -25,6 +25,7 @@ export const ProfilePage: React.FC = () => {
 
   const [submissions, setSubmissions] = useState<ISubmissionHistoryItem[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedVerdictFilter, setSelectedVerdictFilter] = useState<string>('All');
 
   const [viewCodeModal, setViewCodeModal] = useState<{
@@ -40,34 +41,36 @@ export const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      openAuthModal('login');
+    document.title = 'Profile & History | Anti Online Judge';
+  }, []);
+
+  const fetchSubmissionHistory = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoadingSubmissions(true);
+      setError(null);
+      const res = await api.get(`/submissions/user/${user._id}`);
+      if (res.data.success) {
+        setSubmissions(res.data.data.submissions);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch user submissions:', err);
+      setError(err.message || 'Failed to load submission history.');
+    } finally {
+      setLoadingSubmissions(false);
     }
-  }, [authLoading, user]);
+  }, [user]);
 
   useEffect(() => {
-    const fetchSubmissionHistory = async () => {
-      if (!user) return;
-      try {
-        setLoadingSubmissions(true);
-        const res = await api.get(`/submissions/user/${user._id}`);
-        if (res.data.success) {
-          setSubmissions(res.data.data.submissions);
-        }
-      } catch (err) {
-        console.error('Failed to fetch user submissions:', err);
-      } finally {
-        setLoadingSubmissions(false);
-      }
-    };
-
-    fetchSubmissionHistory();
-  }, [user]);
+    if (user) {
+      fetchSubmissionHistory();
+    }
+  }, [user, fetchSubmissionHistory]);
 
   if (authLoading) {
     return (
       <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <Loader2 size={36} className="animate-spin text-sky-400" />
+        <Loader2 size={36} className="animate-spin" style={{ color: 'var(--accent-cyan)' }} />
       </div>
     );
   }
@@ -75,16 +78,28 @@ export const ProfilePage: React.FC = () => {
   if (!user) {
     return (
       <div className="page-wrapper" style={{ padding: '4rem 0', textAlign: 'center' }}>
-        <h2 style={{ marginBottom: '1rem' }}>Please Sign In</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          You must be logged in to view your profile and submission history.
-        </p>
-        <button onClick={() => openAuthModal('login')} className="btn btn-primary">
-          Sign In
-        </button>
+        <div className="container" style={{ maxWidth: '480px' }}>
+          <div className="glass-panel" style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Please Sign In</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+              You must be signed in to view your solved stats and submission history.
+            </p>
+            <button onClick={() => openAuthModal('login')} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem' }}>
+              Sign In
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
+
+  const verdictFilters: { label: string; value: string }[] = [
+    { label: 'All', value: 'All' },
+    { label: 'Accepted', value: Verdicts.ACCEPTED },
+    { label: 'Wrong Answer', value: Verdicts.WRONG_ANSWER },
+    { label: 'Time Limit', value: Verdicts.TIME_LIMIT_EXCEEDED },
+    { label: 'Compilation Error', value: Verdicts.COMPILATION_ERROR },
+  ];
 
   const filteredSubmissions = submissions.filter((sub) => {
     if (selectedVerdictFilter === 'All') return true;
@@ -156,7 +171,7 @@ export const ProfilePage: React.FC = () => {
                 <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
                   Solved Problems
                 </span>
-                <Trophy size={20} className="text-sky-400" />
+                <Trophy size={20} style={{ color: 'var(--accent-cyan)' }} />
               </div>
               <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                 {stats.solvedProblemsCount}
@@ -196,7 +211,7 @@ export const ProfilePage: React.FC = () => {
                 <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
                   Acceptance Rate
                 </span>
-                <CheckCircle2 size={20} className="text-emerald-400" />
+                <CheckCircle2 size={20} style={{ color: 'var(--verdict-ac)' }} />
               </div>
               <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--verdict-ac)', marginBottom: '0.25rem' }}>
                 {stats.acceptanceRate}%
@@ -223,20 +238,20 @@ export const ProfilePage: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Terminal size={18} className="text-sky-400" />
+              <Terminal size={18} style={{ color: 'var(--accent-cyan)' }} />
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Submission History</h2>
             </div>
 
             {/* Filter Pills */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-              {['All', 'Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Compilation Error'].map((v) => (
+              {verdictFilters.map((v) => (
                 <button
-                  key={v}
-                  onClick={() => setSelectedVerdictFilter(v)}
+                  key={v.value}
+                  onClick={() => setSelectedVerdictFilter(v.value)}
                   style={{
-                    background: selectedVerdictFilter === v ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                    color: selectedVerdictFilter === v ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                    border: `1px solid ${selectedVerdictFilter === v ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                    background: selectedVerdictFilter === v.value ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                    color: selectedVerdictFilter === v.value ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    border: `1px solid ${selectedVerdictFilter === v.value ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
                     borderRadius: 'var(--radius-full)',
                     padding: '0.2rem 0.65rem',
                     fontSize: '0.75rem',
@@ -244,48 +259,92 @@ export const ProfilePage: React.FC = () => {
                     cursor: 'pointer',
                   }}
                 >
-                  {v}
+                  {v.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Table Content */}
+          {/* Error Banner */}
+          {error && (
+            <div
+              role="alert"
+              style={{
+                margin: '1rem 1.5rem',
+                padding: '0.875rem 1.25rem',
+                background: 'var(--verdict-wa-bg)',
+                border: '1px solid var(--verdict-wa-border)',
+                borderRadius: 'var(--radius-lg)',
+                color: 'var(--verdict-wa)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={16} />
+                <span style={{ fontSize: '0.8125rem' }}>{error}</span>
+              </div>
+              <button
+                onClick={() => fetchSubmissionHistory()}
+                className="btn btn-outline"
+                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--verdict-wa-border)', color: 'var(--verdict-wa)' }}
+              >
+                <RotateCcw size={12} />
+                <span>Retry</span>
+              </button>
+            </div>
+          )}
+
+          {/* Submissions List */}
           {loadingSubmissions ? (
-            <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Loader2 size={32} className="animate-spin text-sky-400" style={{ margin: '0 auto 1rem' }} />
-              <p>Loading submission records...</p>
+            <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <div className="animate-spin" style={{ display: 'inline-block', marginBottom: '0.75rem' }}>
+                <Loader2 size={24} style={{ color: 'var(--accent-cyan)' }} />
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading submission records...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <FileCode size={36} style={{ margin: '0 auto 1rem', color: 'var(--text-muted)' }} />
-              <p>No matching submissions found.</p>
+            <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              <FileCode size={32} style={{ margin: '0 auto 0.75rem', color: 'var(--text-faint)' }} />
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>No submissions found</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {selectedVerdictFilter !== 'All' ? 'No submissions match this filter.' : 'You have not submitted any solutions yet.'}
+              </p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(30, 41, 59, 0.6)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.875rem 1.25rem' }}>Submitted At</th>
-                    <th style={{ padding: '0.875rem 1.25rem' }}>Problem</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '100px' }}>Language</th>
-                    <th style={{ padding: '0.875rem 1.25rem' }}>Verdict</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '120px' }}>CPU Time</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '120px' }}>Memory</th>
-                    <th style={{ padding: '0.875rem 1.25rem', width: '120px', textAlign: 'right' }}>Actions</th>
+                  <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Time</th>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Problem</th>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Verdict</th>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Language</th>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Runtime</th>
+                    <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Memory</th>
+                    <th style={{ padding: '0.75rem 1.25rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Code</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSubmissions.map((sub) => (
                     <tr
                       key={sub._id}
-                      style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                      style={{
+                        borderBottom: '1px solid var(--border-faint)',
+                        transition: 'background-color var(--transition-fast)',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.025)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <td style={{ padding: '1rem 1.25rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>
+                      {/* Submitted At */}
+                      <td style={{ padding: '0.875rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {new Date(sub.submittedAt).toLocaleString()}
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem' }}>
+                      {/* Problem Title */}
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
                         <Link
                           to={`/problems/${sub.problem.problemCode}`}
                           style={{
@@ -298,55 +357,56 @@ export const ProfilePage: React.FC = () => {
                           }}
                         >
                           <span>{sub.problem.name}</span>
-                          <span
-                            className={`badge ${
-                              sub.problem.difficulty === 'Easy'
-                                ? 'badge-easy'
-                                : sub.problem.difficulty === 'Medium'
-                                ? 'badge-medium'
-                                : 'badge-hard'
-                            }`}
-                            style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }}
-                          >
-                            {sub.problem.difficulty}
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                            #{sub.problem.problemCode}
                           </span>
                         </Link>
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                      {/* Verdict Badge */}
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <VerdictBadge verdict={sub.verdict} />
+                      </td>
+
+                      {/* Language */}
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
                           {sub.language}
                         </span>
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem' }}>
-                        <VerdictBadge verdict={sub.verdict} />
+                      {/* Runtime CPU */}
+                      <td style={{ padding: '0.875rem 1.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                        {sub.executionTime !== undefined ? `${sub.executionTime} ms` : '—'}
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                        {sub.executionTime !== undefined ? `${sub.executionTime}ms` : '—'}
+                      {/* Memory RSS */}
+                      <td style={{ padding: '0.875rem 1.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                        {sub.memoryUsed !== undefined ? `${Math.round(sub.memoryUsed / 1024)} MB` : '—'}
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                        {sub.memoryUsed !== undefined ? `${sub.memoryUsed}KB` : '—'}
-                      </td>
-
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <button
-                          onClick={() =>
-                            setViewCodeModal({
-                              open: true,
-                              code: sub.code || '',
-                              language: sub.language,
-                              problemName: sub.problem.name,
-                              verdict: sub.verdict,
-                            })
-                          }
-                          className="btn btn-outline"
-                          style={{ padding: '0.3rem 0.65rem', fontSize: '0.75rem' }}
-                        >
-                          View Code
-                        </button>
+                      {/* View Code CTA */}
+                      <td style={{ padding: '0.875rem 1.25rem', textAlign: 'right' }}>
+                        {sub.code ? (
+                          <button
+                            onClick={() =>
+                              setViewCodeModal({
+                                open: true,
+                                code: sub.code || '',
+                                language: sub.language,
+                                problemName: sub.problem.name,
+                                verdict: sub.verdict,
+                              })
+                            }
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem 0.6rem', fontSize: '0.72rem' }}
+                          >
+                            <FileCode size={12} />
+                            <span>View</span>
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}>—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -357,10 +417,10 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* View Code Modal */}
+      {/* Code Viewer Modal */}
       <ViewCodeModal
         isOpen={viewCodeModal.open}
-        onClose={() => setViewCodeModal({ ...viewCodeModal, open: false })}
+        onClose={() => setViewCodeModal((prev) => ({ ...prev, open: false }))}
         code={viewCodeModal.code}
         language={viewCodeModal.language}
         problemName={viewCodeModal.problemName}

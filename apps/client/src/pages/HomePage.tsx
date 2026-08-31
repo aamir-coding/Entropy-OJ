@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { IProblemListItem, ProblemDifficulty } from '@anti-oj/shared';
+import { IProblemListItem } from '@anti-oj/shared';
 import {
   Search,
   CheckCircle,
@@ -10,41 +10,60 @@ import {
   Clock,
   Code,
   Shield,
-  Layers,
   ChevronRight,
   Filter,
+  AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const { user, stats } = useAuth();
   const [problems, setProblems] = useState<IProblemListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
   const [selectedTag, setSelectedTag] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
-  const fetchProblems = async () => {
+  // Set page title
+  useEffect(() => {
+    document.title = 'Problems | Anti Online Judge';
+  }, []);
+
+  // Debounce search query input by 300ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const fetchProblems = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params: Record<string, string> = {};
       if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
       if (selectedTag !== 'All') params.tag = selectedTag;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (debouncedSearchQuery.trim()) params.search = debouncedSearchQuery.trim();
 
       const res = await api.get('/problems', { params });
       if (res.data.success) {
         setProblems(res.data.data.problems);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch problems:', err);
+      setError(err.message || 'Unable to connect to the problem catalog. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDifficulty, selectedTag, debouncedSearchQuery]);
 
   useEffect(() => {
     fetchProblems();
-  }, [selectedDifficulty, selectedTag, searchQuery, user]);
+  }, [fetchProblems, user?._id]);
 
   const allTags = [
     'All',
@@ -176,6 +195,7 @@ export const HomePage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search problems..."
+                aria-label="Search problems by name or code"
                 className="input-control"
                 style={{ paddingLeft: '2.25rem', fontSize: '0.8125rem' }}
               />
@@ -243,6 +263,38 @@ export const HomePage: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div
+            role="alert"
+            style={{
+              padding: '1rem 1.25rem',
+              marginBottom: '1rem',
+              background: 'var(--verdict-wa-bg)',
+              border: '1px solid var(--verdict-wa-border)',
+              borderRadius: 'var(--radius-lg)',
+              color: 'var(--verdict-wa)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <AlertCircle size={18} />
+              <span style={{ fontSize: '0.875rem' }}>{error}</span>
+            </div>
+            <button
+              onClick={() => fetchProblems()}
+              className="btn btn-outline"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderColor: 'var(--verdict-wa-border)', color: 'var(--verdict-wa)' }}
+            >
+              <RotateCcw size={13} />
+              <span>Retry</span>
+            </button>
+          </div>
+        )}
 
         {/* Problem List Table */}
         <div className="glass-panel" style={{ overflow: 'hidden' }}>

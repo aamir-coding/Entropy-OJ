@@ -5,7 +5,8 @@ export const registerSchema = z.object({
     .string({ required_error: 'Full name is required' })
     .trim()
     .min(2, 'Full name must be at least 2 characters')
-    .max(50, 'Full name cannot exceed 50 characters'),
+    .max(50, 'Full name cannot exceed 50 characters')
+    .regex(/^[\p{L}\p{N}\s.'-]+$/u, 'Full name contains invalid characters'),
   email: z
     .string({ required_error: 'Email is required' })
     .trim()
@@ -14,8 +15,9 @@ export const registerSchema = z.object({
     .max(100, 'Email cannot exceed 100 characters'),
   password: z
     .string({ required_error: 'Password is required' })
-    .min(6, 'Password must be at least 6 characters')
-    .max(100, 'Password cannot exceed 100 characters'),
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password cannot exceed 100 characters')
+    .regex(/^(?=.*[a-zA-Z])(?=.*\d)/, 'Password must contain at least one letter and one number'),
 });
 
 export const loginSchema = z.object({

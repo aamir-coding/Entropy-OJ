@@ -5,17 +5,25 @@ export const SupportedLanguages = {
 
 export type SupportedLanguage = (typeof SupportedLanguages)[keyof typeof SupportedLanguages];
 
-export const ALL_SUPPORTED_LANGUAGES: SupportedLanguage[] = Object.values(SupportedLanguages);
+export const ALL_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = Object.freeze(
+  Object.values(SupportedLanguages)
+) as readonly SupportedLanguage[];
 
-export interface LanguageConfig {
+export interface LanguageExecutionConfig {
   id: SupportedLanguage;
   name: string;
   version: string;
   extension: string;
-  monacoLanguage: string;
-  starterCode: string;
   compileBudgetMs: number;
 }
+
+export interface LanguageUIConfig {
+  id: SupportedLanguage;
+  monacoLanguage: string;
+  starterCode: string;
+}
+
+export interface LanguageConfig extends LanguageExecutionConfig, LanguageUIConfig {}
 
 export const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
   [SupportedLanguages.CPP]: {

@@ -5,6 +5,11 @@ MODE="$1"
 LANG="$2"
 TIME_LIMIT_MS="${3:-1000}"
 
+# Validate TIME_LIMIT_MS is a positive integer
+if ! [[ "$TIME_LIMIT_MS" =~ ^[0-9]+$ ]] || [ "$TIME_LIMIT_MS" -le 0 ]; then
+    TIME_LIMIT_MS=1000
+fi
+
 cd /workspace
 
 if [ "$MODE" = "compile" ]; then
@@ -39,21 +44,26 @@ elif [ "$MODE" = "run" ]; then
     # Wall-clock timeout in seconds (with 2.5x grace margin for kill-switch)
     WALL_TIMEOUT_SEC=$(awk "BEGIN {print ($TIME_LIMIT_MS / 1000) * 2.5 + 0.5}")
 
-    CMD=""
+    # Strict language allowlist and binary mapping
     if [ "$LANG" = "cpp" ]; then
-        CMD="/workspace/solution.out"
+        PROGRAM_BIN="/workspace/solution.out"
+        if [ ! -f "$PROGRAM_BIN" ]; then
+            echo "Binary not found" > "$STDERR_FILE"
+            exit 1
+        fi
+        RUN_CMD=("$PROGRAM_BIN")
     elif [ "$LANG" = "python" ]; then
-        CMD="python3 /workspace/solution.py"
+        RUN_CMD=("python3" "/workspace/solution.py")
     else
         echo "Unsupported language: $LANG" > "$STDERR_FILE"
         exit 1
     fi
 
-    # Execute with timeout and GNU time measurement
+    # Execute with timeout, GNU time measurement, and output size limitation (64KB cap)
     set +e
     timeout -k 1s "${WALL_TIMEOUT_SEC}s" /usr/bin/time -o "$METRICS_FILE" \
         -f "WALL_SEC=%e\nUSER_SEC=%U\nSYS_SEC=%S\nMAX_RSS_KB=%M\nEXIT_CODE=%x" \
-        $CMD < "$INPUT_FILE" > "$OUTPUT_FILE" 2> "$STDERR_FILE"
+        "${RUN_CMD[@]}" < "$INPUT_FILE" 2> "$STDERR_FILE" | head -c 65536 > "$OUTPUT_FILE"
     
     EXEC_STATUS=$?
     set -e

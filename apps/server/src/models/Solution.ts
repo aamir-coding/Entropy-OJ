@@ -41,7 +41,7 @@ const solutionSchema = new Schema<ISolutionDocument>(
     },
     verdict: {
       type: String,
-      enum: ALL_VERDICTS,
+      enum: ALL_VERDICTS as unknown as string[],
       default: Verdicts.PENDING,
       index: true,
     },
@@ -76,6 +76,12 @@ const solutionSchema = new Schema<ISolutionDocument>(
     versionKey: false,
   }
 );
+
+// Compound indexes for optimal query performance
+solutionSchema.index({ user: 1, problem: 1 });
+solutionSchema.index({ user: 1, verdict: 1 });
+solutionSchema.index({ user: 1, submittedAt: -1 });
+solutionSchema.index({ problem: 1, submittedAt: -1 });
 
 export const Solution: Model<ISolutionDocument> = mongoose.model<ISolutionDocument>(
   'Solution',

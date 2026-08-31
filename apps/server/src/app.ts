@@ -47,25 +47,19 @@ export function createApp(): Express {
     message: { success: false, error: 'Too many requests, please try again later.' },
   });
 
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50, // 50 auth requests per IP per window
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: 'Too many authentication attempts, please try again later.' },
-  });
-
-  // Health check endpoint
-  app.get('/health', (_req, res) => {
+  // Health check endpoint (accessible on both root /health and /api/health)
+  const healthHandler = (_req: express.Request, res: express.Response) => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       service: 'anti-oj-server',
     });
-  });
+  };
 
-  // Mount API routes
-  app.use('/api/auth', authLimiter);
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
+
+  // Mount API routes with global API limiter
   app.use('/api', apiLimiter, apiRoutes);
 
   // 404 & Error handlers

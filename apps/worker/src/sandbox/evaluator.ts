@@ -100,6 +100,27 @@ export async function evaluateSubmission(
         };
       }
 
+      // Sentinel Check: If container produced no metrics, no output, and no exit status, treat as INTERNAL_ERROR
+      if (
+        metrics.wallTimeSec === 0 &&
+        metrics.cpuTimeMs === 0 &&
+        metrics.maxRssKb === 0 &&
+        !runRes.actualOutput &&
+        !runRes.stderr &&
+        tc.output.trim().length > 0
+      ) {
+        return {
+          submissionId,
+          verdict: Verdicts.INTERNAL_ERROR,
+          compileOutput: `Judge sandbox produced no execution metrics for test case ${testCaseNumber}.`,
+          executionTime: 0,
+          memoryUsed: 0,
+          failedTestCaseNumber: testCaseNumber,
+          totalTestCases: testCases.length,
+          passedTestCases: passedCount,
+        };
+      }
+
       // Check Output Correctness with Whitespace-tolerant diff (Decision R2)
       const diff = diffOutput(runRes.actualOutput, tc.output);
       if (!diff.isMatch) {

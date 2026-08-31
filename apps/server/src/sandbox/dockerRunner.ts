@@ -35,15 +35,15 @@ export class DockerSandbox {
   private workspaceDir: string;
   private image: string;
 
-  constructor(workspaceDir: string, image = env.RUNNER_IMAGE) {
+  constructor(workspaceDir: string, image = env.RUNNER_IMAGE || 'oj-runner:latest') {
     this.workspaceDir = workspaceDir;
     this.image = image;
   }
 
   static async create(): Promise<DockerSandbox> {
-    const tmpBase = path.join(os.tmpdir(), 'anti-oj-workspaces');
+    const tmpBase = path.join(os.tmpdir(), 'anti-oj-server-workspaces');
     await fs.mkdir(tmpBase, { recursive: true });
-    const workspaceDir = await fs.mkdtemp(path.join(tmpBase, 'job-'));
+    const workspaceDir = await fs.mkdtemp(path.join(tmpBase, 'sample-'));
     return new DockerSandbox(workspaceDir);
   }
 
@@ -62,16 +62,14 @@ export class DockerSandbox {
 
   private normalizeDockerMountPath(dirPath: string): string {
     let normalized = dirPath.replace(/\\/g, '/');
-    // On Windows, if path is e.g. C:/Users/..., normalize drive letter if needed
     if (/^[A-Za-z]:\//.test(normalized)) {
-      // standard Docker Desktop for Windows accepts C:/... or //c/...
       return normalized;
     }
     return normalized;
   }
 
   async compile(language: SupportedLanguage, timeoutMs = 10000): Promise<CompileResult> {
-    const containerName = `oj-cmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const containerName = `oj-cmp-sample-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
 
     const args = [
@@ -104,9 +102,7 @@ export class DockerSandbox {
       let compileErr = '';
       try {
         compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
-      } catch {
-        // file may not exist if no errors
-      }
+      } catch {}
 
       return {
         success: true,
@@ -114,7 +110,6 @@ export class DockerSandbox {
         exitCode: 0,
       };
     } catch (error: any) {
-      // Ensure container is killed if timed out or failed
       try {
         await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
       } catch {}
@@ -140,10 +135,10 @@ export class DockerSandbox {
   async runTestCase(
     input: string,
     language: SupportedLanguage,
-    timeLimitMs = 1000,
+    timeLimitMs = 2000,
     memoryLimitKb = 256 * 1024
   ): Promise<RunExecutionResult> {
-    const containerName = `oj-run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const containerName = `oj-run-sample-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
@@ -180,7 +175,6 @@ export class DockerSandbox {
       if (error.killed || error.signal === 'SIGTERM') {
         timedOut = true;
       }
-      // Force kill container on timeout / error to prevent zombie accumulation
       try {
         await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
       } catch {}
@@ -189,7 +183,6 @@ export class DockerSandbox {
       } catch {}
     }
 
-    // Read outputs
     let actualOutput = '';
     let stderr = '';
     let metricsRaw = '';
@@ -211,7 +204,7 @@ export class DockerSandbox {
       actualOutput,
       stderr,
       metrics,
-      timedOut: timedOut || metrics.processExitStatus === 124, // 124 is standard timeout exit code
+      timedOut: timedOut || metrics.processExitStatus === 124,
     };
   }
 
@@ -255,7 +248,6 @@ export class DockerSandbox {
       }
     }
 
-    // CPU time drives time limit calculation
     result.cpuTimeMs = Math.round((result.userCpuSec + result.sysCpuSec) * 1000);
     return result;
   }

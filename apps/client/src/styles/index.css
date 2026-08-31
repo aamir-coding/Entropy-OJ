@@ -453,3 +453,205 @@ code, pre {
   background: rgba(77, 171, 247, 0.22);
   color: var(--text-primary);
 }
+
+/* ── Markdown & Math Rendering System ───────────────────────────────────── */
+.markdown-statement {
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+.markdown-statement h1,
+.markdown-statement h2,
+.markdown-statement h3,
+.markdown-statement h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.markdown-statement h1 { font-size: 1.4rem; }
+.markdown-statement h2 { font-size: 1.2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.35rem; }
+.markdown-statement h3 { font-size: 1.05rem; }
+.markdown-statement h4 { font-size: 0.9375rem; }
+
+.markdown-statement p {
+  margin-bottom: 1rem;
+}
+
+.markdown-statement ul,
+.markdown-statement ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.markdown-statement li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown-statement code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-xs);
+  padding: 0.15em 0.4em;
+  color: var(--accent-cyan);
+}
+
+.markdown-statement pre {
+  background: #090d16;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+
+.markdown-statement pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+}
+
+.markdown-statement blockquote {
+  border-left: 3px solid var(--accent-cyan);
+  background: rgba(77, 171, 247, 0.05);
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-xs);
+  color: var(--text-secondary);
+}
+
+.markdown-statement strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.markdown-statement hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 1.5rem 0;
+}
+
+.markdown-statement .katex {
+  font-size: 1.05em;
+  color: #818cf8;
+}
+
+.markdown-statement .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+/* ── Resizable Split Panels System ───────────────────────────────────────── */
+.resize-handle-horizontal {
+  width: 6px;
+  background: #111111;
+  border-left: 1px solid var(--border-faint);
+  border-right: 1px solid var(--border-faint);
+  cursor: col-resize;
+  position: relative;
+  transition: background-color var(--transition-fast);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-handle-horizontal:hover,
+.resize-handle-horizontal[data-resize-handle-state="hover"],
+.resize-handle-horizontal[data-resize-handle-state="drag"] {
+  background: var(--accent-cyan);
+}
+
+.resize-handle-horizontal::after {
+  content: '';
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--border-medium);
+  transition: background-color var(--transition-fast);
+}
+
+.resize-handle-horizontal:hover::after,
+.resize-handle-horizontal[data-resize-handle-state="drag"]::after {
+  background: #ffffff;
+}
+
+.resize-handle-vertical {
+  height: 6px;
+  background: #181818;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: row-resize;
+  position: relative;
+  transition: background-color var(--transition-fast);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resize-handle-vertical:hover,
+.resize-handle-vertical[data-resize-handle-state="hover"],
+.resize-handle-vertical[data-resize-handle-state="drag"] {
+  background: var(--accent-cyan);
+}
+
+.resize-handle-vertical::after {
+  content: '';
+  height: 2px;
+  width: 28px;
+  border-radius: 1px;
+  background: var(--border-medium);
+  transition: background-color var(--transition-fast);
+}
+
+.resize-handle-vertical:hover::after,
+.resize-handle-vertical[data-resize-handle-state="drag"]::after {
+  background: #ffffff;
+}
+
+/* ── Interactive Case Selector Pills ─────────────────────────────────────── */
+.case-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #1c1c1c;
+  border: 1px solid var(--border-faint);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.case-pill-btn:hover {
+  background: #252525;
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+.case-pill-btn.active {
+  background: rgba(77, 171, 247, 0.14);
+  color: var(--accent-cyan);
+  border-color: rgba(77, 171, 247, 0.4);
+}
+
+.case-pill-btn.passed {
+  border-left: 3px solid var(--verdict-ac);
+}
+
+.case-pill-btn.failed {
+  border-left: 3px solid var(--verdict-wa);
+}

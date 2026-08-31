@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { User } from '../models/User';
 import { Solution } from '../models/Solution';
-import { Problem } from '../models/Problem';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { RegisterInput, LoginInput, Verdicts } from '@anti-oj/shared';
 
@@ -139,28 +138,61 @@ export async function getMe(
       return;
     }
 
-    // Compute user stats
-    const totalSubmissions = await Solution.countDocuments({ user: user._id });
-    const acceptedSolutions = await Solution.find({
+    // Optimized aggregation to compute user stats directly in MongoDB
+    const [totalSubmissions, statsAggregation] = await Promise.all([
+      Solution.countDocuments({ user: user._id }),
+      Solution.aggregate([
+        {
+          $match: {
+            user: user._id,
+            verdict: Verdicts.ACCEPTED,
+          },
+        },
+        {
+          $lookup: {
+            from: 'problems',
+            localField: 'problem',
+            foreignField: '_id',
+            as: 'problemDoc',
+          },
+        },
+        { $unwind: '$problemDoc' },
+        {
+          $group: {
+            _id: '$problemDoc._id',
+            difficulty: { $first: '$problemDoc.difficulty' },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            solvedCount: { $sum: 1 },
+            easySolved: {
+              $sum: { $cond: [{ $eq: ['$difficulty', 'Easy'] }, 1, 0] },
+            },
+            mediumSolved: {
+              $sum: { $cond: [{ $eq: ['$difficulty', 'Medium'] }, 1, 0] },
+            },
+            hardSolved: {
+              $sum: { $cond: [{ $eq: ['$difficulty', 'Hard'] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+    ]);
+
+    const totalAccepted = await Solution.countDocuments({
       user: user._id,
       verdict: Verdicts.ACCEPTED,
-    }).populate<{ problem: { _id: string; difficulty: 'Easy' | 'Medium' | 'Hard' } }>('problem', 'difficulty');
+    });
 
-    const solvedProblemIds = new Set<string>();
-    let easySolved = 0;
-    let mediumSolved = 0;
-    let hardSolved = 0;
+    const aggResult = statsAggregation[0] || {
+      solvedCount: 0,
+      easySolved: 0,
+      mediumSolved: 0,
+      hardSolved: 0,
+    };
 
-    for (const sol of acceptedSolutions) {
-      if (sol.problem && !solvedProblemIds.has(sol.problem._id.toString())) {
-        solvedProblemIds.add(sol.problem._id.toString());
-        if (sol.problem.difficulty === 'Easy') easySolved++;
-        else if (sol.problem.difficulty === 'Medium') mediumSolved++;
-        else if (sol.problem.difficulty === 'Hard') hardSolved++;
-      }
-    }
-
-    const totalAccepted = acceptedSolutions.length;
     const acceptanceRate =
       totalSubmissions > 0
         ? Math.round((totalAccepted / totalSubmissions) * 100 * 10) / 10
@@ -178,10 +210,10 @@ export async function getMe(
         stats: {
           totalSubmissions,
           acceptedSubmissions: totalAccepted,
-          solvedProblemsCount: solvedProblemIds.size,
-          easySolved,
-          mediumSolved,
-          hardSolved,
+          solvedProblemsCount: aggResult.solvedCount,
+          easySolved: aggResult.easySolved,
+          mediumSolved: aggResult.mediumSolved,
+          hardSolved: aggResult.hardSolved,
           acceptanceRate,
         },
       },

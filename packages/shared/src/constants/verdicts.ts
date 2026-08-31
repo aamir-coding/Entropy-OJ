@@ -22,4 +22,6 @@ export const VerdictShortCodes: Record<Verdict, string> = {
   [Verdicts.INTERNAL_ERROR]: 'IE',
 };
 
-export const ALL_VERDICTS: Verdict[] = Object.values(Verdicts);
+export const ALL_VERDICTS: readonly Verdict[] = Object.freeze(
+  Object.values(Verdicts)
+) as readonly Verdict[];
