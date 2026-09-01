@@ -5,7 +5,9 @@
 [![Docker](https://img.shields.io/badge/Docker-Sandboxed-2496ED.svg)](https://www.docker.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Redis-red.svg)](https://bullmq.io/)
-[![Google Gemini](https://img.shields.io/badge/AI-Gemini%20Flash%20%7C%20Groq%20%7C%20OpenRouter-purple.svg)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-8E75B2.svg)](https://ai.google.dev/)
+[![Groq](https://img.shields.io/badge/AI-Groq%20LLaMA-F55036.svg)](https://groq.com/)
+[![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-6566F1.svg)](https://openrouter.ai/)
 
 A modern, production-grade, sandboxed Online Judge and DSA learning platform. Built with the **MERN** stack (MongoDB, Express, React 19, Node.js), **Redis + BullMQ** asynchronous queues, **Docker** ephemeral container sandboxing for C++17 and Python 3.11, and a comprehensive **AI Intelligence Layer** (Socratic Debug Copilot, AI Problem QA Auditor, and Post-AC Complexity Classifier).
 
@@ -59,23 +61,23 @@ flowchart TB
         RedisCache[("Redis 7 (BullMQ State & Rate Limiting)")]
     end
 
-    UI -->|REST API (CORS + Cookies)| Server
-    Poller -->|Poll /api/submissions/:id| SubAPI
-    SubAPI -->|Enqueue Judge Job| SubQueue
-    SubAPI -->|Create 'Pending' Solution| MongoDB
+    UI -->|"REST API (CORS & Cookies)"| Server
+    Poller -->|"Poll /api/submissions/:id"| SubAPI
+    SubAPI -->|"Enqueue Judge Job"| SubQueue
+    SubAPI -->|"Create 'Pending' Solution"| MongoDB
 
     AIController --> AIEngine
     AIEngine --> Gemini
-    AIEngine -. Fallback .-> Groq
-    AIEngine -. Fallback .-> OpenRouter
+    AIEngine -.->|"Fallback"| Groq
+    AIEngine -.->|"Fallback"| OpenRouter
 
-    JudgeWorker -->|Dequeue Job| SubQueue
-    JudgeWorker -->|Fetch Test Cases| MongoDB
-    JudgeWorker -->|Execute inside Sandbox| SandboxMgr
+    JudgeWorker -->|"Dequeue Job"| SubQueue
+    JudgeWorker -->|"Fetch Test Cases"| MongoDB
+    JudgeWorker -->|"Execute inside Sandbox"| SandboxMgr
     SandboxMgr --> DK
-    JudgeWorker -->|Write Verdict & Metrics| MongoDB
+    JudgeWorker -->|"Write Verdict & Metrics"| MongoDB
 
-    AIQueue -->|Async Post-AC Classification| AIController
+    AIQueue -->|"Async Post-AC Classification"| AIController
 ```
 
 ---
