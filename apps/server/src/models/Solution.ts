@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose';
-import { Verdict, Verdicts, SupportedLanguage, ALL_VERDICTS } from '@anti-oj/shared';
+import { Verdict, Verdicts, SupportedLanguage, ALL_VERDICTS, IApproachClassification } from '@anti-oj/shared';
 
 export interface ISolutionDocument extends Document {
   user: Types.ObjectId;
@@ -13,6 +13,7 @@ export interface ISolutionDocument extends Document {
   failedTestCaseNumber?: number;
   totalTestCases?: number;
   passedTestCases?: number;
+  classification?: IApproachClassification;
   submittedAt: Date;
 }
 
@@ -64,6 +65,12 @@ const solutionSchema = new Schema<ISolutionDocument>(
     passedTestCases: {
       type: Number,
       default: 0,
+    },
+    classification: {
+      approach: { type: String },
+      timeComplexity: { type: String },
+      spaceComplexity: { type: String },
+      relatedProblemCode: { type: String },
     },
     submittedAt: {
       type: Date,

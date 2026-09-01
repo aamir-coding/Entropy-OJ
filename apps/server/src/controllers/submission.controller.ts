@@ -4,7 +4,9 @@ import { Solution } from '../models/Solution';
 import { Problem } from '../models/Problem';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { enqueueSubmission } from '../queues/submission.queue';
+import { enqueueClassifyJob } from '../queues/ai.queue';
 import { DockerSandbox } from '../sandbox/dockerRunner';
+import { env } from '../config/env';
 import {
   CreateSubmissionInput,
   RunSampleInput,
@@ -294,6 +296,31 @@ export async function getSubmissionById(
       });
       return;
     }
+    // Trigger background AI approach classification for Accepted solutions (non-blocking)
+    if (
+      solution.verdict === Verdicts.ACCEPTED &&
+      !solution.classification &&
+      env.FEATURE_AI_CLASSIFY !== 'false'
+    ) {
+      Problem.findById(solution.problem._id)
+        .select('name statement')
+        .lean()
+        .then((prob) => {
+          if (prob) {
+            enqueueClassifyJob({
+              submissionId: solution._id.toString(),
+              problemId: prob._id.toString(),
+              problemName: prob.name,
+              problemStatement: prob.statement,
+              code: solution.code,
+              language: solution.language,
+            }).catch((err) =>
+              console.warn('[Classification] Auto-enqueue background job failed:', err.message)
+            );
+          }
+        })
+        .catch(() => {});
+    }
 
     res.status(200).json({
       success: true,
@@ -311,6 +338,7 @@ export async function getSubmissionById(
         failedTestCaseNumber: solution.failedTestCaseNumber,
         totalTestCases: solution.totalTestCases,
         passedTestCases: solution.passedTestCases,
+        classification: solution.classification,
         submittedAt: solution.submittedAt,
         code: solution.code,
       },
@@ -373,6 +401,7 @@ export async function getUserSubmissions(
       memoryUsed: sub.memoryUsed,
       passedTestCases: sub.passedTestCases,
       totalTestCases: sub.totalTestCases,
+      classification: sub.classification,
       submittedAt: sub.submittedAt,
       code: sub.code,
     }));
@@ -417,7 +446,7 @@ export async function getProblemSubmissions(
       user: userId,
       problem: queryProbId,
     })
-      .select('_id user problem language verdict executionTime memoryUsed failedTestCaseNumber totalTestCases passedTestCases submittedAt')
+      .select('_id user problem language verdict executionTime memoryUsed failedTestCaseNumber totalTestCases passedTestCases classification submittedAt code')
       .sort({ submittedAt: -1 })
       .limit(20)
       .lean();

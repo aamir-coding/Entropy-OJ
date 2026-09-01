@@ -1,5 +1,8 @@
 import { Verdict } from '../constants/verdicts';
 import { SupportedLanguage } from '../constants/languages';
+import { IApproachClassification } from './ai.types';
+
+export * from './ai.types';
 
 export interface IUser {
   _id: string;
@@ -119,6 +122,7 @@ export interface ISolution {
   failedTestCaseNumber?: number; // 1-indexed test case number
   totalTestCases?: number;
   passedTestCases?: number;
+  classification?: IApproachClassification;
   submittedAt: string | Date;
 }
 
@@ -136,6 +140,7 @@ export interface ISubmissionResponse {
   failedTestCaseNumber?: number;
   totalTestCases?: number;
   passedTestCases?: number;
+  classification?: IApproachClassification;
   submittedAt: string | Date;
 }
 
@@ -153,6 +158,7 @@ export interface ISubmissionHistoryItem {
   memoryUsed?: number;
   passedTestCases?: number;
   totalTestCases?: number;
+  classification?: IApproachClassification;
   submittedAt: string | Date;
   code?: string;
 }

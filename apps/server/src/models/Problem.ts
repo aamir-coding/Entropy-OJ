@@ -10,6 +10,7 @@ export interface IProblemDocument extends Document {
   timeLimitMs: number;
   memoryLimitKb: number;
   sampleCases: ISampleTestCase[];
+  editorial?: string;
   totalSubmissions: number;
   acceptedSubmissions: number;
   createdAt: Date;
@@ -42,6 +43,9 @@ const problemSchema = new Schema<IProblemDocument>(
     statement: {
       type: String,
       required: [true, 'Problem statement is required'],
+    },
+    editorial: {
+      type: String,
     },
     difficulty: {
       type: String,

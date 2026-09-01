@@ -15,6 +15,32 @@ const envSchema = z.object({
   JWT_EXPIRES_DAYS: z.coerce.number().int().min(1).default(7),
   CLIENT_URL: z.string().default('http://localhost:5173'),
   RUNNER_IMAGE: z.string().default('oj-runner:latest'),
+
+  // AI Feature Flags
+  FEATURE_AI_HINTS: z.string().default('true'),
+  FEATURE_AI_REVIEW: z.string().default('true'),
+  FEATURE_AI_CLASSIFY: z.string().default('true'),
+
+  // Groq (Feature 1: Debug Socratic Hint Copilot)
+  GROQ_API_KEY: z.string().optional().transform((v) => v || undefined),
+  GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
+  GROQ_RPM_LIMIT: z.coerce.number().int().default(30),
+
+  // Gemini (Feature 2: Problem-Setting Co-Pilot)
+  GEMINI_API_KEY: z.string().optional().transform((v) => v || undefined),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_RPM_LIMIT: z.coerce.number().int().default(10),
+  GEMINI_RPD_LIMIT: z.coerce.number().int().default(1500),
+
+  // OpenRouter (Feature 5: Approach Classifier & Feature 1 Fallback)
+  OPENROUTER_API_KEY: z.string().optional().transform((v) => v || undefined),
+  OPENROUTER_MODELS: z.string().default('openrouter/free,meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-r1:free,qwen/qwen-2.5-coder-32b-instruct:free'),
+  OPENROUTER_RPM_LIMIT: z.coerce.number().int().default(20),
+  OPENROUTER_RPD_LIMIT: z.coerce.number().int().default(50),
+
+  // Per-User Hint Quotas
+  AI_HINT_USER_DAILY_LIMIT: z.coerce.number().int().default(20),
+  AI_HINT_USER_HOURLY_LIMIT: z.coerce.number().int().default(5),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

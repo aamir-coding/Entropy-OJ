@@ -12,7 +12,9 @@ import {
   ISampleTestCase,
   IAdminTestCaseInput,
   IAdminValidateSolutionResponse,
+  IProblemReviewResponse,
   SupportedLanguage,
+  getModelSolution,
 } from '@anti-oj/shared';
 import {
   ArrowLeft,
@@ -31,7 +33,51 @@ import {
   Loader2,
   Sparkles,
   HelpCircle,
+  Bot,
+  ShieldAlert,
+  RotateCcw,
 } from 'lucide-react';
+
+const MarkdownMathView: React.FC<{ content: string; className?: string; inline?: boolean }> = ({
+  content,
+  className = '',
+  inline = false,
+}) => {
+  if (!content) return null;
+  return (
+    <div className={`markdown-math-view ${className}`} style={{ display: inline ? 'inline' : 'block' }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          p: ({ node, ...props }) => (
+            <p style={{ margin: inline ? 0 : '0 0 0.35rem 0', display: inline ? 'inline' : 'block', lineHeight: 1.55 }} {...props} />
+          ),
+          code: ({ node, inline: isInline, ...props }: any) =>
+            isInline ? (
+              <code
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  padding: '0.1rem 0.35rem',
+                  borderRadius: '3px',
+                  fontSize: '0.85em',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--accent-cyan)',
+                }}
+                {...props}
+              />
+            ) : (
+              <pre style={{ background: '#090d16', padding: '0.4rem 0.6rem', borderRadius: '4px', margin: '0.35rem 0', fontSize: '0.78rem', overflowX: 'auto' }}>
+                <code style={{ fontFamily: 'var(--font-mono)' }} {...props} />
+              </pre>
+            ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+};
 
 export const AdminProblemEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +85,7 @@ export const AdminProblemEditorPage: React.FC = () => {
   const isEditMode = Boolean(id);
 
   // Active sub-tab in studio
-  const [activeTab, setActiveTab] = useState<'statement' | 'samples' | 'judge' | 'validate'>('statement');
+  const [activeTab, setActiveTab] = useState<'statement' | 'samples' | 'judge' | 'validate' | 'ai-review'>('statement');
 
   // Problem Form State
   const [name, setName] = useState('');
@@ -94,29 +140,39 @@ You may assume that each input would have **exactly one solution**, and you may 
 
   // Model Solution Validation State
   const [valLanguage, setValLanguage] = useState<SupportedLanguage>('python');
-  const [valCode, setValCode] = useState<string>(`import sys
-
-def solve():
-    raw = sys.stdin.read().split()
-    if not raw:
-        return
-    n = int(raw[0])
-    target = int(raw[1])
-    nums = [int(x) for x in raw[2:2+n]]
-    
-    seen = {}
-    for i, num in enumerate(nums):
-        diff = target - num
-        if diff in seen:
-            print(f"{seen[diff]} {i}")
-            return
-        seen[num] = i
-
-if __name__ == '__main__':
-    solve()
-`);
+  const [valCode, setValCode] = useState<string>(() => getModelSolution('two-sum', 'python'));
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<IAdminValidateSolutionResponse | null>(null);
+
+  // AI Problem Review State (Feature 2)
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewResult, setReviewResult] = useState<IProblemReviewResponse | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const handleRunAIReview = async () => {
+    if (!isEditMode) {
+      alert('Please save the problem first before running AI Problem Review.');
+      return;
+    }
+    try {
+      setIsReviewing(true);
+      setReviewError(null);
+      const res = await api.post('/ai/review', {
+        problemId: id,
+        referenceSolution: valCode,
+        referenceSolutionLanguage: valLanguage,
+      });
+      if (res.data.success) {
+        setReviewResult(res.data.data);
+      } else {
+        setReviewError(res.data.error || 'Review failed.');
+      }
+    } catch (err: any) {
+      setReviewError(err.message || 'AI review failed.');
+    } finally {
+      setIsReviewing(false);
+    }
+  };
 
   // Form saving state
   const [loading, setLoading] = useState(false);
@@ -142,6 +198,7 @@ if __name__ == '__main__':
           setMemoryLimitMb(Math.round(p.memoryLimitKb / 1024));
           setStatement(p.statement);
           setSampleCases(p.sampleCases || []);
+          setValCode(getModelSolution(p.problemCode, valLanguage));
 
           // Filter out judge cases (both samples and hidden)
           const nonSampleCases = (p.testCases || []).filter((tc: any) => !tc.isSample);
@@ -490,6 +547,27 @@ if __name__ == '__main__':
           }}
         >
           <Play size={15} /> Model Solution Validator
+        </button>
+
+        <button
+          id="tab-btn-ai-review"
+          onClick={() => setActiveTab('ai-review')}
+          className="tab-button"
+          style={{
+            padding: '0.75rem 1rem',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            color: activeTab === 'ai-review' ? '#a855f7' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'ai-review' ? '2px solid #a855f7' : '2px solid transparent',
+            background: 'none',
+            border: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Bot size={15} style={{ color: '#a855f7' }} /> AI QA Auditor (Gemini)
         </button>
       </div>
 
@@ -883,16 +961,31 @@ if __name__ == '__main__':
                   <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Reference / Model Solution</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <select
                     className="input"
                     value={valLanguage}
-                    onChange={(e) => setValLanguage(e.target.value as SupportedLanguage)}
+                    onChange={(e) => {
+                      const newLang = e.target.value as SupportedLanguage;
+                      setValLanguage(newLang);
+                      setValCode(getModelSolution(problemCode, newLang));
+                    }}
                     style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
                   >
                     <option value="python" style={{ background: '#1e293b' }}>Python 3.11</option>
                     <option value="cpp" style={{ background: '#1e293b' }}>C++17 (g++)</option>
                   </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setValCode(getModelSolution(problemCode, valLanguage))}
+                    className="btn btn-outline"
+                    title="Load standard reference model solution for this problem"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.25rem 0.55rem' }}
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset to Model</span>
+                  </button>
 
                   <button
                     type="button"
@@ -1027,6 +1120,212 @@ if __name__ == '__main__':
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 5: AI QA PROBLEM REVIEW (GEMINI FLASH)               */}
+        {/* ======================================================== */}
+        {activeTab === 'ai-review' && (
+          <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Header / Intro Card */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: '1.5rem',
+                borderLeft: '4px solid #a855f7',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(17, 24, 39, 0.6) 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                    <Bot size={20} /> AI Problem-Setting QA Auditor
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '650px' }}>
+                    Audits statement clarity, hidden edge cases, adversarial inputs, and inconsistencies across statement, editorial, and reference code using <strong>Gemini Flash</strong> (~1M token context).
+                  </p>
+                </div>
+
+                <button
+                  id="btn-run-ai-review"
+                  type="button"
+                  onClick={handleRunAIReview}
+                  disabled={isReviewing}
+                  className="btn"
+                  style={{
+                    background: '#a855f7',
+                    color: '#fff',
+                    padding: '0.6rem 1.25rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: isReviewing ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.3)',
+                  }}
+                >
+                  {isReviewing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Auditing Problem Package...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      <span>Run Full AI QA Audit</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <ShieldAlert size={13} style={{ color: '#fbbf24' }} />
+                <span>Zero inference spend: Runs on Gemini free tier. Never modifies problems automatically.</span>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {reviewError && (
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'var(--verdict-wa-bg)',
+                  border: '1px solid var(--verdict-wa-border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--verdict-wa)',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <AlertTriangle size={16} />
+                <span>{reviewError}</span>
+              </div>
+            )}
+
+            {/* Results Display */}
+            {reviewResult ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Overall Assessment */}
+                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '0.5rem' }}>
+                    Overall QA Assessment
+                  </h4>
+                  <div style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                    <MarkdownMathView content={reviewResult.overallAssessment} />
+                  </div>
+                </div>
+
+                {/* Statement Ambiguities */}
+                {reviewResult.statementAmbiguities.length > 0 && (
+                  <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      <AlertTriangle size={16} /> Statement Ambiguities ({reviewResult.statementAmbiguities.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {reviewResult.statementAmbiguities.map((item, idx) => (
+                        <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fde047', marginBottom: '0.35rem' }}>
+                            <span style={{ opacity: 0.8 }}>Issue: </span>
+                            <MarkdownMathView content={item.issue} inline />
+                          </div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                            <strong style={{ color: 'var(--text-primary)' }}>Suggestion: </strong>
+                            <MarkdownMathView content={item.suggestion} inline />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Edge Cases */}
+                {reviewResult.missingEdgeCases.length > 0 && (
+                  <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      <HelpCircle size={16} /> Missing Edge Cases ({reviewResult.missingEdgeCases.length})
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                      {reviewResult.missingEdgeCases.map((item, idx) => (
+                        <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#bae6fd', marginBottom: '0.35rem' }}>
+                            <MarkdownMathView content={item.description} />
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>SUGGESTED INPUT:</div>
+                              <pre style={{ fontSize: '0.75rem', background: '#090d16', padding: '0.35rem 0.55rem', borderRadius: '4px', margin: 0, overflowX: 'auto' }}>
+                                {item.suggestedInput}
+                              </pre>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>EXPECTED BEHAVIOR:</div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                <MarkdownMathView content={item.expectedBehavior} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested Adversarial Inputs */}
+                {reviewResult.adversarialInputs.length > 0 && (
+                  <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f43f5e', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      <XCircle size={16} /> Suggested Adversarial Inputs ({reviewResult.adversarialInputs.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {reviewResult.adversarialInputs.map((item, idx) => (
+                        <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                            <strong style={{ color: '#fca5a5' }}>Attack Target: </strong>
+                            <MarkdownMathView content={item.rationale} inline />
+                          </div>
+                          <pre style={{ fontSize: '0.75rem', background: '#090d16', padding: '0.4rem 0.6rem', borderRadius: '4px', margin: 0, overflowX: 'auto' }}>
+                            {item.input}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Inconsistencies */}
+                {reviewResult.inconsistencies.length > 0 && (
+                  <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fb923c', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                      <AlertTriangle size={16} /> Package Inconsistencies ({reviewResult.inconsistencies.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {reviewResult.inconsistencies.map((item, idx) => (
+                        <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(251, 146, 60, 0.2)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fdba74', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                            Discrepancy: {item.between}
+                          </div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                            <MarkdownMathView content={item.issue} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+                <Bot size={36} style={{ margin: '0 auto 0.75rem', color: '#a855f7' }} />
+                <p style={{ fontSize: '0.85rem' }}>
+                  Click <strong>"Run Full AI QA Audit"</strong> to evaluate statement ambiguity, missing edge cases, and test suite strength with Gemini Flash.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

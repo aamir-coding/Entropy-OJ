@@ -3,6 +3,8 @@ import { connectDB, disconnectDB } from './config/db';
 import { env } from './config/env';
 import { redisClient } from './config/redis';
 import { submissionQueue } from './queues/submission.queue';
+import { aiQueue } from './queues/ai.queue';
+import { createAIWorker } from './ai/aiWorker';
 
 async function bootstrap() {
   await connectDB();
@@ -15,6 +17,9 @@ async function bootstrap() {
     console.error('[Server] Redis connection failed during startup:', redisErr.message);
     process.exit(1);
   }
+
+  // Start in-process AI BullMQ Worker (networked, concurrency 1)
+  const aiWorker = createAIWorker();
 
   const app = createApp();
 
@@ -30,11 +35,26 @@ async function bootstrap() {
     console.log(`\n[Server] Received ${signal}. Gracefully shutting down...`);
     server.close(async () => {
       console.log('[Server] HTTP server closed.');
+
+      try {
+        await aiWorker.close();
+        console.log('[AI Worker] BullMQ AI worker closed.');
+      } catch (err: any) {
+        console.error('[AI Worker] Error closing AI worker:', err.message);
+      }
+
       try {
         await submissionQueue.close();
         console.log('[Queue] BullMQ submission queue closed.');
       } catch (err: any) {
         console.error('[Queue] Error closing BullMQ queue:', err.message);
+      }
+
+      try {
+        await aiQueue.close();
+        console.log('[Queue] BullMQ AI queue closed.');
+      } catch (err: any) {
+        console.error('[Queue] Error closing AI queue:', err.message);
       }
 
       try {

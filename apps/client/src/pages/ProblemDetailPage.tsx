@@ -41,6 +41,9 @@ import {
   AlertCircle,
   Maximize2,
   Minimize2,
+  Lightbulb,
+  Sparkles,
+  Brain,
 } from 'lucide-react';
 
 export const ProblemDetailPage: React.FC = () => {
@@ -86,6 +89,55 @@ export const ProblemDetailPage: React.FC = () => {
   const [activeSubmission, setActiveSubmission] = useState<ISubmissionResponse | null>(null);
   const [submissionTimeoutMsg, setSubmissionTimeoutMsg] = useState<string | null>(null);
   const [sampleResults, setSampleResults] = useState<ISampleCaseResult[]>([]);
+
+  // AI Socratic Debug Hint State
+  const [hintState, setHintState] = useState<{
+    loading: boolean;
+    hint: string | null;
+    error: string | null;
+    provider?: string;
+    remainingDaily?: number;
+    remainingHourly?: number;
+  }>({
+    loading: false,
+    hint: null,
+    error: null,
+  });
+
+  const handleRequestHint = async (submissionId: string) => {
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+    setHintState((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const res = await api.post('/ai/hints', { submissionId });
+      if (res.data.success && isMountedRef.current) {
+        setHintState({
+          loading: false,
+          hint: res.data.data.hint,
+          error: null,
+          provider: res.data.data.provider,
+          remainingDaily: res.data.data.remainingDaily,
+          remainingHourly: res.data.data.remainingHourly,
+        });
+      } else if (isMountedRef.current) {
+        setHintState({
+          loading: false,
+          hint: null,
+          error: res.data.error || 'Failed to generate hint.',
+        });
+      }
+    } catch (err: any) {
+      if (isMountedRef.current) {
+        setHintState({
+          loading: false,
+          hint: null,
+          error: err.message || 'Unable to fetch hint at this time.',
+        });
+      }
+    }
+  };
 
   // Submissions History for this problem
   const [pastSubmissions, setPastSubmissions] = useState<ISubmissionHistoryItem[]>([]);
@@ -254,7 +306,10 @@ export const ProblemDetailPage: React.FC = () => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     let attempts = 0;
+    let postAcAttempts = 0;
     const maxAttempts = 30; // 30 seconds max polling
+    const maxPostAcAttempts = 6; // Poll up to 6 seconds for async AI classification on Accepted
+    let historyLoaded = false;
     setSubmissionTimeoutMsg(null);
 
     pollIntervalRef.current = setInterval(async () => {
@@ -271,14 +326,22 @@ export const ProblemDetailPage: React.FC = () => {
           setActiveSubmission(updated);
 
           if (updated.verdict !== Verdicts.PENDING) {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setSubmitting(false);
 
-            if (updated.verdict === Verdicts.COMPILATION_ERROR) {
-              setConsoleTab('compiler');
+            if (!historyLoaded) {
+              historyLoaded = true;
+              if (updated.verdict === Verdicts.COMPILATION_ERROR) {
+                setConsoleTab('compiler');
+              }
+              loadPastSubmissions();
             }
 
-            loadPastSubmissions();
+            // If Accepted and awaiting async AI classification, keep polling for up to 6s
+            if (updated.verdict === Verdicts.ACCEPTED && !updated.classification && postAcAttempts < maxPostAcAttempts) {
+              postAcAttempts++;
+            } else {
+              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            }
           } else if (attempts >= maxAttempts) {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setSubmitting(false);
@@ -309,6 +372,7 @@ export const ProblemDetailPage: React.FC = () => {
       handleOpenConsoleTab('results');
       setActiveSubmission(null);
       setSubmissionTimeoutMsg(null);
+      setHintState({ loading: false, hint: null, error: null });
 
       const res = await api.post('/submissions', {
         problemId: problem._id,
@@ -1145,7 +1209,7 @@ export const ProblemDetailPage: React.FC = () => {
                                     gap: '0.5rem',
                                   }}
                                 >
-                                  <AlertTriangle size={15} />
+                          <AlertTriangle size={15} />
                                   <span>
                                     Failed on <strong>Test Case #{activeSubmission.failedTestCaseNumber}</strong> (Evaluation halted).
                                   </span>
@@ -1169,6 +1233,178 @@ export const ProblemDetailPage: React.FC = () => {
                                 >
                                   <AlertCircle size={15} />
                                   <span>{submissionTimeoutMsg}</span>
+                                </div>
+                              )}
+
+                              {/* Approach & Complexity Classification Badge (Post-AC) */}
+                              {activeSubmission.verdict === Verdicts.ACCEPTED && activeSubmission.classification && (
+                                <div
+                                  style={{
+                                    marginTop: '0.75rem',
+                                    background: 'rgba(34, 197, 94, 0.08)',
+                                    border: '1px solid rgba(34, 197, 94, 0.25)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '0.75rem 1rem',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                      <Sparkles size={14} /> Approach Classification
+                                    </span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AI Verified</span>
+                                  </div>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                                    <strong>Pattern:</strong> {activeSubmission.classification.approach}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    <span><strong>Time:</strong> {activeSubmission.classification.timeComplexity}</span>
+                                    <span><strong>Space:</strong> {activeSubmission.classification.spaceComplexity}</span>
+                                  </div>
+                                  {activeSubmission.classification.relatedProblemCode && (
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
+                                      <Link to={`/problems/${activeSubmission.classification.relatedProblemCode}`} style={{ color: 'var(--accent-cyan)', textDecoration: 'underline' }}>
+                                        Try harder related problem: {activeSubmission.classification.relatedProblemCode} &rarr;
+                                      </Link>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Socratic Hint Copilot Button & Card (Non-AC failures) */}
+                              {activeSubmission.verdict !== Verdicts.ACCEPTED && activeSubmission.verdict !== Verdicts.PENDING && (
+                                <div style={{ marginTop: '0.875rem' }}>
+                                  {!hintState.hint && !hintState.loading && (
+                                    <button
+                                      id="btn-request-ai-hint"
+                                      onClick={() => handleRequestHint(activeSubmission.submissionId)}
+                                      className="btn btn-outline"
+                                      style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.5rem 1rem',
+                                        borderColor: 'rgba(234, 179, 8, 0.4)',
+                                        background: 'rgba(234, 179, 8, 0.06)',
+                                        color: '#eab308',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <Lightbulb size={15} />
+                                      <span>Get Socratic Debug Hint 💡</span>
+                                    </button>
+                                  )}
+
+                                  {hintState.loading && (
+                                    <div
+                                      style={{
+                                        padding: '0.75rem 1rem',
+                                        background: 'rgba(234, 179, 8, 0.05)',
+                                        border: '1px solid rgba(234, 179, 8, 0.2)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.6rem',
+                                        color: '#eab308',
+                                        fontSize: '0.8125rem',
+                                      }}
+                                    >
+                                      <Loader2 size={16} className="animate-spin" />
+                                      <span>Consulting Socratic Tutor...</span>
+                                    </div>
+                                  )}
+
+                                  {hintState.error && (
+                                    <div
+                                      style={{
+                                        marginTop: '0.5rem',
+                                        padding: '0.5rem 0.75rem',
+                                        background: 'rgba(239, 68, 68, 0.08)',
+                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'var(--verdict-wa)',
+                                        fontSize: '0.8125rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                      }}
+                                    >
+                                      <AlertCircle size={14} />
+                                      <span>{hintState.error}</span>
+                                    </div>
+                                  )}
+
+                                  {hintState.hint && (
+                                    <div
+                                      className="glass-card"
+                                      style={{
+                                        marginTop: '0.5rem',
+                                        padding: '0.875rem 1rem',
+                                        background: 'rgba(30, 27, 20, 0.7)',
+                                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                                        borderRadius: 'var(--radius-md)',
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          marginBottom: '0.4rem',
+                                          paddingBottom: '0.35rem',
+                                          borderBottom: '1px solid rgba(234, 179, 8, 0.15)',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#eab308', fontWeight: 700, fontSize: '0.8125rem' }}>
+                                          <Lightbulb size={15} />
+                                          <span>Socratic Debug Hint</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                          {hintState.remainingDaily !== undefined && (
+                                            <span>{hintState.remainingDaily} hints left today</span>
+                                          )}
+                                          {hintState.provider && hintState.provider !== 'none' && (
+                                            <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>
+                                              {hintState.provider}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div style={{ fontSize: '0.8125rem', lineHeight: 1.55, color: 'var(--text-primary)' }}>
+                                        <ReactMarkdown
+                                          remarkPlugins={[remarkGfm, remarkMath]}
+                                          rehypePlugins={[rehypeKatex]}
+                                          components={{
+                                            p: ({ node, ...props }) => <p style={{ margin: '0 0 0.35rem 0', lineHeight: 1.55 }} {...props} />,
+                                            code: ({ node, inline: isInline, ...props }: any) =>
+                                              isInline ? (
+                                                <code
+                                                  style={{
+                                                    background: 'rgba(255, 255, 255, 0.08)',
+                                                    padding: '0.1rem 0.35rem',
+                                                    borderRadius: '3px',
+                                                    fontSize: '0.85em',
+                                                    fontFamily: 'var(--font-mono)',
+                                                    color: 'var(--accent-cyan)',
+                                                  }}
+                                                  {...props}
+                                                />
+                                              ) : (
+                                                <pre style={{ background: '#090d16', padding: '0.4rem 0.6rem', borderRadius: '4px', margin: '0.35rem 0', fontSize: '0.78rem' }}>
+                                                  <code {...props} />
+                                                </pre>
+                                              ),
+                                          }}
+                                        >
+                                          {hintState.hint}
+                                        </ReactMarkdown>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

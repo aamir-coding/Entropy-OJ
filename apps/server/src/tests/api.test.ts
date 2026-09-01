@@ -6,6 +6,7 @@ import { createApp } from '../app';
 import { connectDB, disconnectDB } from '../config/db';
 import { User } from '../models/User';
 import { Problem } from '../models/Problem';
+import { Solution } from '../models/Solution';
 import { redisClient } from '../config/redis';
 
 let server: http.Server;
@@ -236,6 +237,60 @@ describe('Server REST API Integration Tests', () => {
     assert.strictEqual(res.data.data.passedCases, 0);
     assert.strictEqual(res.data.data.sampleResults[0].actualOutput.trim(), 'Hello World');
     assert.strictEqual(res.data.data.sampleResults[0].passed, false);
+  });
+
+  it('GET /api/submissions/problem/:problemId should return submissions with code and metadata', async (t) => {
+    if (!isServicesAvailable) {
+      t.skip('MongoDB/Redis unavailable');
+      return;
+    }
+
+    const problem = await Problem.findOne({ problemCode: 'two-sum' });
+    assert.ok(problem);
+
+    const testCode = '#include <iostream>\nint main() { return 0; }';
+    const sub = await Solution.create({
+      user: testUserId,
+      problem: problem._id,
+      code: testCode,
+      language: 'cpp',
+      verdict: 'Accepted',
+      executionTime: 12,
+      memoryUsed: 1024,
+      passedTestCases: 5,
+      totalTestCases: 5,
+      submittedAt: new Date(),
+    });
+
+    const res = await getJson(`/api/submissions/problem/${problem._id}`, {
+      Cookie: authCookie,
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data.success, true);
+    assert.ok(Array.isArray(res.data.data));
+    const found = res.data.data.find((item: any) => item._id === sub._id.toString());
+    assert.ok(found, 'Created submission should be found in problem submissions');
+    assert.strictEqual(found.code, testCode, 'Submission code should be included in problem submissions');
+    assert.strictEqual(found.language, 'cpp');
+    assert.strictEqual(found.verdict, 'Accepted');
+  });
+
+  it('GET /api/submissions/user/:userId should return submissions with code and classification', async (t) => {
+    if (!isServicesAvailable) {
+      t.skip('MongoDB/Redis unavailable');
+      return;
+    }
+
+    const res = await getJson(`/api/submissions/user/${testUserId}`, {
+      Cookie: authCookie,
+    });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data.success, true);
+    assert.ok(Array.isArray(res.data.data.submissions));
+    const sub = res.data.data.submissions.find((s: any) => s.code === '#include <iostream>\nint main() { return 0; }');
+    assert.ok(sub, 'User submission with code should be found');
   });
 
   it('GET /api/admin/problems should reject non-admin users with 403 Forbidden', async (t) => {
