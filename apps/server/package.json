@@ -4,7 +4,8 @@
   "description": "REST API Backend for Anti Online Judge",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "seed": "tsx src/seeds/seedProblems.ts",

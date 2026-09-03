@@ -59,14 +59,19 @@ elif [ "$MODE" = "run" ]; then
         exit 1
     fi
 
-    # Execute with timeout, GNU time measurement, and output size limitation (64KB cap)
+    # Execute with timeout and GNU time measurement directly to output file
     set +e
     timeout -k 1s "${WALL_TIMEOUT_SEC}s" /usr/bin/time -o "$METRICS_FILE" \
         -f "WALL_SEC=%e\nUSER_SEC=%U\nSYS_SEC=%S\nMAX_RSS_KB=%M\nEXIT_CODE=%x" \
-        "${RUN_CMD[@]}" < "$INPUT_FILE" 2> "$STDERR_FILE" | head -c 65536 > "$OUTPUT_FILE"
+        "${RUN_CMD[@]}" < "$INPUT_FILE" > "$OUTPUT_FILE" 2> "$STDERR_FILE"
     
     EXEC_STATUS=$?
     set -e
+
+    # Safely truncate output to 64KB without SIGPIPE or losing process exit status
+    if [ -f "$OUTPUT_FILE" ]; then
+        head -c 65536 "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+    fi
 
     echo "PROCESS_EXIT_STATUS=$EXEC_STATUS" >> "$METRICS_FILE"
     exit 0

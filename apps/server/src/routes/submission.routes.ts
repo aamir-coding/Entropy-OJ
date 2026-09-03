@@ -25,8 +25,20 @@ const submissionLimiter = rateLimit({
   },
 });
 
-// Live Sample Runner
-router.post('/run', requireAuth, validateBody(runSampleSchema), runSampleCases);
+// Dedicated rate limiter for live sample code runs (20 runs per 5 minutes)
+const sampleRunLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many sample run requests. Please wait a moment before testing code again.',
+  },
+});
+
+// Live Sample Runner (dedicated rate limiter applied)
+router.post('/run', requireAuth, sampleRunLimiter, validateBody(runSampleSchema), runSampleCases);
 
 // Submit Code
 router.post('/', requireAuth, submissionLimiter, validateBody(createSubmissionSchema), createSubmission);

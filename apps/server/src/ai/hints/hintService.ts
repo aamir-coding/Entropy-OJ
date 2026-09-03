@@ -42,7 +42,7 @@ export class HintService {
 
   async getHint(options: HintServiceOptions): Promise<IHintResponse> {
     // 1. Check Feature Flag
-    if (env.FEATURE_AI_HINTS === 'false') {
+    if (!env.FEATURE_AI_HINTS) {
       return {
         hint: 'The AI Hint Copilot is currently disabled by administrator configuration.',
         cached: false,

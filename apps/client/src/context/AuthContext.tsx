@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import { IUser, UserStats, RegisterInput, LoginInput } from '@anti-oj/shared';
 
@@ -26,18 +26,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
+  const activeSessionIdRef = useRef<number>(0);
+
   const refreshUser = useCallback(async () => {
+    const currentSessionId = ++activeSessionIdRef.current;
     try {
       const res = await api.get('/auth/me');
-      if (res.data.success) {
+      if (activeSessionIdRef.current === currentSessionId && res.data.success) {
         setUser(res.data.data.user);
         setStats(res.data.data.stats);
       }
     } catch {
-      setUser(null);
-      setStats(null);
+      if (activeSessionIdRef.current === currentSessionId) {
+        setUser(null);
+        setStats(null);
+      }
     } finally {
-      setLoading(false);
+      if (activeSessionIdRef.current === currentSessionId) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -46,32 +53,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshUser]);
 
   const login = useCallback(async (input: LoginInput) => {
+    const currentSessionId = ++activeSessionIdRef.current;
     const res = await api.post('/auth/login', input);
     if (res.data.success) {
-      setUser(res.data.data.user);
-      setIsAuthModalOpen(false);
-      api.get('/auth/me').then((meRes) => {
-        if (meRes.data.success) {
+      if (activeSessionIdRef.current === currentSessionId) {
+        setUser(res.data.data.user);
+        setIsAuthModalOpen(false);
+      }
+      try {
+        const meRes = await api.get('/auth/me');
+        if (activeSessionIdRef.current === currentSessionId && meRes.data.success) {
           setStats(meRes.data.data.stats);
         }
-      }).catch(() => {});
+      } catch {}
     }
   }, []);
 
   const register = useCallback(async (input: RegisterInput) => {
+    const currentSessionId = ++activeSessionIdRef.current;
     const res = await api.post('/auth/register', input);
     if (res.data.success) {
-      setUser(res.data.data.user);
-      setIsAuthModalOpen(false);
-      api.get('/auth/me').then((meRes) => {
-        if (meRes.data.success) {
+      if (activeSessionIdRef.current === currentSessionId) {
+        setUser(res.data.data.user);
+        setIsAuthModalOpen(false);
+      }
+      try {
+        const meRes = await api.get('/auth/me');
+        if (activeSessionIdRef.current === currentSessionId && meRes.data.success) {
           setStats(meRes.data.data.stats);
         }
-      }).catch(() => {});
+      } catch {}
     }
   }, []);
 
   const logout = useCallback(async () => {
+    activeSessionIdRef.current++;
     try {
       await api.post('/auth/logout');
     } finally {

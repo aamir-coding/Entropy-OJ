@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
+import { api, isCancel } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { IProblemListItem } from '@anti-oj/shared';
 import {
@@ -11,6 +11,7 @@ import {
   Code,
   Shield,
   ChevronRight,
+  ChevronLeft,
   Filter,
   AlertCircle,
   RotateCcw,
@@ -26,6 +27,21 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+  });
+
+  // Reset to page 1 whenever filters or search query change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDifficulty, selectedTag, debouncedSearchQuery]);
+
   // Set page title
   useEffect(() => {
     document.title = 'Problems | Anti Online Judge';
@@ -40,40 +56,76 @@ export const HomePage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const fetchProblems = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: Record<string, string> = {};
-      if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
-      if (selectedTag !== 'All') params.tag = selectedTag;
-      if (debouncedSearchQuery.trim()) params.search = debouncedSearchQuery.trim();
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
-      const res = await api.get('/problems', { params });
-      if (res.data.success) {
-        setProblems(res.data.data.problems);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch problems:', err);
-      setError(err.message || 'Unable to connect to the problem catalog. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDifficulty, selectedTag, debouncedSearchQuery]);
-
+  // Fetch problems with request cancellation to prevent race conditions (Issue H-2)
   useEffect(() => {
-    fetchProblems();
-  }, [fetchProblems, user?._id]);
+    const controller = new AbortController();
+
+    const loadProblems = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params: Record<string, string> = {
+          page: String(page),
+          limit: String(limit),
+        };
+        if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
+        if (selectedTag !== 'All') params.tag = selectedTag;
+        if (debouncedSearchQuery.trim()) params.search = debouncedSearchQuery.trim();
+
+        const res = await api.get('/problems', {
+          params,
+          signal: controller.signal,
+        });
+        if (res.data.success) {
+          setProblems(res.data.data.problems);
+          if (res.data.data.pagination) {
+            setPagination(res.data.data.pagination);
+          }
+        }
+      } catch (err: any) {
+        if (
+          controller.signal.aborted ||
+          isCancel(err) ||
+          err.name === 'CanceledError' ||
+          err.name === 'AbortError' ||
+          err.code === 'ERR_CANCELED' ||
+          err.message === 'canceled'
+        ) {
+          return;
+        }
+        console.error('Failed to fetch problems:', err);
+        setError(err.message || 'Unable to connect to the problem catalog. Please try again.');
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProblems();
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedDifficulty, selectedTag, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
 
   const allTags = [
     'All',
     'Array',
     'Hash Table',
-    'Stack',
-    'String',
     'Two Pointers',
+    'Binary Search',
     'Dynamic Programming',
     'Sliding Window',
+    'Stack',
+    'String',
+    'Graph',
+    'Heap',
+    'Math',
+    'Bit Manipulation',
+    'Backtracking',
   ];
 
   return (
@@ -286,7 +338,7 @@ export const HomePage: React.FC = () => {
               <span style={{ fontSize: '0.875rem' }}>{error}</span>
             </div>
             <button
-              onClick={() => fetchProblems()}
+              onClick={() => setRetryTrigger((c) => c + 1)}
               className="btn btn-outline"
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderColor: 'var(--verdict-wa-border)', color: 'var(--verdict-wa)' }}
             >
@@ -447,6 +499,124 @@ export const HomePage: React.FC = () => {
                   })}
                 </tbody>
               </table>
+
+              {/* Pagination Controls Bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.875rem 1.25rem',
+                  borderTop: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-secondary)',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                }}
+              >
+                {/* Left: Range Info */}
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Showing{' '}
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    {pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
+                  </span>{' '}
+                  –{' '}
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    {Math.min(pagination.page * pagination.limit, pagination.total)}
+                  </span>{' '}
+                  of{' '}
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                    {pagination.total}
+                  </span>{' '}
+                  problems
+                </div>
+
+                {/* Center: Page Controls */}
+                {pagination.totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={pagination.page <= 1}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.75rem',
+                        opacity: pagination.page <= 1 ? 0.4 : 1,
+                        cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
+                      }}
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Prev</span>
+                    </button>
+
+                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        style={{
+                          minWidth: '28px',
+                          height: '28px',
+                          padding: '0 0.4rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 'var(--radius-sm)',
+                          border: p === pagination.page ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                          background: p === pagination.page ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                          color: p === pagination.page ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                      disabled={pagination.page >= pagination.totalPages}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.75rem',
+                        opacity: pagination.page >= pagination.totalPages ? 0.4 : 1,
+                        cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
+                      }}
+                      title="Next Page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Right: Per-Page Selector */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  <span>Per page:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.75rem',
+                      width: 'auto',
+                      background: 'var(--bg-elevated)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value={10} style={{ background: '#18181b', color: '#f4f4f5' }}>10</option>
+                    <option value={20} style={{ background: '#18181b', color: '#f4f4f5' }}>20 (Default)</option>
+                    <option value={30} style={{ background: '#18181b', color: '#f4f4f5' }}>30</option>
+                    <option value={50} style={{ background: '#18181b', color: '#f4f4f5' }}>50</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -6,13 +6,14 @@
  * 4. Strictly preserves internal whitespace within lines.
  * 5. Caps excessively large strings (up to 1MB) to prevent heap exhaustion.
  */
-export const MAX_NORMALIZE_SIZE_BYTES = 1024 * 1024; // 1 MB safety cap
+export const MAX_NORMALIZE_LENGTH = 1024 * 1024; // 1M characters safety cap
+export const MAX_NORMALIZE_SIZE_BYTES = MAX_NORMALIZE_LENGTH; // Backward compatibility alias
 
 export function normalizeOutput(str: string): string {
   if (!str) return '';
 
   // Prevent memory explosion on huge strings
-  const boundedStr = str.length > MAX_NORMALIZE_SIZE_BYTES ? str.slice(0, MAX_NORMALIZE_SIZE_BYTES) : str;
+  const boundedStr = str.length > MAX_NORMALIZE_LENGTH ? str.slice(0, MAX_NORMALIZE_LENGTH) : str;
 
   return boundedStr
     .replace(/\r\n/g, '\n')

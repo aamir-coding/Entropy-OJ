@@ -2,14 +2,15 @@ import { Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import { Solution } from '../models/Solution';
 import { Problem } from '../models/Problem';
+import { TestCase } from '../models/TestCase';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { enqueueSubmission } from '../queues/submission.queue';
-import { enqueueClassifyJob } from '../queues/ai.queue';
 import { DockerSandbox } from '../sandbox/dockerRunner';
 import { env } from '../config/env';
 import {
   CreateSubmissionInput,
   RunSampleInput,
+  Verdict,
   Verdicts,
   ISubmissionResponse,
   ISubmissionHistoryItem,
@@ -30,9 +31,10 @@ export async function createSubmission(
     const { problemId, language, code } = req.body as CreateSubmissionInput;
     const userId = req.userId!;
 
-    // Validate problem existence
+    // Validate problem existence with strict 24-hex ObjectId check (Issue L-4)
     let problemQuery: Record<string, unknown>;
-    if (mongoose.Types.ObjectId.isValid(problemId)) {
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(problemId) && /^[a-f\d]{24}$/i.test(problemId);
+    if (isStrictHexId) {
       problemQuery = { $or: [{ _id: problemId }, { problemCode: problemId.toLowerCase() }] };
     } else {
       problemQuery = { problemCode: problemId.toLowerCase() };
@@ -46,8 +48,6 @@ export async function createSubmission(
       });
       return;
     }
-
-    targetProblemId = problem._id as mongoose.Types.ObjectId;
 
     // Check for pending submissions to prevent spamming
     const existingPending = await Solution.findOne({
@@ -74,8 +74,6 @@ export async function createSubmission(
       submittedAt: new Date(),
     });
 
-    createdSolutionId = solution._id as mongoose.Types.ObjectId;
-
     // Increment problem totalSubmissions counter
     await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
 
@@ -91,7 +89,6 @@ export async function createSubmission(
         memoryLimitKb: problem.memoryLimitKb,
       });
     } catch (queueErr) {
-      // Compensating rollback if enqueueing fails
       console.error('[Submission] Enqueue failed. Rolling back database records...', queueErr);
       await Solution.findByIdAndDelete(solution._id);
       await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: -1 } });
@@ -101,7 +98,7 @@ export async function createSubmission(
     const response: ISubmissionResponse = {
       submissionId: solution._id.toString(),
       status: Verdicts.PENDING,
-      verdict: solution.verdict,
+      verdict: solution.verdict as Verdict,
       problemId: problem._id.toString(),
       problemCode: problem.problemCode,
       problemName: problem.name,
@@ -111,32 +108,30 @@ export async function createSubmission(
 
     res.status(201).json({
       success: true,
-      message: 'Submission queued for evaluation',
       data: response,
     });
-  } catch (error) {
-    next(error);
+  } catch (err: any) {
+    console.error('[Submission] Error creating submission:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create submission: ' + (err.message || 'Internal error'),
+    });
   }
 }
 
 /**
- * Live Sample Runner: Executes code against problem sample cases using sandboxed runner
+ * POST /api/submissions/run
+ * Ephemeral sandbox runner for sample test cases with diff output.
  */
-export async function runSampleCases(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
+export const runSampleCases = async (req: AuthRequest, res: Response): Promise<void> => {
   let sandbox: DockerSandbox | null = null;
   try {
     const { problemId, language, code } = req.body as RunSampleInput;
 
-    let problemQuery: Record<string, unknown>;
-    if (mongoose.Types.ObjectId.isValid(problemId)) {
-      problemQuery = { $or: [{ _id: problemId }, { problemCode: problemId.toLowerCase() }] };
-    } else {
-      problemQuery = { problemCode: problemId.toLowerCase() };
-    }
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(problemId) && /^[a-f\d]{24}$/i.test(problemId);
+    const problemQuery = isStrictHexId
+      ? { $or: [{ _id: problemId }, { problemCode: problemId.toLowerCase() }] }
+      : { problemCode: problemId.toLowerCase() };
 
     const problem = await Problem.findOne(problemQuery);
     if (!problem) {
@@ -147,46 +142,36 @@ export async function runSampleCases(
       return;
     }
 
-    const sampleCases = problem.sampleCases || [];
-    if (sampleCases.length === 0) {
-      res.status(200).json({
-        success: true,
-        data: {
-          verdict: Verdicts.ACCEPTED,
-          totalCases: 0,
-          passedCases: 0,
-          sampleResults: [],
-        },
+    // Retrieve only sample test cases
+    const sampleCases = await TestCase.find({ problem: problem._id, isSample: true })
+      .sort({ order: 1 })
+      .lean();
+
+    if (!sampleCases || sampleCases.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'No sample test cases available for this problem.',
       });
       return;
     }
 
+    // Create ephemeral Docker sandbox
     sandbox = await DockerSandbox.create();
     await sandbox.prepareSourceFile(code, language);
 
     // Compilation step
     const compileRes = await sandbox.compile(language, 10000);
     if (!compileRes.success) {
-      const sampleResults: ISampleCaseResult[] = sampleCases.map((sc, i) => ({
-        caseIndex: i + 1,
-        input: sc.input,
-        expectedOutput: sc.output,
-        actualOutput: compileRes.compileOutput || 'Compilation error',
-        passed: false,
+      const response: ISampleRunResponse = {
         verdict: Verdicts.COMPILATION_ERROR,
-        executionTimeMs: 0,
-        memoryUsedKb: 0,
-        error: compileRes.compileOutput,
-      }));
-
+        totalCases: sampleCases.length,
+        passedCases: 0,
+        compileOutput: compileRes.compileOutput || 'Compilation failed with errors',
+        sampleResults: [],
+      };
       res.status(200).json({
         success: true,
-        data: {
-          verdict: Verdicts.COMPILATION_ERROR,
-          totalCases: sampleCases.length,
-          passedCases: 0,
-          sampleResults,
-        },
+        data: response,
       });
       return;
     }
@@ -194,7 +179,7 @@ export async function runSampleCases(
     // Process each sample case with live sandboxed execution and diffing
     const sampleResults: ISampleCaseResult[] = [];
     let passedCount = 0;
-    let overallVerdict: string = Verdicts.ACCEPTED;
+    let overallVerdict: Verdict = Verdicts.ACCEPTED;
 
     for (let i = 0; i < sampleCases.length; i++) {
       const sc = sampleCases[i];
@@ -208,10 +193,13 @@ export async function runSampleCases(
       );
 
       const diff = diffOutput(runRes.actualOutput, sc.output);
-      let caseVerdict: string = Verdicts.ACCEPTED;
+      let caseVerdict: Verdict = Verdicts.ACCEPTED;
 
+      // Decision R3: Check TLE, MLE, RTE, and WA
       if (runRes.timedOut || runRes.metrics.cpuTimeMs > problem.timeLimitMs) {
         caseVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+      } else if (runRes.metrics.maxRssKb > problem.memoryLimitKb) {
+        caseVerdict = Verdicts.MEMORY_LIMIT_EXCEEDED;
       } else if (runRes.metrics.exitCode !== 0 || runRes.metrics.processExitStatus !== 0) {
         caseVerdict = Verdicts.RUNTIME_ERROR;
       } else if (!diff.isMatch) {
@@ -231,7 +219,7 @@ export async function runSampleCases(
         expectedOutput: sc.output,
         actualOutput: runRes.actualOutput,
         passed,
-        verdict: caseVerdict as any,
+        verdict: caseVerdict,
         executionTimeMs: runRes.metrics.cpuTimeMs,
         memoryUsedKb: runRes.metrics.maxRssKb,
         error: runRes.stderr || undefined,
@@ -239,7 +227,7 @@ export async function runSampleCases(
     }
 
     const response: ISampleRunResponse = {
-      verdict: overallVerdict as any,
+      verdict: overallVerdict,
       totalCases: sampleCases.length,
       passedCases: passedCount,
       sampleResults,
@@ -249,34 +237,40 @@ export async function runSampleCases(
       success: true,
       data: response,
     });
-  } catch (error) {
-    next(error);
+  } catch (err: any) {
+    console.error('[RunSample] Error running sample cases:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Sample test run execution failed: ' + (err.message || 'Internal error'),
+    });
   } finally {
     if (sandbox) {
       await sandbox.cleanup();
     }
   }
-}
+};
 
-export async function getSubmissionById(
+/**
+ * GET /api/submissions/:id
+ * Retrieve submission details. Enforces owner IDOR protection (with admin exemption).
+ */
+export const getSubmissionById = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): Promise<void> {
+): Promise<void> => {
   try {
-    const id = String(req.params.id);
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid submission ID format',
-      });
-      return;
-    }
+    const { id } = req.params;
 
     const solution = await Solution.findById(id)
-      .populate<{ problem: { _id: string; problemCode: string; name: string } }>('problem', 'problemCode name')
-      .populate<{ user: { _id: string; fullName: string; email: string } }>('user', 'fullName email')
+      .populate<{ problem: { _id: mongoose.Types.ObjectId; problemCode: string; name: string } }>(
+        'problem',
+        'name problemCode statement difficulty timeLimitMs memoryLimitKb'
+      )
+      .populate<{ user: { _id: mongoose.Types.ObjectId; name: string; email: string; username: string } }>(
+        'user',
+        'name email username'
+      )
       .lean();
 
     if (!solution) {
@@ -287,39 +281,15 @@ export async function getSubmissionById(
       return;
     }
 
-    // BOLA Protection: Enforce that only the owner can view submission details
+    // BOLA Protection: Enforce that only the owner or an admin can view submission details (Issue H-4)
     const isOwner = solution.user._id.toString() === req.userId;
-    if (!isOwner) {
+    const isAdmin = req.user?.role === 'admin';
+    if (!isOwner && !isAdmin) {
       res.status(403).json({
         success: false,
         error: 'Access denied: You do not have permission to view this submission.',
       });
       return;
-    }
-    // Trigger background AI approach classification for Accepted solutions (non-blocking)
-    if (
-      solution.verdict === Verdicts.ACCEPTED &&
-      !solution.classification &&
-      env.FEATURE_AI_CLASSIFY !== 'false'
-    ) {
-      Problem.findById(solution.problem._id)
-        .select('name statement')
-        .lean()
-        .then((prob) => {
-          if (prob) {
-            enqueueClassifyJob({
-              submissionId: solution._id.toString(),
-              problemId: prob._id.toString(),
-              problemName: prob.name,
-              problemStatement: prob.statement,
-              code: solution.code,
-              language: solution.language,
-            }).catch((err) =>
-              console.warn('[Classification] Auto-enqueue background job failed:', err.message)
-            );
-          }
-        })
-        .catch(() => {});
     }
 
     res.status(200).json({

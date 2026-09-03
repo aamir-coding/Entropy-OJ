@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Check, Terminal, AlertCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { Verdicts } from '@anti-oj/shared';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface ViewCodeModalProps {
   isOpen: boolean;
@@ -22,6 +23,43 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Focus trap & Escape listener (Issue M-5) and timer cleanup (Issue L-2)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -31,13 +69,15 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
         await navigator.clipboard.writeText(code);
         setCopied(true);
         setCopyError(false);
-        setTimeout(() => setCopied(false), 2000);
+        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
       } else {
         throw new Error('Clipboard API not supported');
       }
     } catch {
       setCopyError(true);
-      setTimeout(() => setCopyError(false), 3000);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopyError(false), 3000);
     }
   };
 
@@ -46,6 +86,7 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="View submitted code">
       <div
+        ref={modalRef}
         className="modal-content"
         style={{ maxWidth: '800px', width: '90%' }}
         onClick={(e) => e.stopPropagation()}
@@ -118,24 +159,32 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
           </div>
         </div>
 
-        {/* Editor Content */}
+        {/* Editor Content with ErrorBoundary (Issue M-1) */}
         <div style={{ height: '450px', background: '#1e1e1e' }}>
-          <Editor
-            height="100%"
-            language={monacoLang}
-            theme="vs-dark"
-            value={code}
-            options={{
-              readOnly: true,
-              domReadOnly: true,
-              minimap: { enabled: false },
-              fontSize: 13,
-              fontFamily: "'JetBrains Mono', monospace",
-              scrollBeyondLastLine: false,
-              lineNumbers: 'on',
-              padding: { top: 12 },
-            }}
-          />
+          <ErrorBoundary
+            fallback={
+              <div style={{ padding: '2rem', color: 'var(--verdict-wa)', textAlign: 'center' }}>
+                Failed to display Monaco Editor.
+              </div>
+            }
+          >
+            <Editor
+              height="100%"
+              language={monacoLang}
+              theme="vs-dark"
+              value={code}
+              options={{
+                readOnly: true,
+                domReadOnly: true,
+                minimap: { enabled: false },
+                fontSize: 13,
+                fontFamily: "'JetBrains Mono', monospace",
+                scrollBeyondLastLine: false,
+                lineNumbers: 'on',
+                padding: { top: 12 },
+              }}
+            />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

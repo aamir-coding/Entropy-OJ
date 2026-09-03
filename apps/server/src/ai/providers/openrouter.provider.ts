@@ -93,6 +93,7 @@ export class OpenRouterProvider implements AIProvider {
             'X-Title': 'Anti Online Judge',
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30000),
         });
 
         if (!res.ok) {
@@ -119,7 +120,14 @@ export class OpenRouterProvider implements AIProvider {
 
         const data = (await res.json()) as any;
         const choice = data?.choices?.[0];
-        const content = choice?.message?.content || '';
+        let content = choice?.message?.content || '';
+        if (!content && choice?.message?.reasoning_content) {
+          content = choice.message.reasoning_content;
+        }
+
+        if (!content || !content.trim()) {
+          throw new Error(`OpenRouter model ${model} returned empty content`);
+        }
 
         return {
           content,

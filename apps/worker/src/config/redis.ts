@@ -15,14 +15,35 @@ export const redisConnectionOptions: RedisOptions = {
   },
 };
 
-export const redisClient = new Redis(redisConnectionOptions);
+let clientInstance: Redis | null = null;
 
-redisClient.on('connect', () => {
-  console.log(`[Worker Redis] Connected to Redis at ${env.REDIS_HOST}:${env.REDIS_PORT}`);
-});
+export function getRedisClient(): Redis {
+  if (!clientInstance) {
+    clientInstance = new Redis(redisConnectionOptions);
 
-redisClient.on('error', (err) => {
-  if (env.NODE_ENV !== 'test') {
-    console.error('[Worker Redis] Connection error:', err.message);
+    clientInstance.on('connect', () => {
+      console.log(`[Worker Redis] Connected to Redis at ${env.REDIS_HOST}:${env.REDIS_PORT}`);
+    });
+
+    clientInstance.on('error', (err) => {
+      if (env.NODE_ENV !== 'test') {
+        console.error('[Worker Redis] Connection error:', err.message);
+      }
+    });
   }
-});
+  return clientInstance;
+}
+
+export const redisClient = {
+  get instance() {
+    return getRedisClient();
+  },
+  ping: () => getRedisClient().ping(),
+  quit: async () => {
+    if (clientInstance) {
+      await clientInstance.quit();
+      clientInstance = null;
+    }
+  },
+};
+

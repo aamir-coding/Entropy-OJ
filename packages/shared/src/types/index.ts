@@ -18,11 +18,14 @@ export const ProblemDifficulties = {
   HARD: 'Hard',
 } as const;
 
-export type ProblemDifficulty = (typeof ProblemDifficulties)[keyof typeof ProblemDifficulties];
+export const ALL_PROBLEM_DIFFICULTIES = [
+  ProblemDifficulties.EASY,
+  ProblemDifficulties.MEDIUM,
+  ProblemDifficulties.HARD,
+] as const;
 
-export const ALL_PROBLEM_DIFFICULTIES: readonly ProblemDifficulty[] = Object.freeze(
-  Object.values(ProblemDifficulties)
-) as readonly ProblemDifficulty[];
+export type ProblemDifficulty = (typeof ALL_PROBLEM_DIFFICULTIES)[number];
+
 
 export interface ISampleTestCase {
   input: string;
@@ -109,10 +112,23 @@ export interface IAdminValidateSolutionResponse {
   results: IAdminValidateTestCaseResult[];
 }
 
+export interface ISolutionUserPopulated {
+  _id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface ISolutionProblemPopulated {
+  _id: string;
+  problemCode: string;
+  name: string;
+  difficulty: ProblemDifficulty;
+}
+
 export interface ISolution {
   _id: string;
-  user: string | { _id: string; fullName: string; email: string };
-  problem: string | { _id: string; problemCode: string; name: string; difficulty: ProblemDifficulty };
+  user: string | ISolutionUserPopulated;
+  problem: string | ISolutionProblemPopulated;
   code: string;
   language: SupportedLanguage;
   verdict: Verdict;
@@ -126,9 +142,15 @@ export interface ISolution {
   submittedAt: string | Date;
 }
 
+export interface ISolutionPopulated extends Omit<ISolution, 'user' | 'problem'> {
+  user: ISolutionUserPopulated;
+  problem: ISolutionProblemPopulated;
+}
+
 export interface ISubmissionResponse {
   submissionId: string;
   verdict: Verdict;
+  /** @deprecated Use `verdict` instead. */
   status?: Verdict;
   problemId: string;
   problemCode: string;

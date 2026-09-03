@@ -200,16 +200,12 @@ You may assume that each input would have **exactly one solution**, and you may 
           setSampleCases(p.sampleCases || []);
           setValCode(getModelSolution(p.problemCode, valLanguage));
 
-          // Filter out judge cases (both samples and hidden)
+          // Filter out judge cases (Issue L-4: Cleaned up redundant branch)
           const nonSampleCases = (p.testCases || []).filter((tc: any) => !tc.isSample);
-          if (nonSampleCases.length > 0) {
-            setJudgeCases(nonSampleCases);
-          } else {
-            setJudgeCases((p.testCases || []).filter((tc: any) => !tc.isSample));
-          }
+          setJudgeCases(nonSampleCases);
         }
       } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load problem.');
+        setError(err.message || err.response?.data?.error || 'Failed to load problem.');
       } finally {
         setLoading(false);
       }
@@ -311,7 +307,7 @@ You may assume that each input would have **exactly one solution**, and you may 
         setValidationResult(res.data.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Validation failed.');
+      setError(err.message || err.response?.data?.error || 'Validation failed.');
     } finally {
       setIsValidating(false);
     }
@@ -348,14 +344,18 @@ You may assume that each input would have **exactly one solution**, and you may 
       })),
     ];
 
+    // Sanitize numeric inputs (Issue M-3)
+    const safeTimeLimitMs = Math.max(100, isNaN(Number(timeLimitMs)) || Number(timeLimitMs) <= 0 ? 2000 : Number(timeLimitMs));
+    const safeMemoryLimitMb = Math.max(16, isNaN(Number(memoryLimitMb)) || Number(memoryLimitMb) <= 0 ? 256 : Number(memoryLimitMb));
+
     const payload = {
       name: name.trim(),
       problemCode: problemCode.trim().toLowerCase(),
       statement: statement.trim(),
       difficulty,
       tags,
-      timeLimitMs: Number(timeLimitMs),
-      memoryLimitKb: Number(memoryLimitMb) * 1024,
+      timeLimitMs: safeTimeLimitMs,
+      memoryLimitKb: safeMemoryLimitMb * 1024,
       sampleCases,
       testCases: combinedTestCases,
     };
@@ -377,7 +377,7 @@ You may assume that each input would have **exactly one solution**, and you may 
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save problem.');
+      setError(err.message || err.response?.data?.error || 'Failed to save problem.');
     } finally {
       setSaving(false);
     }
@@ -641,8 +641,11 @@ You may assume that each input would have **exactly one solution**, and you may 
                     <input
                       type="number"
                       className="input"
-                      value={timeLimitMs}
-                      onChange={(e) => setTimeLimitMs(Number(e.target.value))}
+                      value={timeLimitMs || ''}
+                      onChange={(e) => setTimeLimitMs(e.target.value === '' ? 0 : Number(e.target.value))}
+                      onBlur={() => {
+                        if (!timeLimitMs || timeLimitMs < 100) setTimeLimitMs(2000);
+                      }}
                       min={100}
                       max={10000}
                       step={100}
@@ -657,8 +660,11 @@ You may assume that each input would have **exactly one solution**, and you may 
                     <input
                       type="number"
                       className="input"
-                      value={memoryLimitMb}
-                      onChange={(e) => setMemoryLimitMb(Number(e.target.value))}
+                      value={memoryLimitMb || ''}
+                      onChange={(e) => setMemoryLimitMb(e.target.value === '' ? 0 : Number(e.target.value))}
+                      onBlur={() => {
+                        if (!memoryLimitMb || memoryLimitMb < 16) setMemoryLimitMb(256);
+                      }}
                       min={16}
                       max={512}
                       step={16}
@@ -1220,14 +1226,14 @@ You may assume that each input would have **exactly one solution**, and you may 
                   </div>
                 </div>
 
-                {/* Statement Ambiguities */}
-                {reviewResult.statementAmbiguities.length > 0 && (
+                {/* Statement Ambiguities (Issue H-3) */}
+                {(reviewResult.statementAmbiguities ?? []).length > 0 && (
                   <div className="glass-panel" style={{ padding: '1.25rem' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                      <AlertTriangle size={16} /> Statement Ambiguities ({reviewResult.statementAmbiguities.length})
+                      <AlertTriangle size={16} /> Statement Ambiguities ({(reviewResult.statementAmbiguities ?? []).length})
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {reviewResult.statementAmbiguities.map((item, idx) => (
+                      {(reviewResult.statementAmbiguities ?? []).map((item, idx) => (
                         <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fde047', marginBottom: '0.35rem' }}>
                             <span style={{ opacity: 0.8 }}>Issue: </span>
@@ -1243,14 +1249,14 @@ You may assume that each input would have **exactly one solution**, and you may 
                   </div>
                 )}
 
-                {/* Missing Edge Cases */}
-                {reviewResult.missingEdgeCases.length > 0 && (
+                {/* Missing Edge Cases (Issue H-3) */}
+                {(reviewResult.missingEdgeCases ?? []).length > 0 && (
                   <div className="glass-panel" style={{ padding: '1.25rem' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                      <HelpCircle size={16} /> Missing Edge Cases ({reviewResult.missingEdgeCases.length})
+                      <HelpCircle size={16} /> Missing Edge Cases ({(reviewResult.missingEdgeCases ?? []).length})
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
-                      {reviewResult.missingEdgeCases.map((item, idx) => (
+                      {(reviewResult.missingEdgeCases ?? []).map((item, idx) => (
                         <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#bae6fd', marginBottom: '0.35rem' }}>
                             <MarkdownMathView content={item.description} />
@@ -1275,14 +1281,14 @@ You may assume that each input would have **exactly one solution**, and you may 
                   </div>
                 )}
 
-                {/* Suggested Adversarial Inputs */}
-                {reviewResult.adversarialInputs.length > 0 && (
+                {/* Suggested Adversarial Inputs (Issue H-3) */}
+                {(reviewResult.adversarialInputs ?? []).length > 0 && (
                   <div className="glass-panel" style={{ padding: '1.25rem' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f43f5e', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                      <XCircle size={16} /> Suggested Adversarial Inputs ({reviewResult.adversarialInputs.length})
+                      <XCircle size={16} /> Suggested Adversarial Inputs ({(reviewResult.adversarialInputs ?? []).length})
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {reviewResult.adversarialInputs.map((item, idx) => (
+                      {(reviewResult.adversarialInputs ?? []).map((item, idx) => (
                         <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
                           <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
                             <strong style={{ color: '#fca5a5' }}>Attack Target: </strong>
@@ -1297,14 +1303,14 @@ You may assume that each input would have **exactly one solution**, and you may 
                   </div>
                 )}
 
-                {/* Inconsistencies */}
-                {reviewResult.inconsistencies.length > 0 && (
+                {/* Inconsistencies (Issue H-3) */}
+                {(reviewResult.inconsistencies ?? []).length > 0 && (
                   <div className="glass-panel" style={{ padding: '1.25rem' }}>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fb923c', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                      <AlertTriangle size={16} /> Package Inconsistencies ({reviewResult.inconsistencies.length})
+                      <AlertTriangle size={16} /> Package Inconsistencies ({(reviewResult.inconsistencies ?? []).length})
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {reviewResult.inconsistencies.map((item, idx) => (
+                      {(reviewResult.inconsistencies ?? []).map((item, idx) => (
                         <div key={idx} style={{ background: '#111827', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(251, 146, 60, 0.2)' }}>
                           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fdba74', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                             Discrepancy: {item.between}

@@ -14,4 +14,16 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco-vendor': ['@monaco-editor/react'],
+          'markdown-math': ['react-markdown', 'remark-gfm', 'remark-math', 'rehype-katex', 'katex'],
+          'ui-vendor': ['lucide-react', 'react-resizable-panels'],
+        },
+      },
+    },
+  },
 });

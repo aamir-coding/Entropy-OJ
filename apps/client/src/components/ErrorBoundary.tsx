@@ -3,6 +3,7 @@ import { AlertOctagon, RotateCcw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -29,11 +30,17 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
-    window.location.reload();
+    if (!this.props.fallback) {
+      window.location.reload();
+    }
   };
 
-  public render() {
+  public render(): ReactNode {
     if (this.state.hasError) {
+      if (this.props.fallback !== undefined) {
+        return this.props.fallback;
+      }
+
       return (
         <div
           role="alert"
@@ -85,7 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
               An unexpected client error occurred in the workspace. You can reload the application or return to the problem catalog.
             </p>
 
-            {process.env.NODE_ENV !== 'production' && this.state.error && (
+            {Boolean((import.meta as any).env?.DEV) && this.state.error && (
               <pre
                 style={{
                   background: 'var(--bg-base, #0d0d0d)',

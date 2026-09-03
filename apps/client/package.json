@@ -5,8 +5,9 @@
   "description": "State-of-the-Art React SPA Client for Anti Online Judge",
   "type": "module",
   "scripts": {
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run clean && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

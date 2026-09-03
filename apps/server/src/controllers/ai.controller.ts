@@ -1,19 +1,38 @@
 import { Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
+import { z } from 'zod';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { Solution } from '../models/Solution';
 import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { hintService } from '../ai/hints/hintService';
 import { reviewService } from '../ai/review/reviewService';
+import { classifyService } from '../ai/classify/classifyService';
 import {
   ApiResponse,
   IHintResponse,
-  IHintRequest,
   IProblemReviewResponse,
+  IApproachClassification,
+  Verdicts,
   SupportedLanguage,
   ProblemDifficulty,
+  ALL_SUPPORTED_LANGUAGES,
 } from '@anti-oj/shared';
+
+export const aiHintRequestSchema = z.object({
+  submissionId: z.string().min(1, 'Submission identifier is required').max(100),
+});
+
+export const aiClassifyRequestSchema = z.object({
+  submissionId: z.string().min(1, 'Submission identifier is required').max(100),
+});
+
+export const aiReviewRequestSchema = z.object({
+  problemId: z.string().min(1, 'Problem identifier is required').max(100),
+  referenceSolution: z.string().max(50000).optional(),
+  referenceSolutionLanguage: z.enum(ALL_SUPPORTED_LANGUAGES as [string, ...string[]]).optional(),
+  editorial: z.string().max(50000).optional(),
+});
 
 /**
  * POST /api/ai/hints
@@ -25,9 +44,10 @@ export async function requestHint(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { submissionId } = req.body as IHintRequest;
+    const { submissionId } = req.body;
 
-    if (!submissionId || !mongoose.Types.ObjectId.isValid(submissionId)) {
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(submissionId) && /^[a-f\d]{24}$/i.test(submissionId);
+    if (!submissionId || !isStrictHexId) {
       res.status(400).json({
         success: false,
         error: 'Invalid or missing submissionId format.',
@@ -44,10 +64,10 @@ export async function requestHint(
       return;
     }
 
-    // IDOR Protection: User must own the submission or be an admin
-    const isOwner = solution.user.toString() === req.userId;
+    // IDOR Protection: Only the author of the submission or an admin may request a hint
+    const isAuthor = solution.user?.toString() === req.userId;
     const isAdmin = req.user?.role === 'admin';
-    if (!isOwner && !isAdmin) {
+    if (!isAuthor && !isAdmin) {
       res.status(403).json({
         success: false,
         error: 'Access denied: You can only request hints for your own submissions.',
@@ -55,12 +75,12 @@ export async function requestHint(
       return;
     }
 
-    // Fetch Problem statement and public sample cases ONLY (zero hidden test cases queried)
-    const problem = await Problem.findById(solution.problem).select('problemCode name statement sampleCases').lean();
+    // Retrieve problem context
+    const problem = await Problem.findById(solution.problem).lean();
     if (!problem) {
       res.status(404).json({
         success: false,
-        error: 'Associated problem not found.',
+        error: 'Associated problem no longer exists.',
       } as ApiResponse);
       return;
     }
@@ -71,7 +91,11 @@ export async function requestHint(
       problemCode: problem.problemCode,
       problemName: problem.name,
       statement: problem.statement,
-      sampleCases: problem.sampleCases || [],
+      sampleCases: (problem.sampleCases || []).map((sc: any) => ({
+        input: sc.input,
+        output: sc.output,
+        explanation: sc.explanation,
+      })),
       code: solution.code,
       language: solution.language,
       verdict: solution.verdict,
@@ -89,7 +113,8 @@ export async function requestHint(
 
 /**
  * POST /api/ai/review
- * Admin-only: Performs comprehensive AI QA audit on a problem package using Gemini Flash.
+ * Problem-Setting QA Co-Pilot: Synthesizes adversarial tests, ambiguities, and edge-cases.
+ * Restricted to administrators.
  */
 export async function requestProblemReview(
   req: AuthRequest,
@@ -97,23 +122,11 @@ export async function requestProblemReview(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { problemId, referenceSolution, referenceSolutionLanguage, editorial } = req.body as {
-      problemId: string;
-      referenceSolution?: string;
-      referenceSolutionLanguage?: SupportedLanguage;
-      editorial?: string;
-    };
+    const { problemId, referenceSolution, referenceSolutionLanguage, editorial } = req.body;
 
-    if (!problemId) {
-      res.status(400).json({
-        success: false,
-        error: 'Problem identifier is required.',
-      } as ApiResponse);
-      return;
-    }
-
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(problemId) && /^[a-f\d]{24}$/i.test(problemId);
     let query: Record<string, unknown>;
-    if (mongoose.Types.ObjectId.isValid(problemId)) {
+    if (isStrictHexId) {
       query = { $or: [{ _id: problemId }, { problemCode: problemId.toLowerCase() }] };
     } else {
       query = { problemCode: problemId.toLowerCase() };
@@ -161,4 +174,98 @@ export async function requestProblemReview(
     next(error);
   }
 }
+
+/**
+ * POST /api/ai/classify
+ * Analyzes and classifies the approach and complexity of an Accepted solution.
+ */
+export async function requestClassification(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { submissionId } = req.body;
+
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(submissionId) && /^[a-f\d]{24}$/i.test(submissionId);
+    if (!submissionId || !isStrictHexId) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid or missing submissionId format.',
+      } as ApiResponse);
+      return;
+    }
+
+    const solution = await Solution.findById(submissionId);
+    if (!solution) {
+      res.status(404).json({
+        success: false,
+        error: 'Submission not found.',
+      } as ApiResponse);
+      return;
+    }
+
+    // IDOR Protection: Only the author of the submission or an admin may request classification
+    const isAuthor = solution.user?.toString() === req.userId;
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAuthor && !isAdmin) {
+      res.status(403).json({
+        success: false,
+        error: 'Access denied: You do not have permission to analyze this submission.',
+      } as ApiResponse);
+      return;
+    }
+
+    if (solution.verdict !== Verdicts.ACCEPTED) {
+      res.status(400).json({
+        success: false,
+        error: 'Approach classification is only available for Accepted solutions.',
+      } as ApiResponse);
+      return;
+    }
+
+    // If already classified, return existing classification
+    if (solution.classification && solution.classification.approach) {
+      res.status(200).json({
+        success: true,
+        data: solution.classification,
+      } as ApiResponse<IApproachClassification>);
+      return;
+    }
+
+    const problem = await Problem.findById(solution.problem).select('name statement').lean();
+    if (!problem) {
+      res.status(404).json({
+        success: false,
+        error: 'Associated problem not found.',
+      } as ApiResponse);
+      return;
+    }
+
+    const classification = await classifyService.classifySubmission({
+      submissionId: solution._id.toString(),
+      problemId: problem._id.toString(),
+      problemName: problem.name,
+      problemStatement: problem.statement,
+      code: solution.code,
+      language: solution.language,
+    });
+
+    if (!classification) {
+      res.status(502).json({
+        success: false,
+        error: 'AI classification service temporarily unavailable. Please try again.',
+      } as ApiResponse);
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: classification,
+    } as ApiResponse<IApproachClassification>);
+  } catch (error) {
+    next(error);
+  }
+}
+
 

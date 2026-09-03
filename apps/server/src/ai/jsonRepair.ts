@@ -50,14 +50,17 @@ export function extractCandidateJson(raw: string): string {
   return text;
 }
 
+import vm from 'vm';
+
 /**
- * Safely evaluates a JavaScript object literal in a restricted environment.
+ * Safely evaluates a JavaScript object literal in an isolated, null-prototype VM context.
  * Handles string concatenation ("a" + "b"), string `.repeat()`, comments, and single quotes.
+ * Never executes with global process privileges.
  */
 export function evaluateJsObject(code: string): any {
   if (!code || typeof code !== 'string') return null;
 
-  // Security guardrails: disallow dangerous global access
+  // Security guardrails: disallow dangerous global/prototype access
   const forbiddenPatterns = [
     /\bprocess\b/,
     /\brequire\b/,
@@ -70,6 +73,7 @@ export function evaluateJsObject(code: string): any {
     /\bFunction\b/,
     /\b__proto__\b/,
     /\bconstructor\b/,
+    /\bthis\b/,
   ];
 
   for (const pattern of forbiddenPatterns) {
@@ -87,9 +91,13 @@ export function evaluateJsObject(code: string): any {
   });
 
   try {
-    // Use Function constructor in isolated scope
-    const fn = new Function(`"use strict"; return (${safeCode});`);
-    return fn();
+    const sandbox = Object.freeze(Object.create(null));
+    const script = new vm.Script(`"use strict"; (${safeCode})`);
+    return script.runInNewContext(sandbox, {
+      timeout: 200,
+      displayErrors: false,
+      breakOnSigint: true,
+    });
   } catch {
     return null;
   }

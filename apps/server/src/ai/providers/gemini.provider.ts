@@ -103,6 +103,7 @@ export class GeminiProvider implements AIProvider {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30000),
         });
 
         if (!res.ok) {

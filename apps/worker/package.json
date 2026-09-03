@@ -4,10 +4,12 @@
   "description": "Dockerized Sandboxed Evaluation Worker for Anti Online Judge",
   "main": "dist/worker.js",
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc",
     "start": "node dist/worker.js",
     "dev": "tsx watch src/worker.ts",
     "build:image": "docker build -t oj-runner:latest -f docker/Dockerfile.runner docker",
+    "image:prune": "docker image prune -f",
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {

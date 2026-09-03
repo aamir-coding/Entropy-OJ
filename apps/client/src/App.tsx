@@ -1,15 +1,32 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { AdminRoute } from './components/AdminRoute';
 import { HomePage } from './pages/HomePage';
-import { ProblemDetailPage } from './pages/ProblemDetailPage';
-import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AdminProblemEditorPage } from './pages/admin/AdminProblemEditorPage';
+import { Loader2 } from 'lucide-react';
+
+// Route-level Code Splitting (Issue H-1)
+const ProblemDetailPage = lazy(() =>
+  import('./pages/ProblemDetailPage').then((m) => ({ default: m.ProblemDetailPage }))
+);
+const ProfilePage = lazy(() =>
+  import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+const AdminDashboardPage = lazy(() =>
+  import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+);
+const AdminProblemEditorPage = lazy(() =>
+  import('./pages/admin/AdminProblemEditorPage').then((m) => ({ default: m.AdminProblemEditorPage }))
+);
+
+const RouteLoadingFallback = () => (
+  <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Loader2 size={36} className="animate-spin" style={{ color: 'var(--accent-cyan)' }} />
+  </div>
+);
 
 export const App: React.FC = () => {
   return (
@@ -18,10 +35,11 @@ export const App: React.FC = () => {
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
           <Navbar />
           <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/problems/:code" element={<ProblemDetailPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/problems/:code" element={<ProblemDetailPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
               
               {/* Protected Admin Routes */}
               <Route
@@ -51,7 +69,8 @@ export const App: React.FC = () => {
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-          </main>
+          </Suspense>
+        </main>
           <AuthModal />
         </div>
       </AuthProvider>

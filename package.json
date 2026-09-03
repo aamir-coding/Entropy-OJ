@@ -8,14 +8,20 @@
     "apps/*"
   ],
   "scripts": {
+    "clean": "npm --workspace=packages/shared run clean && npm --workspace=apps/worker run clean && npm --workspace=apps/server run clean && npm --workspace=apps/client run clean",
     "build:shared": "npm --workspace=packages/shared run build",
+    "build:worker": "npm --workspace=apps/worker run build",
+    "build:server": "npm --workspace=apps/server run build",
+    "build:client": "npm --workspace=apps/client run build",
+    "build": "npm run build:shared && npm run build:worker && npm run build:server && npm run build:client",
     "dev:server": "npm --workspace=apps/server run dev",
     "dev:worker": "npm --workspace=apps/worker run dev",
     "dev:client": "npm --workspace=apps/client run dev",
     "seed:server": "npm --workspace=apps/server run seed",
     "test:shared": "npm --workspace=packages/shared run test",
+    "test:worker": "npm --workspace=apps/worker run test",
     "test:server": "npm --workspace=apps/server run test",
-    "test:worker": "npm --workspace=apps/worker run test"
+    "test": "npm run test:shared && npm run test:worker && npm run test:server"
   },
   "keywords": [
     "online-judge",

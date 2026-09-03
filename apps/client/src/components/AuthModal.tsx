@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { X, Lock, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -10,8 +10,7 @@ export const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isAuthModalOpen) return null;
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const resetFields = () => {
     setFullName('');
@@ -24,6 +23,48 @@ export const AuthModal: React.FC = () => {
     resetFields();
     closeAuthModal();
   };
+
+  // Keyboard accessibility and focus trap (Issue M-5)
+  useEffect(() => {
+    if (!isAuthModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const timer = setTimeout(() => {
+      const firstInput = modalRef.current?.querySelector<HTMLElement>('input');
+      firstInput?.focus();
+    }, 50);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timer);
+    };
+  }, [isAuthModalOpen, authModalMode]);
+
+  if (!isAuthModalOpen) return null;
 
   const handleSwitchMode = (newMode: 'login' | 'register') => {
     resetFields();
@@ -57,7 +98,7 @@ export const AuthModal: React.FC = () => {
       aria-modal="true"
       aria-labelledby="auth-modal-title"
     >
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div
           style={{

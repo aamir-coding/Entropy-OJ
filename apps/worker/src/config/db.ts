@@ -5,6 +5,7 @@ export async function connectDB(): Promise<typeof mongoose> {
   try {
     const conn = await mongoose.connect(env.MONGO_URI, {
       serverSelectionTimeoutMS: env.NODE_ENV === 'test' ? 1000 : 10000,
+      maxPoolSize: Math.max(env.WORKER_CONCURRENCY * 2 + 2, 6),
     });
     console.log(`[Worker DB] Connected to MongoDB: ${conn.connection.host}/${conn.connection.name}`);
     return conn;

@@ -13,7 +13,11 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  console.error('[Error Middleware]:', err);
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[Error Middleware] Status ${err.statusCode || 500}: ${err.message}`);
+  } else {
+    console.error('[Error Middleware]:', err);
+  }
 
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';

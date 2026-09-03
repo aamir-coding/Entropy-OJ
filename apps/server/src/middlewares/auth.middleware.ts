@@ -13,13 +13,23 @@ interface JwtPayload {
   email: string;
 }
 
+function extractToken(req: AuthRequest): string | undefined {
+  if (req.cookies?.token) {
+    return req.cookies.token;
+  }
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return undefined;
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : undefined;
+}
+
 export async function requireAuth(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+    const token = extractToken(req);
 
     if (!token) {
       res.status(401).json({
@@ -81,7 +91,7 @@ export async function optionalAuth(
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+    const token = extractToken(req);
     if (token) {
       const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
       const user = await User.findById(decoded.userId).select('-password');

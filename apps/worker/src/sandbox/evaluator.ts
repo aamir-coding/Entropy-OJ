@@ -8,12 +8,12 @@ import {
 } from '@anti-oj/shared';
 
 export interface ITestCaseModel {
-  _id: mongoose.Types.ObjectId;
-  problem: mongoose.Types.ObjectId;
+  _id?: any;
+  problem?: any;
   input: string;
   output: string;
-  isSample: boolean;
-  order: number;
+  isSample?: boolean;
+  order?: number;
 }
 
 export async function evaluateSubmission(

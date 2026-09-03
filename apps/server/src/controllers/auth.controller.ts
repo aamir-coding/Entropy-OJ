@@ -140,9 +140,13 @@ export async function getMe(
       return;
     }
 
-    // Optimized aggregation to compute user stats directly in MongoDB
-    const [totalSubmissions, statsAggregation] = await Promise.all([
+    // Consolidated parallel aggregation to compute user stats directly in MongoDB (Issue M-5)
+    const [totalSubmissions, totalAccepted, statsAggregation] = await Promise.all([
       Solution.countDocuments({ user: user._id }),
+      Solution.countDocuments({
+        user: user._id,
+        verdict: Verdicts.ACCEPTED,
+      }),
       Solution.aggregate([
         {
           $match: {
@@ -182,11 +186,6 @@ export async function getMe(
         },
       ]),
     ]);
-
-    const totalAccepted = await Solution.countDocuments({
-      user: user._id,
-      verdict: Verdicts.ACCEPTED,
-    });
 
     const aggResult = statsAggregation[0] || {
       solvedCount: 0,

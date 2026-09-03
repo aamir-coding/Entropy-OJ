@@ -17,6 +17,8 @@ import {
   FileCode,
   Lock,
   Eye,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -29,6 +31,15 @@ export const AdminDashboardPage: React.FC = () => {
   const [deletingProblem, setDeletingProblem] = useState<IAdminProblemListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+
+  // Reset to page 1 on filter or search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedDifficulty]);
+
   const fetchProblems = async () => {
     try {
       setLoading(true);
@@ -38,7 +49,7 @@ export const AdminDashboardPage: React.FC = () => {
         setProblems(res.data.data);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load administrative problems list.');
+      setError(err.message || err.response?.data?.error || 'Failed to load administrative problems list.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +69,8 @@ export const AdminDashboardPage: React.FC = () => {
         setDeletingProblem(null);
       }
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete problem.');
+      setError(err.message || err.response?.data?.error || 'Failed to delete problem.');
+      setDeletingProblem(null);
     } finally {
       setIsDeleting(false);
     }
@@ -78,6 +90,13 @@ export const AdminDashboardPage: React.FC = () => {
       return matchesSearch && matchesDifficulty;
     });
   }, [problems, searchQuery, selectedDifficulty]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProblems.length / limit));
+
+  const paginatedProblems = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredProblems.slice(start, start + limit);
+  }, [filteredProblems, page, limit]);
 
   const totalHiddenCases = useMemo(
     () => problems.reduce((acc, p) => acc + (p.hiddenCasesCount || 0), 0),
@@ -137,6 +156,40 @@ export const AdminDashboardPage: React.FC = () => {
           Create New Problem
         </Link>
       </div>
+
+      {/* Error Alert Banner (Issue L-1) */}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: 'var(--radius-md, 8px)',
+            padding: '0.875rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            color: '#f87171',
+            fontSize: '0.875rem',
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#f87171',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '1rem',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div
@@ -300,7 +353,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredProblems.map((prob) => {
+                {paginatedProblems.map((prob) => {
                   const difficultyClass =
                     prob.difficulty === 'Easy'
                       ? 'pill-easy'
@@ -446,6 +499,124 @@ export const AdminDashboardPage: React.FC = () => {
                 })}
               </tbody>
             </table>
+
+            {/* Pagination Controls Bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.875rem 1.25rem',
+                borderTop: '1px solid var(--border-subtle)',
+                background: 'var(--bg-secondary)',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+              }}
+            >
+              {/* Left: Range Info */}
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Showing{' '}
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {filteredProblems.length === 0 ? 0 : (page - 1) * limit + 1}
+                </span>{' '}
+                –{' '}
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {Math.min(page * limit, filteredProblems.length)}
+                </span>{' '}
+                of{' '}
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  {filteredProblems.length}
+                </span>{' '}
+                problems
+              </div>
+
+              {/* Center: Page Controls */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="btn btn-outline"
+                    style={{
+                      padding: '0.25rem 0.55rem',
+                      fontSize: '0.75rem',
+                      opacity: page <= 1 ? 0.4 : 1,
+                      cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                    }}
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Prev</span>
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      style={{
+                        minWidth: '28px',
+                        height: '28px',
+                        padding: '0 0.4rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: 'var(--radius-sm)',
+                        border: p === page ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                        background: p === page ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                        color: p === page ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="btn btn-outline"
+                    style={{
+                      padding: '0.25rem 0.55rem',
+                      fontSize: '0.75rem',
+                      opacity: page >= totalPages ? 0.4 : 1,
+                      cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                    }}
+                    title="Next Page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Right: Per-Page Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <span>Per page:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.75rem',
+                    width: 'auto',
+                    background: 'var(--bg-elevated)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  <option value={10} style={{ background: '#18181b', color: '#f4f4f5' }}>10</option>
+                  <option value={20} style={{ background: '#18181b', color: '#f4f4f5' }}>20 (Default)</option>
+                  <option value={30} style={{ background: '#18181b', color: '#f4f4f5' }}>30</option>
+                  <option value={50} style={{ background: '#18181b', color: '#f4f4f5' }}>50</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
       )}

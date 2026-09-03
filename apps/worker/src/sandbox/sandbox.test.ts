@@ -2,7 +2,7 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { DockerSandbox } from './dockerRunner';
+import { DockerSandbox, parseMetrics } from './dockerRunner';
 import { evaluateSubmission } from './evaluator';
 import { Verdicts, SupportedLanguages } from '@anti-oj/shared';
 import mongoose from 'mongoose';
@@ -12,6 +12,52 @@ const execFileAsync = promisify(execFile);
 let isDockerAvailable = false;
 
 describe('Docker Sandbox & Evaluator Engine Tests', () => {
+  describe('parseMetrics pure unit tests (runs without Docker)', () => {
+    it('should parse well-formed metrics output correctly', () => {
+      const raw = [
+        'WALL_SEC=0.12',
+        'USER_SEC=0.08',
+        'SYS_SEC=0.02',
+        'MAX_RSS_KB=4500',
+        'EXIT_CODE=0',
+        'PROCESS_EXIT_STATUS=0',
+      ].join('\n');
+
+      const metrics = parseMetrics(raw);
+      assert.strictEqual(metrics.wallTimeSec, 0.12);
+      assert.strictEqual(metrics.userCpuSec, 0.08);
+      assert.strictEqual(metrics.sysCpuSec, 0.02);
+      assert.strictEqual(metrics.cpuTimeMs, 100);
+      assert.strictEqual(metrics.maxRssKb, 4500);
+      assert.strictEqual(metrics.exitCode, 0);
+      assert.strictEqual(metrics.processExitStatus, 0);
+    });
+
+    it('should gracefully handle empty or malformed metrics string', () => {
+      const metrics = parseMetrics('');
+      assert.strictEqual(metrics.cpuTimeMs, 0);
+      assert.strictEqual(metrics.maxRssKb, 0);
+      assert.strictEqual(metrics.exitCode, 0);
+      assert.strictEqual(metrics.processExitStatus, 0);
+    });
+
+    it('should detect non-zero exit codes and timeout process status', () => {
+      const raw = [
+        'WALL_SEC=2.50',
+        'USER_SEC=1.00',
+        'SYS_SEC=0.00',
+        'MAX_RSS_KB=8192',
+        'EXIT_CODE=1',
+        'PROCESS_EXIT_STATUS=124',
+      ].join('\n');
+
+      const metrics = parseMetrics(raw);
+      assert.strictEqual(metrics.exitCode, 1);
+      assert.strictEqual(metrics.processExitStatus, 124);
+      assert.strictEqual(metrics.cpuTimeMs, 1000);
+    });
+  });
+
   before(async () => {
     try {
       await execFileAsync('docker', ['info'], { windowsHide: true });

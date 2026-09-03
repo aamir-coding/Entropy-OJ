@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { ALL_PROBLEM_DIFFICULTIES } from '../types';
+import { ExecutionLimits } from '../constants/limits';
+import { SupportedLanguages } from '../constants/languages';
 
 export const problemFilterSchema = z.object({
-  difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES as unknown as [string, ...string[]]).optional(),
+  difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES).optional(),
   tag: z.string().max(50).optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -31,20 +33,26 @@ export const createProblemSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Problem code must be lowercase alphanumeric with hyphens (e.g. two-sum)'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name cannot exceed 100 characters'),
   statement: z.string().min(10, 'Statement must be at least 10 characters'),
-  difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES as unknown as [string, ...string[]]),
+  difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES),
   tags: z.array(z.string().min(1).max(30)).min(1, 'At least one tag is required'),
   timeLimitMs: z
     .number()
     .int()
     .min(100, 'Time limit must be at least 100ms')
-    .max(10000, 'Time limit cannot exceed 10000ms')
-    .default(1000),
+    .max(
+      ExecutionLimits.MAX_TIME_LIMIT_MS,
+      `Time limit cannot exceed ${ExecutionLimits.MAX_TIME_LIMIT_MS}ms`
+    )
+    .default(ExecutionLimits.DEFAULT_TIME_LIMIT_MS),
   memoryLimitKb: z
     .number()
     .int()
     .min(16 * 1024, 'Memory limit must be at least 16MB')
-    .max(512 * 1024, 'Memory limit cannot exceed 512MB')
-    .default(256 * 1024),
+    .max(
+      ExecutionLimits.MAX_MEMORY_LIMIT_KB,
+      `Memory limit cannot exceed ${ExecutionLimits.MAX_MEMORY_LIMIT_KB / 1024}MB`
+    )
+    .default(ExecutionLimits.DEFAULT_MEMORY_LIMIT_KB),
   sampleCases: z.array(adminSampleCaseSchema).min(1, 'At least one sample test case is required'),
   testCases: z.array(adminJudgeTestCaseSchema).min(1, 'At least one test case is required'),
 });
@@ -59,7 +67,7 @@ export const updateProblemSchema = createProblemSchema.partial().extend({
 });
 
 export const validateSolutionSchema = z.object({
-  language: z.enum(['cpp', 'python']),
+  language: z.enum([SupportedLanguages.CPP, SupportedLanguages.PYTHON]),
   code: z.string().min(1, 'Code cannot be empty'),
 });
 
@@ -69,3 +77,4 @@ export type AdminJudgeTestCaseInput = z.infer<typeof adminJudgeTestCaseSchema>;
 export type CreateProblemInput = z.infer<typeof createProblemSchema>;
 export type UpdateProblemInput = z.infer<typeof updateProblemSchema>;
 export type ValidateSolutionInput = z.infer<typeof validateSolutionSchema>;
+

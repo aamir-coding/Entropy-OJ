@@ -61,6 +61,7 @@ export class GroqProvider implements AIProvider {
             Authorization: `Bearer ${this.apiKey}`,
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30000),
         });
 
         if (!res.ok) {

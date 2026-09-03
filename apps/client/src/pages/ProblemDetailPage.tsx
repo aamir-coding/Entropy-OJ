@@ -46,19 +46,36 @@ import {
   Brain,
 } from 'lucide-react';
 
+import { ErrorBoundary } from '../components/ErrorBoundary';
+
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {}
+  },
+};
+
 export const ProblemDetailPage: React.FC = () => {
   const { code: problemCodeParam } = useParams<{ code: string }>();
   const { user, openAuthModal } = useAuth();
 
-  // Layout persistence with react-resizable-panels
+  // Layout persistence with react-resizable-panels (Issue M-2: Safe Storage Adapter)
   const horizontalLayout = useDefaultLayout({
     id: 'anti-oj-workspace-layout-h-v3',
-    storage: localStorage,
+    storage: safeStorage,
   });
 
   const verticalLayout = useDefaultLayout({
     id: 'anti-oj-workspace-layout-v-v3',
-    storage: localStorage,
+    storage: safeStorage,
   });
 
   // Imperative panel ref for bottom console docking & resizing
@@ -80,6 +97,7 @@ export const ProblemDetailPage: React.FC = () => {
   // Console / Testcase Navigation State
   const [isConsoleCollapsed, setIsConsoleCollapsed] = useState(false);
   const [consoleTab, setConsoleTab] = useState<'testcases' | 'results' | 'compiler'>('testcases');
+  const [resultView, setResultView] = useState<'submission' | 'sample'>('sample');
   const [activeCaseIndex, setActiveCaseIndex] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [sampleRunning, setSampleRunning] = useState(false);
@@ -139,6 +157,32 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
+  // Approach & Complexity Classification on-demand
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [classifyError, setClassifyError] = useState<string | null>(null);
+
+  const handleClassifyApproach = async (submissionId: string) => {
+    try {
+      setIsClassifying(true);
+      setClassifyError(null);
+      const res = await api.post('/ai/classify', { submissionId });
+      if (res.data.success && isMountedRef.current) {
+        const classification = res.data.data;
+        setActiveSubmission((prev) => (prev ? { ...prev, classification } : prev));
+      } else if (isMountedRef.current) {
+        setClassifyError(res.data.error || 'Failed to classify approach.');
+      }
+    } catch (err: any) {
+      if (isMountedRef.current) {
+        setClassifyError(err.response?.data?.error || err.message || 'Classification failed. Please try again.');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsClassifying(false);
+      }
+    }
+  };
+
   // Submissions History for this problem
   const [pastSubmissions, setPastSubmissions] = useState<ISubmissionHistoryItem[]>([]);
   const [loadingPastSubmissions, setLoadingPastSubmissions] = useState(false);
@@ -149,16 +193,37 @@ export const ProblemDetailPage: React.FC = () => {
   });
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
-  // Track component mount status
+  // Track component mount status and clean up all active timers (Issue L-2)
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
+
+  // Synchronize and reset workspace when navigating between problems (Issue C-3)
+  useEffect(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setActiveSubmission(null);
+    setSampleResults([]);
+    setSampleRunError(null);
+    setSubmissionTimeoutMsg(null);
+    setSubmitting(false);
+    setSampleRunning(false);
+    setActiveCaseIndex(0);
+    setConsoleTab('testcases');
+    setResultView('sample');
+    setHintState({ loading: false, hint: null, error: null });
+    setEditorCode(LANGUAGE_CONFIGS[language]?.starterCode || LANGUAGE_CONFIGS.cpp.starterCode);
+  }, [problemCodeParam]);
 
   // Update dynamic page title
   useEffect(() => {
@@ -251,13 +316,14 @@ export const ProblemDetailPage: React.FC = () => {
     setShowResetConfirm(false);
   };
 
-  // Copy sample case input
+  // Copy sample case input (Issue L-2: tracked in copyTimeoutRef)
   const handleCopyInput = async (input: string, idx: number) => {
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(input);
         setCopiedInputIdx(idx);
-        setTimeout(() => {
+        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = setTimeout(() => {
           if (isMountedRef.current) setCopiedInputIdx(null);
         }, 2000);
       }
@@ -266,9 +332,11 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
-  // Real "Run Samples" using live backend evaluation
+  // Real "Run Samples" using live backend evaluation (Issue C-2: Explicit view state & activeSubmission reset)
   const handleRunSampleCases = async () => {
     if (!problem) return;
+    setResultView('sample');
+    setActiveSubmission(null);
     setSampleRunning(true);
     setSampleRunError(null);
     handleOpenConsoleTab('results');
@@ -301,14 +369,16 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
-  // Poll submission status until resolved
+  // Poll submission status until resolved (Issue H-4: Consecutive error tolerance)
   const startPollingSubmission = (submissionId: string) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     let attempts = 0;
     let postAcAttempts = 0;
+    let consecutiveErrors = 0;
     const maxAttempts = 30; // 30 seconds max polling
     const maxPostAcAttempts = 6; // Poll up to 6 seconds for async AI classification on Accepted
+    const maxConsecutiveErrors = 4; // Allow up to 4 consecutive transient errors
     let historyLoaded = false;
     setSubmissionTimeoutMsg(null);
 
@@ -322,11 +392,13 @@ export const ProblemDetailPage: React.FC = () => {
       try {
         const res = await api.get(`/submissions/${submissionId}`);
         if (res.data.success && isMountedRef.current) {
+          consecutiveErrors = 0;
           const updated: ISubmissionResponse = res.data.data;
           setActiveSubmission(updated);
 
           if (updated.verdict !== Verdicts.PENDING) {
             setSubmitting(false);
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
             if (!historyLoaded) {
               historyLoaded = true;
@@ -335,13 +407,6 @@ export const ProblemDetailPage: React.FC = () => {
               }
               loadPastSubmissions();
             }
-
-            // If Accepted and awaiting async AI classification, keep polling for up to 6s
-            if (updated.verdict === Verdicts.ACCEPTED && !updated.classification && postAcAttempts < maxPostAcAttempts) {
-              postAcAttempts++;
-            } else {
-              if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            }
           } else if (attempts >= maxAttempts) {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setSubmitting(false);
@@ -349,10 +414,14 @@ export const ProblemDetailPage: React.FC = () => {
           }
         }
       } catch (err) {
-        console.error('Polling error:', err);
-        if (isMountedRef.current) {
+        consecutiveErrors++;
+        console.warn(`[Polling] Transient network error (${consecutiveErrors}/${maxConsecutiveErrors}):`, err);
+        if (consecutiveErrors >= maxConsecutiveErrors) {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          setSubmitting(false);
+          if (isMountedRef.current) {
+            setSubmitting(false);
+            setSubmissionTimeoutMsg('Network connection lost during evaluation. Please check your submission history.');
+          }
         }
       }
     }, 1000);
@@ -368,11 +437,15 @@ export const ProblemDetailPage: React.FC = () => {
     if (!problem) return;
 
     try {
+      setResultView('submission');
+      setSampleResults([]);
       setSubmitting(true);
       handleOpenConsoleTab('results');
       setActiveSubmission(null);
       setSubmissionTimeoutMsg(null);
       setHintState({ loading: false, hint: null, error: null });
+      setIsClassifying(false);
+      setClassifyError(null);
 
       const res = await api.post('/submissions', {
         problemId: problem._id,
@@ -632,14 +705,16 @@ export const ProblemDetailPage: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Problem Statement Content rendered via ReactMarkdown & KaTeX */}
+                    {/* Problem Statement Content rendered via ReactMarkdown & KaTeX (Issue M-1) */}
                     <div className="markdown-statement">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                      >
-                        {problem.statement}
-                      </ReactMarkdown>
+                      <ErrorBoundary fallback={<div style={{ padding: '1rem', color: 'var(--verdict-wa)' }}>Failed to render problem math/markdown format.</div>}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {problem.statement}
+                        </ReactMarkdown>
+                      </ErrorBoundary>
                     </div>
 
                     {/* Formatted Problem Examples Section */}
@@ -864,6 +939,22 @@ export const ProblemDetailPage: React.FC = () => {
                       </select>
                     </div>
 
+                    {/* Keyboard accessibility hint (Issue L-3) */}
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        color: 'var(--text-muted)',
+                        marginLeft: 'auto',
+                        marginRight: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
+                      title="Toggle Tab key trapping inside editor"
+                    >
+                      Tab Trap: <kbd style={{ background: '#262626', padding: '1px 5px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>Ctrl+M</kbd>
+                    </span>
+
                     {/* Right: Reset Action */}
                     {showResetConfirm ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -896,25 +987,33 @@ export const ProblemDetailPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Monaco Editor Instance */}
+                  {/* Monaco Editor Instance with Localized ErrorBoundary (Issue M-1) */}
                   <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                    <Editor
-                      height="100%"
-                      language={LANGUAGE_CONFIGS[language].monacoLanguage}
-                      theme="vs-dark"
-                      value={editorCode}
-                      onChange={(value) => setEditorCode(value || '')}
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize,
-                        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                        lineNumbers: 'on',
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        tabSize: 4,
-                        padding: { top: 12, bottom: 12 },
-                      }}
-                    />
+                    <ErrorBoundary
+                      fallback={
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--verdict-wa)' }}>
+                          Failed to load Monaco Editor runtime. Please reload the page.
+                        </div>
+                      }
+                    >
+                      <Editor
+                        height="100%"
+                        language={LANGUAGE_CONFIGS[language].monacoLanguage}
+                        theme="vs-dark"
+                        value={editorCode}
+                        onChange={(value) => setEditorCode(value || '')}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize,
+                          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                          lineNumbers: 'on',
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                          tabSize: 4,
+                          padding: { top: 12, bottom: 12 },
+                        }}
+                      />
+                    </ErrorBoundary>
                   </div>
                 </div>
               </Panel>
@@ -1165,12 +1264,47 @@ export const ProblemDetailPage: React.FC = () => {
                               <AlertCircle size={15} />
                               <span>{sampleRunError}</span>
                             </div>
-                          ) : activeSubmission ? (
+                          ) : resultView === 'submission' && activeSubmission ? (
                             /* Full Submission Verdict View */
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
                                   <VerdictBadge verdict={activeSubmission.verdict} />
+                                  {activeSubmission.verdict === Verdicts.ACCEPTED && !activeSubmission.classification && (
+                                    <button
+                                      id="btn-classify-approach"
+                                      onClick={() => handleClassifyApproach(activeSubmission.submissionId)}
+                                      disabled={isClassifying}
+                                      className="btn btn-sm"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        padding: '0.2rem 0.65rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        background: 'rgba(56, 189, 248, 0.12)',
+                                        color: 'var(--accent-cyan)',
+                                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        cursor: isClassifying ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                      title="Analyze algorithmic approach & Big-O complexity"
+                                    >
+                                      {isClassifying ? (
+                                        <>
+                                          <Loader2 size={13} className="animate-spin" />
+                                          <span>Analyzing Approach...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles size={13} />
+                                          <span>Classify Approach & Complexity</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
                                 </div>
 
                                 {activeSubmission.verdict !== Verdicts.PENDING && (
@@ -1194,6 +1328,26 @@ export const ProblemDetailPage: React.FC = () => {
                                   </div>
                                 )}
                               </div>
+
+                              {classifyError && (
+                                <div
+                                  style={{
+                                    marginBottom: '0.75rem',
+                                    padding: '0.4rem 0.75rem',
+                                    fontSize: '0.75rem',
+                                    color: 'var(--verdict-wa)',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                  }}
+                                >
+                                  <AlertCircle size={13} />
+                                  <span>{classifyError}</span>
+                                </div>
+                              )}
 
                               {activeSubmission.failedTestCaseNumber && (
                                 <div
@@ -1260,13 +1414,6 @@ export const ProblemDetailPage: React.FC = () => {
                                     <span><strong>Time:</strong> {activeSubmission.classification.timeComplexity}</span>
                                     <span><strong>Space:</strong> {activeSubmission.classification.spaceComplexity}</span>
                                   </div>
-                                  {activeSubmission.classification.relatedProblemCode && (
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>
-                                      <Link to={`/problems/${activeSubmission.classification.relatedProblemCode}`} style={{ color: 'var(--accent-cyan)', textDecoration: 'underline' }}>
-                                        Try harder related problem: {activeSubmission.classification.relatedProblemCode} &rarr;
-                                      </Link>
-                                    </div>
-                                  )}
                                 </div>
                               )}
 

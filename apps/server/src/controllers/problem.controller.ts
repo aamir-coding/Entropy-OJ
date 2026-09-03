@@ -47,12 +47,16 @@ export async function getProblems(
       Problem.countDocuments(filter),
     ]);
 
-    // If user is authenticated, determine their status per problem (Solved / Attempted / Unsolved)
+    // If user is authenticated, determine their status per problem (Solved / Attempted / Unsolved) (Issue M-2: Scoped to current page)
     let userSolvedProblemIds = new Set<string>();
     let userAttemptedProblemIds = new Set<string>();
 
-    if (req.userId) {
-      const userSubmissions = await Solution.find({ user: req.userId })
+    if (req.userId && problems.length > 0) {
+      const pageProblemIds = problems.map((p) => p._id);
+      const userSubmissions = await Solution.find({
+        user: req.userId,
+        problem: { $in: pageProblemIds },
+      })
         .select('problem verdict')
         .lean();
 
@@ -120,8 +124,10 @@ export async function getProblemByIdOrCode(
   try {
     const identifier = String(req.params.identifier);
 
+    // Strict 24-character hexadecimal ObjectId check (Issue L-4)
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(identifier) && /^[a-f\d]{24}$/i.test(identifier);
     let query: Record<string, unknown>;
-    if (mongoose.Types.ObjectId.isValid(identifier)) {
+    if (isStrictHexId) {
       query = { $or: [{ _id: identifier }, { problemCode: identifier.toLowerCase() }] };
     } else {
       query = { problemCode: identifier.toLowerCase() };

@@ -3,10 +3,28 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import { SupportedLanguage } from '@anti-oj/shared';
 import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
+
+export const activeContainers = new Set<string>();
+
+export async function killActiveContainers(): Promise<void> {
+  if (activeContainers.size === 0) return;
+  const toKill = Array.from(activeContainers);
+  await Promise.allSettled(
+    toKill.map(async (name) => {
+      try {
+        await execFileAsync('docker', ['kill', name], { windowsHide: true });
+        await execFileAsync('docker', ['rm', '-f', name], { windowsHide: true });
+      } catch {} finally {
+        activeContainers.delete(name);
+      }
+    })
+  );
+}
 
 export interface CompileResult {
   success: boolean;
@@ -61,15 +79,12 @@ export class DockerSandbox {
   }
 
   private normalizeDockerMountPath(dirPath: string): string {
-    let normalized = dirPath.replace(/\\/g, '/');
-    if (/^[A-Za-z]:\//.test(normalized)) {
-      return normalized;
-    }
+    const normalized = dirPath.replace(/\\/g, '/');
     return normalized;
   }
 
-  async compile(language: SupportedLanguage, timeoutMs = 10000): Promise<CompileResult> {
-    const containerName = `oj-cmp-sample-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  async compile(language: SupportedLanguage, timeoutMs = 15000): Promise<CompileResult> {
+    const containerName = `oj-cmp-sample-${crypto.randomUUID()}`;
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
 
     const args = [
@@ -93,9 +108,11 @@ export class DockerSandbox {
       timeoutMs.toString(),
     ];
 
+    activeContainers.add(containerName);
+
     try {
       await execFileAsync('docker', args, {
-        timeout: timeoutMs + 5000,
+        timeout: timeoutMs + 10000,
         windowsHide: true,
       });
 
@@ -110,13 +127,6 @@ export class DockerSandbox {
         exitCode: 0,
       };
     } catch (error: any) {
-      try {
-        await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
-      } catch {}
-      try {
-        await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
-      } catch {}
-
       let compileErr = '';
       try {
         compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
@@ -129,6 +139,8 @@ export class DockerSandbox {
         compileOutput: compileErr.trim(),
         exitCode: error.code || 1,
       };
+    } finally {
+      activeContainers.delete(containerName);
     }
   }
 
@@ -138,7 +150,7 @@ export class DockerSandbox {
     timeLimitMs = 2000,
     memoryLimitKb = 256 * 1024
   ): Promise<RunExecutionResult> {
-    const containerName = `oj-run-sample-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const containerName = `oj-run-sample-${crypto.randomUUID()}`;
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
@@ -166,6 +178,8 @@ export class DockerSandbox {
     ];
 
     let timedOut = false;
+    activeContainers.add(containerName);
+
     try {
       await execFileAsync('docker', args, {
         timeout: wallTimeoutMs,
@@ -181,6 +195,8 @@ export class DockerSandbox {
       try {
         await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
       } catch {}
+    } finally {
+      activeContainers.delete(containerName);
     }
 
     let actualOutput = '';

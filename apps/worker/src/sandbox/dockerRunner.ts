@@ -3,10 +3,13 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import { SupportedLanguage } from '@anti-oj/shared';
 import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
+
+export const activeContainers = new Set<string>();
 
 export interface CompileResult {
   success: boolean;
@@ -29,6 +32,110 @@ export interface RunExecutionResult {
   stderr: string;
   metrics: RunMetrics;
   timedOut: boolean;
+}
+
+export function parseMetrics(raw: string): RunMetrics {
+  const result: RunMetrics = {
+    wallTimeSec: 0,
+    userCpuSec: 0,
+    sysCpuSec: 0,
+    cpuTimeMs: 0,
+    maxRssKb: 0,
+    exitCode: 0,
+    processExitStatus: 0,
+  };
+
+  if (!raw) return result;
+
+  const lines = raw.split('\n');
+  for (const line of lines) {
+    const [key, val] = line.trim().split('=');
+    if (!key || val === undefined) continue;
+
+    switch (key) {
+      case 'WALL_SEC':
+        result.wallTimeSec = parseFloat(val) || 0;
+        break;
+      case 'USER_SEC':
+        result.userCpuSec = parseFloat(val) || 0;
+        break;
+      case 'SYS_SEC':
+        result.sysCpuSec = parseFloat(val) || 0;
+        break;
+      case 'MAX_RSS_KB':
+        result.maxRssKb = parseInt(val, 10) || 0;
+        break;
+      case 'EXIT_CODE':
+        result.exitCode = parseInt(val, 10) || 0;
+        break;
+      case 'PROCESS_EXIT_STATUS':
+        result.processExitStatus = parseInt(val, 10) || 0;
+        break;
+    }
+  }
+
+  // CPU time drives time limit calculation
+  result.cpuTimeMs = Math.round((result.userCpuSec + result.sysCpuSec) * 1000);
+  return result;
+}
+
+export async function reapOrphanedContainers(): Promise<void> {
+  try {
+    const { stdout } = await execFileAsync(
+      'docker',
+      ['ps', '-a', '--filter', 'name=oj-', '--filter', 'status=exited', '-q'],
+      { windowsHide: true }
+    );
+    const ids = stdout.trim().split(/\s+/).filter(Boolean);
+    if (ids.length > 0) {
+      console.log(`[DockerReaper] Cleaning ${ids.length} exited oj- containers...`);
+      await execFileAsync('docker', ['rm', '-f', ...ids], { windowsHide: true });
+    }
+  } catch (err: any) {
+    if (env.NODE_ENV !== 'test') {
+      console.warn('[DockerReaper] Container reap skipped or failed:', err.message);
+    }
+  }
+}
+
+export async function killActiveContainers(): Promise<void> {
+  if (activeContainers.size === 0) return;
+  const toKill = Array.from(activeContainers);
+  console.log(`[DockerReaper] Terminating ${toKill.length} active containers...`);
+  await Promise.allSettled(
+    toKill.map(async (name) => {
+      try {
+        await execFileAsync('docker', ['kill', name], { windowsHide: true });
+        await execFileAsync('docker', ['rm', '-f', name], { windowsHide: true });
+      } catch {} finally {
+        activeContainers.delete(name);
+      }
+    })
+  );
+}
+
+export async function sweepStaleWorkspaces(maxAgeMs = 60 * 60 * 1000): Promise<void> {
+  const tmpBase = path.join(os.tmpdir(), 'anti-oj-workspaces');
+  try {
+    const entries = await fs.readdir(tmpBase, { withFileTypes: true });
+    const now = Date.now();
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name.startsWith('job-')) {
+        const fullPath = path.join(tmpBase, entry.name);
+        try {
+          const stats = await fs.stat(fullPath);
+          if (now - stats.mtimeMs > maxAgeMs) {
+            await fs.rm(fullPath, { recursive: true, force: true });
+            console.log(`[SandboxReaper] Purged stale workspace: ${entry.name}`);
+          }
+        } catch {}
+      }
+    }
+  } catch (err: any) {
+    if (err.code !== 'ENOENT' && env.NODE_ENV !== 'test') {
+      console.warn('[SandboxReaper] Failed to sweep stale workspaces:', err.message);
+    }
+  }
 }
 
 export class DockerSandbox {
@@ -61,17 +168,12 @@ export class DockerSandbox {
   }
 
   private normalizeDockerMountPath(dirPath: string): string {
-    let normalized = dirPath.replace(/\\/g, '/');
-    // On Windows, if path is e.g. C:/Users/..., normalize drive letter if needed
-    if (/^[A-Za-z]:\//.test(normalized)) {
-      // standard Docker Desktop for Windows accepts C:/... or //c/...
-      return normalized;
-    }
+    const normalized = dirPath.replace(/\\/g, '/');
     return normalized;
   }
 
-  async compile(language: SupportedLanguage, timeoutMs = 10000): Promise<CompileResult> {
-    const containerName = `oj-cmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  async compile(language: SupportedLanguage, timeoutMs = 15000): Promise<CompileResult> {
+    const containerName = `oj-cmp-${crypto.randomUUID()}`;
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
 
     const args = [
@@ -95,9 +197,11 @@ export class DockerSandbox {
       timeoutMs.toString(),
     ];
 
+    activeContainers.add(containerName);
+
     try {
       await execFileAsync('docker', args, {
-        timeout: timeoutMs + 5000,
+        timeout: timeoutMs + 10000,
         windowsHide: true,
       });
 
@@ -134,6 +238,8 @@ export class DockerSandbox {
         compileOutput: compileErr.trim(),
         exitCode: error.code || 1,
       };
+    } finally {
+      activeContainers.delete(containerName);
     }
   }
 
@@ -143,7 +249,7 @@ export class DockerSandbox {
     timeLimitMs = 1000,
     memoryLimitKb = 256 * 1024
   ): Promise<RunExecutionResult> {
-    const containerName = `oj-run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const containerName = `oj-run-${crypto.randomUUID()}`;
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
@@ -171,6 +277,8 @@ export class DockerSandbox {
     ];
 
     let timedOut = false;
+    activeContainers.add(containerName);
+
     try {
       await execFileAsync('docker', args, {
         timeout: wallTimeoutMs,
@@ -180,13 +288,14 @@ export class DockerSandbox {
       if (error.killed || error.signal === 'SIGTERM') {
         timedOut = true;
       }
-      // Force kill container on timeout / error to prevent zombie accumulation
       try {
         await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
       } catch {}
       try {
         await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
       } catch {}
+    } finally {
+      activeContainers.delete(containerName);
     }
 
     // Read outputs
@@ -206,57 +315,13 @@ export class DockerSandbox {
       metricsRaw = await fs.readFile(path.join(this.workspaceDir, 'metrics.txt'), 'utf-8');
     } catch {}
 
-    const metrics = this.parseMetrics(metricsRaw);
+    const metrics = parseMetrics(metricsRaw);
     return {
       actualOutput,
       stderr,
       metrics,
-      timedOut: timedOut || metrics.processExitStatus === 124, // 124 is standard timeout exit code
+      timedOut: timedOut || metrics.processExitStatus === 124,
     };
-  }
-
-  private parseMetrics(raw: string): RunMetrics {
-    const result: RunMetrics = {
-      wallTimeSec: 0,
-      userCpuSec: 0,
-      sysCpuSec: 0,
-      cpuTimeMs: 0,
-      maxRssKb: 0,
-      exitCode: 0,
-      processExitStatus: 0,
-    };
-
-    if (!raw) return result;
-
-    const lines = raw.split('\n');
-    for (const line of lines) {
-      const [key, val] = line.trim().split('=');
-      if (!key || val === undefined) continue;
-
-      switch (key) {
-        case 'WALL_SEC':
-          result.wallTimeSec = parseFloat(val) || 0;
-          break;
-        case 'USER_SEC':
-          result.userCpuSec = parseFloat(val) || 0;
-          break;
-        case 'SYS_SEC':
-          result.sysCpuSec = parseFloat(val) || 0;
-          break;
-        case 'MAX_RSS_KB':
-          result.maxRssKb = parseInt(val, 10) || 0;
-          break;
-        case 'EXIT_CODE':
-          result.exitCode = parseInt(val, 10) || 0;
-          break;
-        case 'PROCESS_EXIT_STATUS':
-          result.processExitStatus = parseInt(val, 10) || 0;
-          break;
-      }
-    }
-
-    // CPU time drives time limit calculation
-    result.cpuTimeMs = Math.round((result.userCpuSec + result.sysCpuSec) * 1000);
-    return result;
   }
 }
+

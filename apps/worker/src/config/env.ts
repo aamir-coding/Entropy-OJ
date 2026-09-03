@@ -1,15 +1,26 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { z } from 'zod';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-export const env = {
-  NODE_ENV: process.env.NODE_ENV || 'development',
-  MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/anti_oj',
-  REDIS_HOST: process.env.REDIS_HOST || 'localhost',
-  REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
-  REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
-  RUNNER_IMAGE: process.env.RUNNER_IMAGE || 'oj-runner:latest',
-  WORKER_CONCURRENCY: parseInt(process.env.WORKER_CONCURRENCY || '2', 10),
-  DOCKER_TIMEOUT_SEC: parseInt(process.env.DOCKER_TIMEOUT_SEC || '15', 10),
-};
+const workerEnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  MONGO_URI: z.string().min(1).default('mongodb://localhost:27017/anti_oj'),
+  REDIS_HOST: z.string().min(1).default('localhost'),
+  REDIS_PORT: z.coerce.number().int().positive().default(6379),
+  REDIS_PASSWORD: z.string().optional(),
+  RUNNER_IMAGE: z.string().min(1).default('oj-runner:latest'),
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+  DOCKER_TIMEOUT_SEC: z.coerce.number().int().positive().default(15),
+  WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(5001),
+});
+
+const parsed = workerEnvSchema.safeParse(process.env);
+if (!parsed.success) {
+  console.error('❌ [Worker] Invalid environment configuration:', parsed.error.format());
+  process.exit(1);
+}
+
+export const env = parsed.data;
+

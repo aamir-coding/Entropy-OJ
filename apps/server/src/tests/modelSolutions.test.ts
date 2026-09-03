@@ -7,15 +7,43 @@ import { diffOutput } from '@anti-oj/shared';
 
 describe('Model Solutions Verification Tests', () => {
   const problems = [
+    // 12 Easy
     'two-sum',
     'valid-parentheses',
     'reverse-array',
-    'longest-unique-substring',
+    'best-time-to-buy-and-sell-stock',
+    'binary-search',
+    'climbing-stairs',
+    'contains-duplicate',
+    'valid-anagram',
+    'single-number',
+    'palindrome-number',
+    'merge-two-sorted-arrays',
+    'fizz-buzz-extended',
+    // 10 Medium
     'maximum-subarray',
+    'longest-unique-substring',
+    'container-with-most-water',
+    'three-sum',
+    'coin-change',
+    'longest-increasing-subsequence',
+    'number-of-islands',
+    'kth-largest-element',
+    'course-schedule',
+    'word-break',
+    // 8 Hard
     'trapping-rain-water',
+    'sliding-window-maximum',
+    'median-of-two-sorted-arrays',
+    'edit-distance',
+    'merge-k-sorted-arrays',
+    'longest-consecutive-sequence',
+    'word-ladder',
+    'n-queens',
   ];
 
-  it('should have Python and C++ model solutions defined for all 6 problems', () => {
+  it('should have Python and C++ model solutions defined for all 30 problems', () => {
+    assert.strictEqual(problems.length, 30, 'Must test exactly 30 problems');
     for (const slug of problems) {
       const pyCode = getModelSolution(slug, SupportedLanguages.PYTHON);
       const cppCode = getModelSolution(slug, SupportedLanguages.CPP);

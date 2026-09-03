@@ -11,7 +11,7 @@ export const Verdicts = {
 
 export type Verdict = (typeof Verdicts)[keyof typeof Verdicts];
 
-export const VerdictShortCodes: Record<Verdict, string> = {
+export const VerdictShortCodes: Readonly<Record<Verdict, string>> = Object.freeze({
   [Verdicts.PENDING]: 'PD',
   [Verdicts.ACCEPTED]: 'AC',
   [Verdicts.WRONG_ANSWER]: 'WA',
@@ -20,8 +20,9 @@ export const VerdictShortCodes: Record<Verdict, string> = {
   [Verdicts.RUNTIME_ERROR]: 'RTE',
   [Verdicts.COMPILATION_ERROR]: 'CE',
   [Verdicts.INTERNAL_ERROR]: 'IE',
-};
+});
 
 export const ALL_VERDICTS: readonly Verdict[] = Object.freeze(
   Object.values(Verdicts)
 ) as readonly Verdict[];
+

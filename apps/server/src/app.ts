@@ -18,10 +18,14 @@ export function createApp(): Express {
     })
   );
 
-  // CORS configuration for SPA client
+  // CORS configuration for SPA client (Issue M-3)
+  const allowedOrigins = env.isProduction
+    ? [env.CLIENT_URL]
+    : Array.from(new Set([env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173']));
+
   app.use(
     cors({
-      origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: allowedOrigins,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

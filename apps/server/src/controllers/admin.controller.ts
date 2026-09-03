@@ -216,7 +216,8 @@ export async function updateAdminProblem(
     const input = req.body as UpdateProblemInput;
 
     let query: Record<string, unknown>;
-    if (mongoose.Types.ObjectId.isValid(id)) {
+    const isStrictHexId = mongoose.Types.ObjectId.isValid(id) && /^[a-f\d]{24}$/i.test(id);
+    if (isStrictHexId) {
       query = { $or: [{ _id: id }, { problemCode: id.toLowerCase() }] };
     } else {
       query = { problemCode: id.toLowerCase() };
@@ -231,15 +232,16 @@ export async function updateAdminProblem(
       return;
     }
 
-    if (input.problemCode && input.problemCode !== problem.problemCode) {
-      const conflict = await Problem.findOne({
-        problemCode: input.problemCode.toLowerCase(),
+    // Check problemCode uniqueness if changing
+    if (input.problemCode && input.problemCode.toLowerCase().trim() !== problem.problemCode) {
+      const existing = await Problem.findOne({
+        problemCode: input.problemCode.toLowerCase().trim(),
         _id: { $ne: problem._id },
       });
-      if (conflict) {
+      if (existing) {
         res.status(409).json({
           success: false,
-          error: `Problem with code '${input.problemCode}' already exists.`,
+          error: 'A problem with this problemCode already exists',
         });
         return;
       }
@@ -256,9 +258,8 @@ export async function updateAdminProblem(
 
     await problem.save();
 
-    // If testCases array is explicitly provided, replace test cases
+    // If testCases array is explicitly provided, replace test cases atomically (Issue C-4)
     if (input.testCases && Array.isArray(input.testCases)) {
-      await TestCase.deleteMany({ problem: problem._id });
       const testCaseDocs = input.testCases.map((tc, idx) => ({
         problem: problem._id,
         input: tc.input,
@@ -266,7 +267,26 @@ export async function updateAdminProblem(
         isSample: tc.isSample || false,
         order: tc.order ?? idx + 1,
       }));
-      await TestCase.insertMany(testCaseDocs);
+
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await TestCase.deleteMany({ problem: problem._id }, { session });
+          await TestCase.insertMany(testCaseDocs, { session });
+        });
+      } catch (txnError: any) {
+        if (
+          txnError.message?.includes('replica set') ||
+          txnError.message?.includes('Transactions are not supported')
+        ) {
+          await TestCase.deleteMany({ problem: problem._id });
+          await TestCase.insertMany(testCaseDocs);
+        } else {
+          throw txnError;
+        }
+      } finally {
+        await session.endSession();
+      }
     }
 
     res.status(200).json({

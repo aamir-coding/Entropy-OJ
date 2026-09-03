@@ -27,7 +27,7 @@ export interface ProblemReviewOptions {
 export class ReviewService {
   async reviewProblem(options: ProblemReviewOptions): Promise<IProblemReviewResponse> {
     // 1. Check Feature Flag
-    if (env.FEATURE_AI_REVIEW === 'false') {
+    if (!env.FEATURE_AI_REVIEW) {
       throw new AIProviderError(
         'The AI Problem Review Co-Pilot is currently disabled by administrator configuration.',
         403
