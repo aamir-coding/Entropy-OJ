@@ -10,6 +10,7 @@ import {
   Terminal,
   Activity,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -171,6 +172,36 @@ export const Navbar: React.FC = () => {
             >
               <Terminal size={13} />
               <span>Problems</span>
+            </Link>
+            <Link
+              to="/galaxy"
+              style={{
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: 'var(--accent-cyan)',
+                textDecoration: 'none',
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: 'rgba(77, 171, 247, 0.08)',
+                border: '1px solid rgba(77, 171, 247, 0.22)',
+                transition: 'all var(--transition-fast)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#ffffff';
+                e.currentTarget.style.backgroundColor = 'rgba(77, 171, 247, 0.16)';
+                e.currentTarget.style.borderColor = 'rgba(77, 171, 247, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--accent-cyan)';
+                e.currentTarget.style.backgroundColor = 'rgba(77, 171, 247, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(77, 171, 247, 0.22)';
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Galaxy Map</span>
             </Link>
             {isAdmin && (
               <Link

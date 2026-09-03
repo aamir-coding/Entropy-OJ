@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { Problem } from '../models/Problem';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { ProblemFilterInput, Verdicts, IProblemListItem } from '@anti-oj/shared';
+import { ProblemFilterInput, Verdicts, IProblemListItem, IGalaxyProgressResponse } from '@anti-oj/shared';
 
 function escapeRegex(text: string): string {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
@@ -154,3 +154,56 @@ export async function getProblemByIdOrCode(
     next(error);
   }
 }
+
+export async function getGalaxyProgress(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const allProblems = await Problem.find()
+      .select('problemCode')
+      .lean();
+    const availableCodes = allProblems.map((p) => p.problemCode);
+
+    let solvedCodes: string[] = [];
+    let attemptedCodes: string[] = [];
+
+    if (req.userId) {
+      const userSolutions = await Solution.find({ user: req.userId })
+        .populate<{ problem: { problemCode: string } }>('problem', 'problemCode')
+        .select('problem verdict')
+        .lean();
+
+      const solvedSet = new Set<string>();
+      const attemptedSet = new Set<string>();
+
+      for (const sol of userSolutions) {
+        if (sol.problem && typeof sol.problem === 'object' && (sol.problem as any).problemCode) {
+          const code = (sol.problem as any).problemCode;
+          attemptedSet.add(code);
+          if (sol.verdict === Verdicts.ACCEPTED) {
+            solvedSet.add(code);
+          }
+        }
+      }
+
+      solvedCodes = Array.from(solvedSet);
+      attemptedCodes = Array.from(attemptedSet);
+    }
+
+    const responseData: IGalaxyProgressResponse = {
+      availableCodes,
+      solvedCodes,
+      attemptedCodes,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: responseData,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

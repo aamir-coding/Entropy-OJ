@@ -256,3 +256,19 @@ export interface UserStats {
   hardSolved: number;
   acceptanceRate: number;
 }
+
+export interface IGalaxyProblem {
+  id: string;
+  code: string;
+  title: string;
+  difficulty: ProblemDifficulty;
+  category: string;
+  order: number;
+}
+
+export interface IGalaxyProgressResponse {
+  availableCodes: string[];
+  solvedCodes: string[];
+  attemptedCodes: string[];
+}
+

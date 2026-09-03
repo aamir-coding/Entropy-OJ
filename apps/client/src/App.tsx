@@ -15,6 +15,9 @@ const ProblemDetailPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
 );
+const GalaxyPage = lazy(() =>
+  import('./pages/GalaxyPage').then((m) => ({ default: m.GalaxyPage }))
+);
 const AdminDashboardPage = lazy(() =>
   import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
 );
@@ -38,6 +41,7 @@ export const App: React.FC = () => {
             <Suspense fallback={<RouteLoadingFallback />}>
               <Routes>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/galaxy" element={<GalaxyPage />} />
                 <Route path="/problems/:code" element={<ProblemDetailPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
               
