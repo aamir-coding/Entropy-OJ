@@ -717,7 +717,7 @@ code, pre {
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  border: 2px solid #38bdf8;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
   animation: supernovaPulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
   pointer-events: none;
 }

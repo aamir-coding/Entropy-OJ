@@ -429,3 +429,76 @@ export async function getProblemSubmissions(
     next(error);
   }
 }
+
+/**
+ * Retrieves the distinct list of problems successfully solved by the user.
+ */
+export async function getUserSolvedProblems(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userId = String(req.params.userId);
+
+    // Enforce authenticated user matches requested userId
+    if (userId !== req.userId && userId !== 'me') {
+      res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only view your own solved problems.',
+      });
+      return;
+    }
+
+    const targetUserId = req.userId!;
+
+    // Query all accepted submissions for the user
+    const acceptedSolutions = await Solution.find({
+      user: targetUserId,
+      verdict: Verdicts.ACCEPTED,
+    })
+      .populate<{ problem: { _id: string; problemCode: string; name: string; difficulty: 'Easy' | 'Medium' | 'Hard'; tags: string[] } }>(
+        'problem',
+        'problemCode name difficulty tags'
+      )
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    // Deduplicate by problem to get distinct solved problems with their best/latest accepted submission
+    const solvedMap = new Map<string, any>();
+
+    for (const sub of acceptedSolutions) {
+      if (!sub.problem) continue;
+      const probId = sub.problem._id.toString();
+      if (!solvedMap.has(probId)) {
+        solvedMap.set(probId, {
+          _id: sub._id.toString(),
+          problem: {
+            _id: probId,
+            problemCode: sub.problem.problemCode,
+            name: sub.problem.name,
+            difficulty: sub.problem.difficulty,
+            tags: sub.problem.tags || [],
+          },
+          language: sub.language,
+          executionTime: sub.executionTime,
+          memoryUsed: sub.memoryUsed,
+          code: sub.code,
+          solvedAt: sub.submittedAt,
+        });
+      }
+    }
+
+    const solvedProblems = Array.from(solvedMap.values());
+
+    res.status(200).json({
+      success: true,
+      data: {
+        solvedProblems,
+        totalSolved: solvedProblems.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -23,8 +23,25 @@ export async function getProblems(
       filter.difficulty = difficulty;
     }
 
-    if (tag) {
-      filter.tags = tag;
+    // Parse tag/tags filter: supports single tag, comma-separated list, or array of tags
+    const rawTags = (req.query as any).tags || (req.query as any).tag;
+    let selectedTags: string[] = [];
+    if (Array.isArray(rawTags)) {
+      selectedTags = rawTags
+        .flatMap((t) => String(t).split(','))
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0 && t !== 'All');
+    } else if (typeof rawTags === 'string' && rawTags.trim().length > 0 && rawTags.trim() !== 'All') {
+      selectedTags = rawTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0 && t !== 'All');
+    }
+
+    if (selectedTags.length === 1) {
+      filter.tags = selectedTags[0];
+    } else if (selectedTags.length > 1) {
+      filter.tags = { $all: selectedTags };
     }
 
     if (search && typeof search === 'string' && search.trim().length > 0) {
@@ -37,7 +54,7 @@ export async function getProblems(
     const safePage = Math.max(Number(page) || 1, 1);
     const skip = (safePage - 1) * safeLimit;
 
-    const [problems, totalCount] = await Promise.all([
+    const [problems, totalCount, totalCatalogProblems] = await Promise.all([
       Problem.find(filter)
         .select('problemCode name difficulty tags totalSubmissions acceptedSubmissions createdAt')
         .sort({ createdAt: 1 })
@@ -45,6 +62,7 @@ export async function getProblems(
         .limit(safeLimit)
         .lean(),
       Problem.countDocuments(filter),
+      Problem.countDocuments({}),
     ]);
 
     // If user is authenticated, determine their status per problem (Solved / Attempted / Unsolved) (Issue M-2: Scoped to current page)
@@ -103,8 +121,10 @@ export async function getProblems(
       success: true,
       data: {
         problems: items,
+        totalCatalogProblems,
         pagination: {
           total: totalCount,
+          totalCatalog: totalCatalogProblems,
           page: safePage,
           limit: safeLimit,
           totalPages: Math.ceil(totalCount / safeLimit),

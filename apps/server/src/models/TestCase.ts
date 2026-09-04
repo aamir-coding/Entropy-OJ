@@ -18,11 +18,11 @@ const testCaseSchema = new Schema<ITestCaseDocument>(
     },
     input: {
       type: String,
-      required: true,
+      default: '',
     },
     output: {
       type: String,
-      required: true,
+      default: '',
     },
     isSample: {
       type: Boolean,

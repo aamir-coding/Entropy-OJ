@@ -18,8 +18,8 @@ export interface IProblemDocument extends Document {
 
 const sampleCaseSchema = new Schema<ISampleTestCase>(
   {
-    input: { type: String, required: true },
-    output: { type: String, required: true },
+    input: { type: String, default: '' },
+    output: { type: String, default: '' },
     explanation: { type: String },
   },
   { _id: false }

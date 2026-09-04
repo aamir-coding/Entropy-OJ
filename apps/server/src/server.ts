@@ -6,9 +6,13 @@ import { submissionQueue } from './queues/submission.queue';
 import { aiQueue } from './queues/ai.queue';
 import { createAIWorker } from './ai/aiWorker';
 import { killActiveContainers } from './sandbox/dockerRunner';
+import { ensureProblemsSeeded } from './seeds/seedProblems';
 
 async function bootstrap() {
   await connectDB();
+
+  // Guarantee all 150 NeetCode problems are seeded across local sessions
+  await ensureProblemsSeeded();
 
   // Verify Redis readiness
   try {

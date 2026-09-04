@@ -76,8 +76,8 @@ const solutionSchema = new Schema<ISolutionDoc>(
 const testCaseSchema = new Schema<ITestCaseDoc>(
   {
     problem: { type: Schema.Types.ObjectId, ref: 'Problem', required: true },
-    input: { type: String, required: true },
-    output: { type: String, required: true },
+    input: { type: String, default: '' },
+    output: { type: String, default: '' },
     isSample: { type: Boolean, default: false },
     order: { type: Number, default: 1 },
   },

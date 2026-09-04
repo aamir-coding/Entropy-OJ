@@ -60,7 +60,7 @@ export const StarNode: React.FC<StarNodeProps> = ({
   let glowFilter = 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))';
 
   if (isSolved) {
-    // Supernova: Radiant Cyan / Emerald with intense glow
+    // Supernova: Radiant Cyan with diamond flare
     spikeColor = '#38bdf8';
     coreFill = 'radial-gradient(circle, #ffffff 0%, #38bdf8 60%, #0284c7 100%)';
     coreBorder = '#ffffff';
@@ -102,9 +102,10 @@ export const StarNode: React.FC<StarNodeProps> = ({
         />
       )}
 
-      {/* Radiant Pulse Rings for Supernova & Protostar */}
+      {/* Light pulsating white ring for Solved stars */}
       {isSolved && <div className="supernova-pulse-ring" style={{ inset: isHard ? '-8px' : '-6px' }} />}
-      {isAttempted && <div className="protostar-pulse-ring" style={{ inset: isHard ? '-6px' : '-4px' }} />}
+      {/* Amber pulsating ring only for Attempted (unsolved) stars */}
+      {!isSolved && isAttempted && <div className="protostar-pulse-ring" style={{ inset: isHard ? '-6px' : '-4px' }} />}
 
       {/* The Celestial Star Node (SVG Diffraction Spikes + Circular Center) */}
       <button

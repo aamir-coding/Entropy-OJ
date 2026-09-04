@@ -15,6 +15,7 @@ interface AuthContextType {
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  notifyStatsUpdated: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,8 +49,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const notifyStatsUpdated = useCallback(() => {
+    refreshUser();
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('anti-oj-sync');
+        bc.postMessage({ type: 'STATS_UPDATED', timestamp: Date.now() });
+        bc.close();
+      }
+      localStorage.setItem('anti-oj-last-ac-time', String(Date.now()));
+    } catch {}
+  }, [refreshUser]);
+
+  // Initial fetch and cross-tab synchronization
   useEffect(() => {
     refreshUser();
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('anti-oj-sync');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'STATS_UPDATED') {
+            refreshUser();
+          }
+        };
+      }
+    } catch {}
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'anti-oj-last-ac-time') {
+        refreshUser();
+      }
+    };
+
+    const handleFocus = () => {
+      refreshUser();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (channel) {
+        try {
+          channel.close();
+        } catch {}
+      }
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [refreshUser]);
 
   const login = useCallback(async (input: LoginInput) => {
@@ -122,6 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         refreshUser,
+        notifyStatsUpdated,
       }}
     >
       {children}

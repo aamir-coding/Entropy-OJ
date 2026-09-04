@@ -65,7 +65,7 @@ const safeStorage = {
 
 export const ProblemDetailPage: React.FC = () => {
   const { code: problemCodeParam } = useParams<{ code: string }>();
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, notifyStatsUpdated } = useAuth();
 
   // Layout persistence with react-resizable-panels (Issue M-2: Safe Storage Adapter)
   const horizontalLayout = useDefaultLayout({
@@ -399,6 +399,10 @@ export const ProblemDetailPage: React.FC = () => {
           if (updated.verdict !== Verdicts.PENDING) {
             setSubmitting(false);
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+            if (updated.verdict === Verdicts.ACCEPTED) {
+              notifyStatsUpdated();
+            }
 
             if (!historyLoaded) {
               historyLoaded = true;

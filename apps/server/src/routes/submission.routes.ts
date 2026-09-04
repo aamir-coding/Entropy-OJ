@@ -5,6 +5,7 @@ import {
   runSampleCases,
   getSubmissionById,
   getUserSubmissions,
+  getUserSolvedProblems,
   getProblemSubmissions,
 } from '../controllers/submission.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
@@ -44,6 +45,7 @@ router.post('/run', requireAuth, sampleRunLimiter, validateBody(runSampleSchema)
 router.post('/', requireAuth, submissionLimiter, validateBody(createSubmissionSchema), createSubmission);
 
 // Specific sub-paths MUST be registered before wildcard /:id
+router.get('/user/:userId/solved', requireAuth, getUserSolvedProblems);
 router.get('/user/:userId', requireAuth, getUserSubmissions);
 router.get('/problem/:problemId', requireAuth, getProblemSubmissions);
 

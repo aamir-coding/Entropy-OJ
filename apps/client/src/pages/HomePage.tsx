@@ -18,14 +18,15 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { user, stats } = useAuth();
+  const { user, stats, refreshUser } = useAuth();
   const [problems, setProblems] = useState<IProblemListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
-  const [selectedTag, setSelectedTag] = useState<string>('All');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [totalCatalogCount, setTotalCatalogCount] = useState<number>(0);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -37,10 +38,17 @@ export const HomePage: React.FC = () => {
     totalPages: 1,
   });
 
+  // Refresh user stats upon navigating to Home
+  useEffect(() => {
+    if (user) {
+      refreshUser();
+    }
+  }, [user?._id, refreshUser]);
+
   // Reset to page 1 whenever filters or search query change
   useEffect(() => {
     setPage(1);
-  }, [selectedDifficulty, selectedTag, debouncedSearchQuery]);
+  }, [selectedDifficulty, selectedTags, debouncedSearchQuery]);
 
   // Set page title
   useEffect(() => {
@@ -71,7 +79,7 @@ export const HomePage: React.FC = () => {
           limit: String(limit),
         };
         if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
-        if (selectedTag !== 'All') params.tag = selectedTag;
+        if (selectedTags.length > 0) params.tags = selectedTags.join(',');
         if (debouncedSearchQuery.trim()) params.search = debouncedSearchQuery.trim();
 
         const res = await api.get('/problems', {
@@ -80,6 +88,11 @@ export const HomePage: React.FC = () => {
         });
         if (res.data.success) {
           setProblems(res.data.data.problems);
+          if (res.data.data.totalCatalogProblems !== undefined) {
+            setTotalCatalogCount(res.data.data.totalCatalogProblems);
+          } else if (res.data.data.pagination?.totalCatalog !== undefined) {
+            setTotalCatalogCount(res.data.data.pagination.totalCatalog);
+          }
           if (res.data.data.pagination) {
             setPagination(res.data.data.pagination);
           }
@@ -109,23 +122,38 @@ export const HomePage: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [selectedDifficulty, selectedTag, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
+  }, [selectedDifficulty, selectedTags, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
+
+  const handleTagClick = (tag: string) => {
+    if (tag === 'All') {
+      setSelectedTags([]);
+    } else {
+      setSelectedTags((prev) =>
+        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      );
+    }
+  };
 
   const allTags = [
     'All',
     'Array',
     'Hash Table',
     'Two Pointers',
-    'Binary Search',
-    'Dynamic Programming',
     'Sliding Window',
     'Stack',
-    'String',
-    'Graph',
+    'Binary Search',
+    'Linked List',
+    'Tree',
+    'Trie',
     'Heap',
+    'Backtracking',
+    'Graph',
+    'Dynamic Programming',
+    'Greedy',
+    'Intervals',
     'Math',
     'Bit Manipulation',
-    'Backtracking',
+    'String',
   ];
 
   return (
@@ -187,7 +215,7 @@ export const HomePage: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-                  {problems.length}
+                  {totalCatalogCount || 150}
                 </div>
                 <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
                   Problems
@@ -195,7 +223,9 @@ export const HomePage: React.FC = () => {
               </div>
 
               {user && stats && (
-                <div
+                <Link
+                  to="/profile"
+                  id="home-solved-stat-link"
                   style={{
                     padding: '1.125rem 1.375rem',
                     minWidth: '130px',
@@ -203,7 +233,22 @@ export const HomePage: React.FC = () => {
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-faint)',
                     borderRadius: 'var(--radius-lg)',
+                    textDecoration: 'none',
+                    display: 'block',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(52, 211, 153, 0.5)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(52, 211, 153, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-faint)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  title="View your solved problems in Profile"
                 >
                   <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--verdict-ac)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                     {stats.solvedProblemsCount}
@@ -211,7 +256,7 @@ export const HomePage: React.FC = () => {
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
                     Solved
                   </div>
-                </div>
+                </Link>
               )}
             </div>
           </div>
@@ -290,26 +335,33 @@ export const HomePage: React.FC = () => {
               <Filter size={11} /> Tags
             </span>
             {allTags.map((tag) => {
-              const isSelected = selectedTag === tag;
+              const isSelected = tag === 'All' ? selectedTags.length === 0 : selectedTags.includes(tag);
               return (
                 <button
                   key={tag}
                   id={`filter-tag-${tag.toLowerCase().replace(/\s+/g, '-')}`}
-                  onClick={() => setSelectedTag(tag)}
+                  onClick={() => handleTagClick(tag)}
                   style={{
                     background: isSelected ? 'rgba(77,171,247,0.14)' : 'rgba(255,255,255,0.03)',
                     color: isSelected ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                    border: `1px solid ${isSelected ? 'rgba(77,171,247,0.35)' : 'var(--border-faint)'}`,
+                    border: `1px solid ${isSelected ? 'rgba(77,171,247,0.4)' : 'var(--border-faint)'}`,
                     borderRadius: 'var(--radius-full)',
                     padding: '0.175rem 0.6rem',
                     fontSize: '0.7rem',
-                    fontWeight: 500,
+                    fontWeight: isSelected ? 600 : 500,
                     cursor: 'pointer',
                     transition: 'all var(--transition-fast)',
                     letterSpacing: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
                   }}
+                  title={tag === 'All' ? 'Clear all tag filters' : isSelected ? `Click to remove ${tag} filter` : `Click to filter by ${tag}`}
                 >
-                  {tag}
+                  <span>{tag}</span>
+                  {tag !== 'All' && isSelected && (
+                    <span style={{ fontSize: '0.75rem', lineHeight: 1, opacity: 0.8 }}>&times;</span>
+                  )}
                 </button>
               );
             })}
@@ -360,8 +412,25 @@ export const HomePage: React.FC = () => {
           ) : problems.length === 0 ? (
             <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <HelpCircle size={36} style={{ margin: '0 auto 1rem', color: 'var(--text-faint)' }} />
-              <h3 style={{ fontSize: '1rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>No matching problems</h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Try clearing filters or your search query.</p>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-primary)' }}>
+                No match found
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                {selectedTags.length > 0
+                  ? 'No problems match the selected tags.'
+                  : 'No problems match your current filters.'}
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedTags([]);
+                  setSelectedDifficulty('All');
+                  setSearchQuery('');
+                }}
+                className="btn btn-outline"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 1.25rem' }}
+              >
+                Reset
+              </button>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
