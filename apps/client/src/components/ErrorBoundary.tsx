@@ -62,43 +62,43 @@ export class ErrorBoundary extends Component<Props, State> {
               width: '100%',
               padding: '2.5rem 2rem',
               textAlign: 'center',
-              background: 'var(--bg-card, #141414)',
-              border: '1px solid var(--border-medium, rgba(255,255,255,0.1))',
-              borderRadius: 'var(--radius-xl, 16px)',
-              boxShadow: 'var(--shadow-overlay, 0 20px 40px rgba(0,0,0,0.6))',
+              background: 'var(--bg-card, #0a0a0a)',
+              border: '1px solid var(--border-medium, #333333)',
+              borderRadius: 'var(--radius-sm, 4px)',
+              boxShadow: 'var(--shadow-overlay, 0 16px 48px rgba(0,0,0,0.95))',
             }}
           >
             <div
               style={{
-                width: '54px',
-                height: '54px',
-                borderRadius: '50%',
-                background: 'rgba(251, 113, 133, 0.12)',
-                border: '1px solid rgba(251, 113, 133, 0.25)',
+                width: '48px',
+                height: '48px',
+                borderRadius: 'var(--radius-xs, 2px)',
+                background: 'rgba(255, 101, 104, 0.08)',
+                border: '1px solid rgba(255, 101, 104, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 1.25rem',
-                color: 'var(--verdict-wa, #fb7185)',
+                color: 'var(--verdict-wa, #ff6568)',
               }}
             >
-              <AlertOctagon size={28} />
+              <AlertOctagon size={24} />
             </div>
 
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>
               Something went wrong
             </h1>
-            <p style={{ color: 'var(--text-secondary, #a1a1aa)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+            <p style={{ color: 'var(--text-secondary, #bababa)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
               An unexpected client error occurred in the workspace. You can reload the application or return to the problem catalog.
             </p>
 
             {Boolean((import.meta as any).env?.DEV) && this.state.error && (
               <pre
                 style={{
-                  background: 'var(--bg-base, #0d0d0d)',
-                  border: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
+                  background: 'var(--bg-primary, #000000)',
+                  border: '1px solid var(--border-medium, #333333)',
                   padding: '0.75rem',
-                  borderRadius: 'var(--radius-md, 8px)',
+                  borderRadius: 'var(--radius-xs, 2px)',
                   textAlign: 'left',
                   fontSize: '0.75rem',
                   color: 'var(--verdict-wa, #fb7185)',

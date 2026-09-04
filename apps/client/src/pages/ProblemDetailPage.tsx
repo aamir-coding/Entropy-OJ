@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { defineEntropyTheme } from '../styles/monacoTheme';
 
 const safeStorage = {
   getItem: (key: string): string | null => {
@@ -228,7 +229,7 @@ export const ProblemDetailPage: React.FC = () => {
   // Update dynamic page title
   useEffect(() => {
     if (problem) {
-      document.title = `${problem.name} | Anti Online Judge`;
+      document.title = `${problem.name} | Entropy`;
     }
   }, [problem]);
 
@@ -536,7 +537,9 @@ export const ProblemDetailPage: React.FC = () => {
       <div
         style={{
           padding: '0.5rem 1.25rem',
-          background: 'rgba(15, 23, 42, 0.95)',
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
@@ -547,16 +550,18 @@ export const ProblemDetailPage: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <Link
-            to="/"
+            to="/problems"
             className="btn btn-outline"
-            style={{ padding: '0.3rem 0.5rem', borderRadius: 'var(--radius-sm)' }}
+            style={{ padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-xs)' }}
             aria-label="Back to problem catalog"
-            title="Back to Catalog"
+            title="Back to Problems"
           >
             <ArrowLeft size={16} />
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h1 style={{ fontSize: '1.0625rem', fontWeight: 700 }}>{problem.name}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <h1 style={{ fontSize: '1.0625rem', fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              {problem.name}
+            </h1>
             <span className={`badge ${diffClass}`}>{problem.difficulty}</span>
             <span
               style={{
@@ -564,7 +569,8 @@ export const ProblemDetailPage: React.FC = () => {
                 color: 'var(--text-muted)',
                 fontFamily: 'var(--font-mono)',
                 padding: '0.1rem 0.4rem',
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--brand-neutral-600)',
+                border: '1px solid var(--border-medium)',
                 borderRadius: 'var(--radius-xs)',
               }}
             >
@@ -583,7 +589,7 @@ export const ProblemDetailPage: React.FC = () => {
             className="btn btn-secondary"
             style={{ padding: '0.35rem 0.875rem', fontSize: '0.8125rem' }}
           >
-            {sampleRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} style={{ color: 'var(--accent-cyan)' }} />}
+            {sampleRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />}
             <span>{sampleRunning ? 'Running Samples...' : 'Run Samples'}</span>
           </button>
 
@@ -592,7 +598,7 @@ export const ProblemDetailPage: React.FC = () => {
             onClick={handleSubmitCode}
             disabled={submitting}
             aria-label="Submit solution for evaluation"
-            className="btn btn-success"
+            className="btn btn-primary"
             style={{ padding: '0.35rem 1.125rem', fontSize: '0.8125rem' }}
           >
             {submitting ? (
@@ -602,7 +608,7 @@ export const ProblemDetailPage: React.FC = () => {
               </>
             ) : (
               <>
-                <Send size={14} />
+                <Send size={13} />
                 <span>Submit Solution</span>
               </>
             )}
@@ -618,7 +624,7 @@ export const ProblemDetailPage: React.FC = () => {
             <div
               style={{
                 height: '100%',
-                background: 'var(--bg-secondary)',
+                background: 'var(--bg-primary)',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -630,7 +636,7 @@ export const ProblemDetailPage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   padding: '0 1rem',
-                  background: 'rgba(15, 23, 42, 0.7)',
+                  background: '#050505',
                   borderBottom: '1px solid var(--border-subtle)',
                   flexShrink: 0,
                 }}
@@ -641,18 +647,20 @@ export const ProblemDetailPage: React.FC = () => {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.4rem',
+                    gap: '0.45rem',
                     padding: '0.75rem 1rem',
                     background: 'none',
                     border: 'none',
-                    borderBottom: `2px solid ${leftTab === 'statement' ? 'var(--accent-cyan)' : 'transparent'}`,
-                    color: leftTab === 'statement' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                    fontWeight: 600,
+                    borderBottom: `1px solid ${leftTab === 'statement' ? 'var(--brand-white)' : 'transparent'}`,
+                    color: leftTab === 'statement' ? 'var(--brand-white)' : 'var(--text-muted)',
+                    fontWeight: 500,
                     fontSize: '0.8125rem',
+                    letterSpacing: '-0.01em',
                     cursor: 'pointer',
+                    transition: 'color var(--transition-fast)',
                   }}
                 >
-                  <FileText size={15} />
+                  <FileText size={14} />
                   <span>Description</span>
                 </button>
 
@@ -662,26 +670,31 @@ export const ProblemDetailPage: React.FC = () => {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.4rem',
+                    gap: '0.45rem',
                     padding: '0.75rem 1rem',
                     background: 'none',
                     border: 'none',
-                    borderBottom: `2px solid ${leftTab === 'submissions' ? 'var(--accent-cyan)' : 'transparent'}`,
-                    color: leftTab === 'submissions' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                    fontWeight: 600,
+                    borderBottom: `1px solid ${leftTab === 'submissions' ? 'var(--brand-white)' : 'transparent'}`,
+                    color: leftTab === 'submissions' ? 'var(--brand-white)' : 'var(--text-muted)',
+                    fontWeight: 500,
                     fontSize: '0.8125rem',
+                    letterSpacing: '-0.01em',
                     cursor: 'pointer',
+                    transition: 'color var(--transition-fast)',
                   }}
                 >
-                  <History size={15} />
+                  <History size={14} />
                   <span>Submissions</span>
                   {pastSubmissions.length > 0 && (
                     <span
                       style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '10px',
+                        background: 'var(--brand-neutral-600)',
+                        border: '1px solid var(--border-medium)',
+                        color: 'var(--text-secondary)',
+                        borderRadius: 'var(--radius-xs)',
                         padding: '0.1rem 0.4rem',
-                        fontSize: '0.7rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
                       }}
                     >
                       {pastSubmissions.length}
@@ -724,8 +737,8 @@ export const ProblemDetailPage: React.FC = () => {
                     {/* Formatted Problem Examples Section */}
                     {problem.sampleCases && problem.sampleCases.length > 0 && (
                       <div style={{ marginTop: '2rem' }}>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <FileCode size={16} style={{ color: 'var(--accent-cyan)' }} />
+                        <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, letterSpacing: '-0.02em', marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                          <FileCode size={15} style={{ color: 'var(--text-secondary)' }} />
                           <span>Examples</span>
                         </h3>
 
@@ -734,14 +747,14 @@ export const ProblemDetailPage: React.FC = () => {
                             <div
                               key={idx}
                               style={{
-                                background: '#111827',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 'var(--radius-md)',
+                                background: '#080808',
+                                border: '1px solid var(--border-medium)',
+                                borderRadius: 'var(--radius-sm)',
                                 padding: '0.875rem 1rem',
                               }}
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                                   Example {idx + 1}
                                 </span>
                                 <button
@@ -754,35 +767,38 @@ export const ProblemDetailPage: React.FC = () => {
                                 </button>
                               </div>
 
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.25rem', letterSpacing: '0.01em' }}>
                                 Input:
                               </div>
                               <pre
                                 style={{
-                                  background: '#090d16',
-                                  padding: '0.4rem 0.6rem',
-                                  borderRadius: 'var(--radius-sm)',
+                                  background: '#000000',
+                                  border: '1px solid var(--border-subtle)',
+                                  padding: '0.45rem 0.65rem',
+                                  borderRadius: 'var(--radius-xs)',
                                   fontSize: '0.75rem',
                                   fontFamily: 'var(--font-mono)',
-                                  marginBottom: '0.5rem',
+                                  color: 'var(--text-primary)',
+                                  marginBottom: '0.625rem',
                                   overflowX: 'auto',
                                 }}
                               >
                                 {sc.input}
                               </pre>
 
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.25rem', letterSpacing: '0.01em' }}>
                                 Output:
                               </div>
                               <pre
                                 style={{
-                                  background: '#090d16',
-                                  padding: '0.4rem 0.6rem',
-                                  borderRadius: 'var(--radius-sm)',
+                                  background: '#000000',
+                                  border: '1px solid var(--border-subtle)',
+                                  padding: '0.45rem 0.65rem',
+                                  borderRadius: 'var(--radius-xs)',
                                   fontSize: '0.75rem',
                                   fontFamily: 'var(--font-mono)',
-                                  color: 'var(--accent-cyan)',
-                                  marginBottom: sc.explanation ? '0.5rem' : '0',
+                                  color: 'var(--brand-white)',
+                                  marginBottom: sc.explanation ? '0.625rem' : '0',
                                   overflowX: 'auto',
                                 }}
                               >
@@ -790,8 +806,8 @@ export const ProblemDetailPage: React.FC = () => {
                               </pre>
 
                               {sc.explanation && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(77, 171, 247, 0.06)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-xs)', borderLeft: '3px solid var(--accent-cyan)' }}>
-                                  <strong>Explanation:</strong> {sc.explanation}
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: '#0c0c0c', border: '1px solid var(--border-medium)', borderLeft: '2px solid var(--border-hover)', padding: '0.45rem 0.65rem', borderRadius: 'var(--radius-xs)' }}>
+                                  <strong style={{ color: 'var(--text-primary)' }}>Explanation:</strong> {sc.explanation}
                                 </div>
                               )}
                             </div>
@@ -885,13 +901,13 @@ export const ProblemDetailPage: React.FC = () => {
             <Group orientation="vertical" {...verticalLayout} style={{ height: '100%', overflow: 'hidden' }}>
               {/* Top Vertical Panel: Monaco Code Editor */}
               <Panel id="editor-monaco-panel" minSize="50%" defaultSize="70%">
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#1e1e1e', overflow: 'hidden' }}>
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#000000', overflow: 'hidden' }}>
                   {/* Editor Header Toolbar */}
                   <div
                     style={{
                       padding: '0.4rem 1rem',
-                      background: '#181818',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: '#050505',
+                      borderBottom: '1px solid var(--border-subtle)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -906,13 +922,13 @@ export const ProblemDetailPage: React.FC = () => {
                         onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
                         aria-label="Programming Language"
                         style={{
-                          background: '#252526',
+                          background: '#0a0a0a',
                           color: 'var(--text-primary)',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-medium)',
+                          borderRadius: 'var(--radius-xs)',
                           padding: '0.3rem 0.75rem',
                           fontSize: '0.8125rem',
-                          fontWeight: 600,
+                          fontWeight: 500,
                           outline: 'none',
                           cursor: 'pointer',
                         }}
@@ -926,12 +942,13 @@ export const ProblemDetailPage: React.FC = () => {
                         onChange={(e) => setFontSize(Number(e.target.value))}
                         aria-label="Editor Font Size"
                         style={{
-                          background: '#252526',
+                          background: '#0a0a0a',
                           color: 'var(--text-secondary)',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-medium)',
+                          borderRadius: 'var(--radius-xs)',
                           padding: '0.3rem 0.5rem',
                           fontSize: '0.75rem',
+                          fontWeight: 500,
                           outline: 'none',
                           cursor: 'pointer',
                         }}
@@ -956,7 +973,7 @@ export const ProblemDetailPage: React.FC = () => {
                       }}
                       title="Toggle Tab key trapping inside editor"
                     >
-                      Tab Trap: <kbd style={{ background: '#262626', padding: '1px 5px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.1)' }}>Ctrl+M</kbd>
+                      Tab Trap: <kbd style={{ background: '#111111', padding: '1px 5px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }}>Ctrl+M</kbd>
                     </span>
 
                     {/* Right: Reset Action */}
@@ -992,7 +1009,7 @@ export const ProblemDetailPage: React.FC = () => {
                   </div>
 
                   {/* Monaco Editor Instance with Localized ErrorBoundary (Issue M-1) */}
-                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', background: '#000000' }}>
                     <ErrorBoundary
                       fallback={
                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--verdict-wa)' }}>
@@ -1003,13 +1020,15 @@ export const ProblemDetailPage: React.FC = () => {
                       <Editor
                         height="100%"
                         language={LANGUAGE_CONFIGS[language].monacoLanguage}
-                        theme="vs-dark"
+                        theme="entropy-dark"
+                        beforeMount={defineEntropyTheme}
                         value={editorCode}
                         onChange={(value) => setEditorCode(value || '')}
                         options={{
                           minimap: { enabled: false },
                           fontSize,
-                          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                          fontFamily: "'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace",
+                          fontLigatures: true,
                           lineNumbers: 'on',
                           scrollBeyondLastLine: false,
                           automaticLayout: true,
@@ -1038,15 +1057,15 @@ export const ProblemDetailPage: React.FC = () => {
                   setIsConsoleCollapsed(size.inPixels <= 45);
                 }}
               >
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#141414', overflow: 'hidden' }}>
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#000000', overflow: 'hidden' }}>
                   {/* Console Header Docked Bar (Always 38px high and pinned) */}
                   <div
                     style={{
                       height: '38px',
                       minHeight: '38px',
                       maxHeight: '38px',
-                      background: '#181818',
-                      borderBottom: isConsoleCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: '#050505',
+                      borderBottom: isConsoleCollapsed ? 'none' : '1px solid var(--border-subtle)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1061,17 +1080,18 @@ export const ProblemDetailPage: React.FC = () => {
                         id="tab-console-testcases"
                         onClick={() => handleOpenConsoleTab('testcases')}
                         style={{
-                          background: consoleTab === 'testcases' && !isConsoleCollapsed ? '#252526' : 'transparent',
-                          color: consoleTab === 'testcases' && !isConsoleCollapsed ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                          border: 'none',
-                          padding: '0.35rem 0.75rem',
+                          background: consoleTab === 'testcases' && !isConsoleCollapsed ? 'var(--brand-neutral-600)' : 'transparent',
+                          color: consoleTab === 'testcases' && !isConsoleCollapsed ? 'var(--brand-white)' : 'var(--text-muted)',
+                          border: consoleTab === 'testcases' && !isConsoleCollapsed ? '1px solid var(--border-medium)' : '1px solid transparent',
+                          padding: '0.3rem 0.65rem',
                           fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: '4px',
+                          fontWeight: 500,
+                          borderRadius: 'var(--radius-xs)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.35rem',
+                          transition: 'all var(--transition-fast)',
                         }}
                       >
                         <FileCode size={13} />
@@ -1082,17 +1102,18 @@ export const ProblemDetailPage: React.FC = () => {
                         id="tab-console-results"
                         onClick={() => handleOpenConsoleTab('results')}
                         style={{
-                          background: consoleTab === 'results' && !isConsoleCollapsed ? '#252526' : 'transparent',
-                          color: consoleTab === 'results' && !isConsoleCollapsed ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                          border: 'none',
-                          padding: '0.35rem 0.75rem',
+                          background: consoleTab === 'results' && !isConsoleCollapsed ? 'var(--brand-neutral-600)' : 'transparent',
+                          color: consoleTab === 'results' && !isConsoleCollapsed ? 'var(--brand-white)' : 'var(--text-muted)',
+                          border: consoleTab === 'results' && !isConsoleCollapsed ? '1px solid var(--border-medium)' : '1px solid transparent',
+                          padding: '0.3rem 0.65rem',
                           fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: '4px',
+                          fontWeight: 500,
+                          borderRadius: 'var(--radius-xs)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.35rem',
+                          transition: 'all var(--transition-fast)',
                         }}
                       >
                         <Terminal size={13} />
@@ -1104,17 +1125,18 @@ export const ProblemDetailPage: React.FC = () => {
                           id="tab-console-compiler"
                           onClick={() => handleOpenConsoleTab('compiler')}
                           style={{
-                            background: consoleTab === 'compiler' && !isConsoleCollapsed ? '#252526' : 'transparent',
+                            background: consoleTab === 'compiler' && !isConsoleCollapsed ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
                             color: 'var(--verdict-wa)',
-                            border: 'none',
-                            padding: '0.35rem 0.75rem',
+                            border: consoleTab === 'compiler' && !isConsoleCollapsed ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid transparent',
+                            padding: '0.3rem 0.65rem',
                             fontSize: '0.75rem',
-                            fontWeight: 600,
-                            borderRadius: '4px',
+                            fontWeight: 500,
+                            borderRadius: 'var(--radius-xs)',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.35rem',
+                            transition: 'all var(--transition-fast)',
                           }}
                         >
                           <AlertTriangle size={13} />
@@ -1156,7 +1178,7 @@ export const ProblemDetailPage: React.FC = () => {
 
                   {/* Console Body Content (Visible only when expanded, clean vertical fit) */}
                   {!isConsoleCollapsed && (
-                    <div style={{ flex: 1, minHeight: 0, padding: '0.75rem 1rem', overflowY: 'auto' }}>
+                    <div style={{ flex: 1, minHeight: 0, padding: '0.75rem 1rem', overflowY: 'auto', background: '#000000' }}>
                       {consoleTab === 'testcases' ? (
                         /* TAB 1: Interactive Sample Testcases Navigator */
                         <div>
@@ -1175,9 +1197,9 @@ export const ProblemDetailPage: React.FC = () => {
 
                           {/* Active Case Details */}
                           {currentSampleCase && (
-                            <div className="glass-card" style={{ padding: '0.75rem 0.875rem', background: '#111827' }}>
+                            <div style={{ padding: '0.75rem 0.875rem', background: '#080808', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', letterSpacing: '0.01em' }}>
                                   Input:
                                 </span>
                                 <button
@@ -1195,11 +1217,13 @@ export const ProblemDetailPage: React.FC = () => {
                               </div>
                               <pre
                                 style={{
-                                  background: '#090d16',
+                                  background: '#000000',
+                                  border: '1px solid var(--border-subtle)',
                                   padding: '0.4rem 0.6rem',
-                                  borderRadius: 'var(--radius-sm)',
+                                  borderRadius: 'var(--radius-xs)',
                                   fontSize: '0.75rem',
                                   fontFamily: 'var(--font-mono)',
+                                  color: 'var(--text-primary)',
                                   marginBottom: '0.5rem',
                                   maxHeight: '90px',
                                   overflowX: 'auto',
@@ -1210,17 +1234,18 @@ export const ProblemDetailPage: React.FC = () => {
                                 {currentSampleCase.input}
                               </pre>
 
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.25rem', letterSpacing: '0.01em' }}>
                                 Expected Output:
                               </div>
                               <pre
                                 style={{
-                                  background: '#090d16',
+                                  background: '#000000',
+                                  border: '1px solid var(--border-subtle)',
                                   padding: '0.4rem 0.6rem',
-                                  borderRadius: 'var(--radius-sm)',
+                                  borderRadius: 'var(--radius-xs)',
                                   fontSize: '0.75rem',
                                   fontFamily: 'var(--font-mono)',
-                                  color: 'var(--accent-cyan)',
+                                  color: 'var(--brand-white)',
                                   maxHeight: '90px',
                                   overflowX: 'auto',
                                   overflowY: 'auto',
@@ -1231,8 +1256,8 @@ export const ProblemDetailPage: React.FC = () => {
                               </pre>
 
                               {currentSampleCase.explanation && (
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(77,171,247,0.06)', padding: '0.35rem 0.55rem', borderRadius: '4px' }}>
-                                  <strong>Note:</strong> {currentSampleCase.explanation}
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', background: '#0c0c0c', border: '1px solid var(--border-medium)', borderLeft: '2px solid var(--border-hover)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-xs)' }}>
+                                  <strong style={{ color: 'var(--text-primary)' }}>Note:</strong> {currentSampleCase.explanation}
                                 </div>
                               )}
                             </div>
@@ -1399,14 +1424,14 @@ export const ProblemDetailPage: React.FC = () => {
                                 <div
                                   style={{
                                     marginTop: '0.75rem',
-                                    background: 'rgba(34, 197, 94, 0.08)',
-                                    border: '1px solid rgba(34, 197, 94, 0.25)',
-                                    borderRadius: 'var(--radius-md)',
+                                    background: '#080808',
+                                    border: '1px solid rgba(5, 223, 114, 0.25)',
+                                    borderRadius: 'var(--radius-sm)',
                                     padding: '0.75rem 1rem',
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                       <Sparkles size={14} /> Approach Classification
                                     </span>
                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AI Verified</span>
@@ -1491,13 +1516,12 @@ export const ProblemDetailPage: React.FC = () => {
 
                                   {hintState.hint && (
                                     <div
-                                      className="glass-card"
                                       style={{
                                         marginTop: '0.5rem',
                                         padding: '0.875rem 1rem',
-                                        background: 'rgba(30, 27, 20, 0.7)',
-                                        border: '1px solid rgba(234, 179, 8, 0.3)',
-                                        borderRadius: 'var(--radius-md)',
+                                        background: '#080808',
+                                        border: '1px solid rgba(234, 179, 8, 0.25)',
+                                        borderRadius: 'var(--radius-sm)',
                                       }}
                                     >
                                       <div
@@ -1510,7 +1534,7 @@ export const ProblemDetailPage: React.FC = () => {
                                           borderBottom: '1px solid rgba(234, 179, 8, 0.15)',
                                         }}
                                       >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#eab308', fontWeight: 700, fontSize: '0.8125rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#eab308', fontWeight: 600, fontSize: '0.8125rem' }}>
                                           <Lightbulb size={15} />
                                           <span>Socratic Debug Hint</span>
                                         </div>
@@ -1537,15 +1561,15 @@ export const ProblemDetailPage: React.FC = () => {
                                                   style={{
                                                     background: 'rgba(255, 255, 255, 0.08)',
                                                     padding: '0.1rem 0.35rem',
-                                                    borderRadius: '3px',
+                                                    borderRadius: 'var(--radius-xs)',
                                                     fontSize: '0.85em',
                                                     fontFamily: 'var(--font-mono)',
-                                                    color: 'var(--accent-cyan)',
+                                                    color: 'var(--text-primary)',
                                                   }}
                                                   {...props}
                                                 />
                                               ) : (
-                                                <pre style={{ background: '#090d16', padding: '0.4rem 0.6rem', borderRadius: '4px', margin: '0.35rem 0', fontSize: '0.78rem' }}>
+                                                <pre style={{ background: '#000000', border: '1px solid var(--border-subtle)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-xs)', margin: '0.35rem 0', fontSize: '0.78rem' }}>
                                                   <code {...props} />
                                                 </pre>
                                               ),
@@ -1582,9 +1606,9 @@ export const ProblemDetailPage: React.FC = () => {
 
                               {/* Active Case Output Diff */}
                               {currentResultCase && (
-                                <div className="glass-card" style={{ padding: '0.75rem 0.875rem', background: '#111827' }}>
+                                <div style={{ padding: '0.75rem 0.875rem', background: '#080808', border: '1px solid var(--border-medium)', borderRadius: 'var(--radius-sm)' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                       Case {currentResultCase.caseIndex} Result
                                     </span>
                                     <span
@@ -1595,15 +1619,18 @@ export const ProblemDetailPage: React.FC = () => {
                                     </span>
                                   </div>
 
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
+                                  <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.15rem', letterSpacing: '0.01em' }}>
                                     Input:
                                   </div>
                                   <pre
                                     style={{
                                       fontSize: '0.75rem',
-                                      background: '#090d16',
+                                      background: '#000000',
+                                      border: '1px solid var(--border-subtle)',
                                       padding: '0.35rem 0.55rem',
-                                      borderRadius: '4px',
+                                      borderRadius: 'var(--radius-xs)',
+                                      color: 'var(--text-primary)',
+                                      fontFamily: 'var(--font-mono)',
                                       marginBottom: '0.4rem',
                                       maxHeight: '80px',
                                       overflowX: 'auto',
@@ -1614,16 +1641,18 @@ export const ProblemDetailPage: React.FC = () => {
                                     {currentResultCase.input}
                                   </pre>
 
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
+                                  <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.15rem', letterSpacing: '0.01em' }}>
                                     Your Output:
                                   </div>
                                   <pre
                                     style={{
                                       fontSize: '0.75rem',
-                                      background: '#090d16',
+                                      background: '#000000',
+                                      border: '1px solid var(--border-subtle)',
                                       padding: '0.35rem 0.55rem',
-                                      borderRadius: '4px',
+                                      borderRadius: 'var(--radius-xs)',
                                       color: currentResultCase.passed ? 'var(--verdict-ac)' : 'var(--verdict-wa)',
+                                      fontFamily: 'var(--font-mono)',
                                       marginBottom: '0.4rem',
                                       maxHeight: '80px',
                                       overflowX: 'auto',
@@ -1634,16 +1663,18 @@ export const ProblemDetailPage: React.FC = () => {
                                     {currentResultCase.actualOutput || '<empty>'}
                                   </pre>
 
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
+                                  <div style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.15rem', letterSpacing: '0.01em' }}>
                                     Expected Output:
                                   </div>
                                   <pre
                                     style={{
                                       fontSize: '0.75rem',
-                                      background: '#090d16',
+                                      background: '#000000',
+                                      border: '1px solid var(--border-subtle)',
                                       padding: '0.35rem 0.55rem',
-                                      borderRadius: '4px',
+                                      borderRadius: 'var(--radius-xs)',
                                       color: 'var(--text-muted)',
+                                      fontFamily: 'var(--font-mono)',
                                       maxHeight: '80px',
                                       overflowX: 'auto',
                                       overflowY: 'auto',
@@ -1670,9 +1701,9 @@ export const ProblemDetailPage: React.FC = () => {
                           </div>
                           <pre
                             style={{
-                              background: '#090d16',
+                              background: '#050505',
                               padding: '0.625rem 0.875rem',
-                              borderRadius: 'var(--radius-sm)',
+                              borderRadius: 'var(--radius-xs)',
                               fontSize: '0.8125rem',
                               fontFamily: 'var(--font-mono)',
                               color: '#fda4af',

@@ -29,7 +29,7 @@ export const GalaxyPage: React.FC = () => {
   const [selectedProblem, setSelectedProblem] = useState<IStarProblem | null>(null);
 
   useEffect(() => {
-    document.title = 'Galaxy Node Map | Anti Online Judge';
+    document.title = 'Galaxy Node Map | Entropy';
   }, []);
 
   const fetchProgress = useCallback(async () => {

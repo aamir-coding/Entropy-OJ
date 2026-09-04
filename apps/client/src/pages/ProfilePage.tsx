@@ -55,7 +55,7 @@ export const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    document.title = 'Profile & Solved Problems | Anti Online Judge';
+    document.title = 'Profile & Solved Problems | Entropy';
   }, []);
 
   const fetchSolvedProblems = useCallback(async () => {

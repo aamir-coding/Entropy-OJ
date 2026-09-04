@@ -3,6 +3,7 @@ import { X, Copy, Check, Terminal, AlertCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { Verdicts } from '@anti-oj/shared';
 import { ErrorBoundary } from './ErrorBoundary';
+import { defineEntropyTheme } from '../styles/monacoTheme';
 
 interface ViewCodeModalProps {
   isOpen: boolean;
@@ -99,13 +100,13 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-elevated)',
+            background: '#080808',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Terminal size={18} style={{ color: 'var(--accent-cyan)' }} />
+            <Terminal size={17} style={{ color: 'var(--text-secondary)' }} />
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>
+              <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--brand-white)' }}>
                 {problemName ? `Submission: ${problemName}` : 'Submitted Code'}
               </h3>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -132,7 +133,7 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
               onClick={handleCopy}
               className="btn btn-outline"
               aria-label="Copy code to clipboard"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: 'var(--radius-xs)' }}
             >
               {copied ? (
                 <Check size={14} style={{ color: 'var(--verdict-ac)' }} />
@@ -152,6 +153,7 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
                 padding: '0.25rem',
+                borderRadius: 'var(--radius-xs)',
               }}
             >
               <X size={18} />
@@ -160,7 +162,7 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
         </div>
 
         {/* Editor Content with ErrorBoundary (Issue M-1) */}
-        <div style={{ height: '450px', background: '#1e1e1e' }}>
+        <div style={{ height: '450px', background: '#000000' }}>
           <ErrorBoundary
             fallback={
               <div style={{ padding: '2rem', color: 'var(--verdict-wa)', textAlign: 'center' }}>
@@ -171,14 +173,16 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
             <Editor
               height="100%"
               language={monacoLang}
-              theme="vs-dark"
+              theme="entropy-dark"
+              beforeMount={defineEntropyTheme}
               value={code}
               options={{
                 readOnly: true,
                 domReadOnly: true,
                 minimap: { enabled: false },
                 fontSize: 13,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Geist Mono', 'JetBrains Mono', monospace",
+                fontLigatures: true,
                 scrollBeyondLastLine: false,
                 lineNumbers: 'on',
                 padding: { top: 12 },

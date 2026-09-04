@@ -52,7 +52,7 @@ export const HomePage: React.FC = () => {
 
   // Set page title
   useEffect(() => {
-    document.title = 'Problems | Anti Online Judge';
+    document.title = 'Problems | Entropy';
   }, []);
 
   // Debounce search query input by 300ms
@@ -163,61 +163,47 @@ export const HomePage: React.FC = () => {
         <div
           className="glass-panel"
           style={{
-            padding: '2rem 2rem',
-            marginBottom: '1.25rem',
+            padding: '1.75rem 2rem',
+            marginBottom: '1rem',
             background: 'var(--bg-card)',
-            position: 'relative',
-            overflow: 'hidden',
+            border: '1px solid var(--border-medium)',
+            borderRadius: 'var(--radius-sm)',
           }}
         >
-          {/* Ambient glow */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '-60px',
-              right: '-40px',
-              width: '320px',
-              height: '320px',
-              background: 'radial-gradient(circle, rgba(77,171,247,0.10) 0%, transparent 65%)',
-              pointerEvents: 'none',
-            }}
-          />
-
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
             <div style={{ maxWidth: '600px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.875rem' }}>
-                <span className="badge badge-tag" style={{ background: 'rgba(77,171,247,0.10)', color: 'var(--accent-cyan)', borderColor: 'rgba(77,171,247,0.22)' }}>
-                  <Shield size={11} /> Dockerized Sandbox
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                <span className="badge badge-tag">
+                  <Shield size={10} /> Docker Sandbox
                 </span>
-                <span className="badge badge-tag" style={{ background: 'rgba(52,211,153,0.10)', color: 'var(--verdict-ac)', borderColor: 'rgba(52,211,153,0.22)' }}>
-                  <Code size={11} /> C++17 & Python 3
+                <span className="badge badge-tag">
+                  <Code size={10} /> C++17 & Python 3
                 </span>
               </div>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '0.75rem', letterSpacing: '-0.03em' }}>
-                Solve. Submit.{' '}
-                <span style={{ color: 'var(--accent-cyan)' }}>Live Verdicts.</span>
+              <h1 className="text-gradient" style={{ fontSize: '1.875rem', fontWeight: 400, lineHeight: 1.15, marginBottom: '0.5rem', letterSpacing: '-0.035em' }}>
+                Solve. Submit. Live Verdicts.
               </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.65, maxWidth: '520px' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, maxWidth: '520px' }}>
                 Master algorithmic data structures with an isolated execution sandbox, microsecond CPU timing, and real-time judge feedback.
               </p>
             </div>
 
             {/* Quick Stats */}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.625rem' }}>
               <div
                 style={{
-                  padding: '1.125rem 1.375rem',
-                  minWidth: '130px',
+                  padding: '0.875rem 1.25rem',
+                  minWidth: '120px',
                   textAlign: 'center',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-faint)',
-                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-xs)',
                 }}
               >
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--brand-white)', letterSpacing: '-0.02em', lineHeight: 1 }}>
                   {totalCatalogCount || 150}
                 </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
                   Problems
                 </div>
               </div>
@@ -227,33 +213,29 @@ export const HomePage: React.FC = () => {
                   to="/profile"
                   id="home-solved-stat-link"
                   style={{
-                    padding: '1.125rem 1.375rem',
-                    minWidth: '130px',
+                    padding: '0.875rem 1.25rem',
+                    minWidth: '120px',
                     textAlign: 'center',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-faint)',
-                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--radius-xs)',
                     textDecoration: 'none',
                     display: 'block',
                     cursor: 'pointer',
-                    transition: 'all var(--transition-fast)',
+                    transition: 'border-color var(--transition-fast)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(52, 211, 153, 0.5)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(52, 211, 153, 0.12)';
+                    e.currentTarget.style.borderColor = 'var(--border-hover)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-faint)';
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.borderColor = 'var(--border-medium)';
                   }}
                   title="View your solved problems in Profile"
                 >
-                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--verdict-ac)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--verdict-ac)', letterSpacing: '-0.02em', lineHeight: 1 }}>
                     {stats.solvedProblemsCount}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.3rem' }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
                     Solved
                   </div>
                 </Link>
@@ -302,12 +284,16 @@ export const HomePage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               {['All', 'Easy', 'Medium', 'Hard'].map((diff) => {
                 const isActive = selectedDifficulty === diff;
-                let activeStyle = {};
+                let activeStyle: React.CSSProperties = {
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-medium)',
+                };
                 if (isActive) {
-                  if (diff === 'Easy') activeStyle = { background: 'var(--diff-easy-bg)', color: 'var(--diff-easy)', borderColor: 'rgba(52,211,153,0.4)' };
-                  else if (diff === 'Medium') activeStyle = { background: 'var(--diff-medium-bg)', color: 'var(--diff-medium)', borderColor: 'rgba(251,191,36,0.4)' };
-                  else if (diff === 'Hard') activeStyle = { background: 'var(--diff-hard-bg)', color: 'var(--diff-hard)', borderColor: 'rgba(251,113,133,0.4)' };
-                  else activeStyle = { background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', borderColor: 'rgba(77,171,247,0.4)' };
+                  if (diff === 'Easy') activeStyle = { background: 'var(--diff-easy-bg)', color: 'var(--diff-easy)', borderColor: 'rgba(5, 223, 114, 0.5)' };
+                  else if (diff === 'Medium') activeStyle = { background: 'var(--diff-medium-bg)', color: 'var(--diff-medium)', borderColor: 'rgba(245, 158, 11, 0.5)' };
+                  else if (diff === 'Hard') activeStyle = { background: 'var(--diff-hard-bg)', color: 'var(--diff-hard)', borderColor: 'rgba(255, 101, 104, 0.5)' };
+                  else activeStyle = { background: 'var(--brand-white)', color: 'var(--brand-black)', borderColor: 'var(--brand-white)' };
                 }
 
                 return (
@@ -317,8 +303,10 @@ export const HomePage: React.FC = () => {
                     onClick={() => setSelectedDifficulty(diff)}
                     className="btn btn-outline"
                     style={{
-                      padding: '0.3rem 0.75rem',
+                      padding: '0.25rem 0.65rem',
                       fontSize: '0.75rem',
+                      borderRadius: 'var(--radius-xs)',
+                      fontWeight: isActive ? 600 : 400,
                       ...activeStyle,
                     }}
                   >
@@ -330,8 +318,8 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Tags Chips Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', paddingTop: '0.625rem', borderTop: '1px solid var(--border-faint)' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: '0.2rem', marginRight: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', paddingTop: '0.625rem', borderTop: '1px solid var(--border-faint)' }}>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <Filter size={11} /> Tags
             </span>
             {allTags.map((tag) => {
@@ -342,13 +330,13 @@ export const HomePage: React.FC = () => {
                   id={`filter-tag-${tag.toLowerCase().replace(/\s+/g, '-')}`}
                   onClick={() => handleTagClick(tag)}
                   style={{
-                    background: isSelected ? 'rgba(77,171,247,0.14)' : 'rgba(255,255,255,0.03)',
-                    color: isSelected ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                    border: `1px solid ${isSelected ? 'rgba(77,171,247,0.4)' : 'var(--border-faint)'}`,
-                    borderRadius: 'var(--radius-full)',
-                    padding: '0.175rem 0.6rem',
+                    background: isSelected ? 'var(--brand-neutral-600)' : 'var(--bg-surface)',
+                    color: isSelected ? 'var(--brand-white)' : 'var(--text-muted)',
+                    border: `1px solid ${isSelected ? 'var(--border-strong)' : 'var(--border-faint)'}`,
+                    borderRadius: 'var(--radius-xs)',
+                    padding: '0.15rem 0.5rem',
                     fontSize: '0.7rem',
-                    fontWeight: isSelected ? 600 : 500,
+                    fontWeight: isSelected ? 500 : 400,
                     cursor: 'pointer',
                     transition: 'all var(--transition-fast)',
                     letterSpacing: 0,
@@ -436,13 +424,13 @@ export const HomePage: React.FC = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <th style={{ padding: '0.75rem 1.125rem', width: '56px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
-                    <th style={{ padding: '0.75rem 1.125rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</th>
-                    <th style={{ padding: '0.75rem 1.125rem', width: '110px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Difficulty</th>
-                    <th style={{ padding: '0.75rem 1.125rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tags</th>
-                    <th style={{ padding: '0.75rem 1.125rem', width: '150px', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acceptance</th>
-                    <th style={{ padding: '0.75rem 1.125rem', width: '100px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
+                  <tr style={{ background: '#080808', borderBottom: '1px solid var(--border-medium)' }}>
+                    <th style={{ padding: '0.65rem 1rem', width: '54px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                    <th style={{ padding: '0.65rem 1rem', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Title</th>
+                    <th style={{ padding: '0.65rem 1rem', width: '110px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Difficulty</th>
+                    <th style={{ padding: '0.65rem 1rem', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tags</th>
+                    <th style={{ padding: '0.65rem 1rem', width: '150px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Acceptance</th>
+                    <th style={{ padding: '0.65rem 1rem', width: '90px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -461,43 +449,43 @@ export const HomePage: React.FC = () => {
                           borderBottom: '1px solid var(--border-faint)',
                           transition: 'background-color var(--transition-fast)',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.025)')}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         {/* Status Icon */}
-                        <td style={{ padding: '0.875rem 1.125rem' }}>
+                        <td style={{ padding: '0.75rem 1rem' }}>
                           {prob.userStatus === 'Solved' ? (
-                            <CheckCircle size={16} style={{ color: 'var(--verdict-ac)' }} />
+                            <CheckCircle size={15} style={{ color: 'var(--verdict-ac)' }} />
                           ) : prob.userStatus === 'Attempted' ? (
-                            <Clock size={16} style={{ color: 'var(--verdict-tle)' }} />
+                            <Clock size={15} style={{ color: 'var(--verdict-tle)' }} />
                           ) : (
-                            <span style={{ color: 'var(--text-faint)', fontSize: '1rem' }}>—</span>
+                            <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>—</span>
                           )}
                         </td>
 
                         {/* Title & Code */}
-                        <td style={{ padding: '0.875rem 1.125rem' }}>
+                        <td style={{ padding: '0.75rem 1rem' }}>
                           <Link
                             to={`/problems/${prob.problemCode}`}
                             id={`problem-link-${prob.problemCode}`}
                             style={{
-                              color: 'var(--text-primary)',
-                              fontWeight: 600,
+                              color: 'var(--brand-white)',
+                              fontWeight: 500,
                               textDecoration: 'none',
-                              fontSize: '0.875rem',
+                              fontSize: '0.8125rem',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.5rem',
-                              letterSpacing: '-0.01em',
+                              letterSpacing: '-0.015em',
                             }}
                           >
                             <span>{prob.name}</span>
                             <span
                               style={{
                                 fontSize: '0.68rem',
-                                color: 'var(--text-faint)',
+                                color: 'var(--text-muted)',
                                 fontFamily: 'var(--font-mono)',
-                                fontWeight: 500,
+                                fontWeight: 400,
                               }}
                             >
                               #{prob.problemCode}
@@ -506,13 +494,13 @@ export const HomePage: React.FC = () => {
                         </td>
 
                         {/* Difficulty */}
-                        <td style={{ padding: '0.875rem 1.125rem' }}>
+                        <td style={{ padding: '0.75rem 1rem' }}>
                           <span className={`badge ${diffBadgeClass}`}>{prob.difficulty}</span>
                         </td>
 
                         {/* Tags */}
-                        <td style={{ padding: '0.875rem 1.125rem' }}>
-                          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                             {prob.tags.map((tag) => (
                               <span key={tag} className="badge badge-tag">
                                 {tag}
@@ -522,14 +510,14 @@ export const HomePage: React.FC = () => {
                         </td>
 
                         {/* Acceptance */}
-                        <td style={{ padding: '0.875rem 1.125rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div
                               style={{
                                 flex: 1,
-                                height: '4px',
-                                background: 'var(--bg-elevated)',
-                                borderRadius: '2px',
+                                height: '3px',
+                                background: 'var(--brand-neutral-600)',
+                                borderRadius: '1px',
                                 overflow: 'hidden',
                               }}
                             >
@@ -537,30 +525,31 @@ export const HomePage: React.FC = () => {
                                 style={{
                                   width: `${prob.acceptanceRate}%`,
                                   height: '100%',
-                                  background: 'linear-gradient(90deg, var(--accent-cyan), var(--verdict-ac))',
-                                  borderRadius: '2px',
+                                  background: 'var(--brand-white)',
+                                  borderRadius: '1px',
                                 }}
                               />
                             </div>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', minWidth: '38px', fontFamily: 'var(--font-mono)' }}>
+                            <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', minWidth: '34px', fontFamily: 'var(--font-mono)' }}>
                               {prob.acceptanceRate}%
                             </span>
                           </div>
                         </td>
 
                         {/* Solve CTA */}
-                        <td style={{ padding: '0.875rem 1.125rem', textAlign: 'right' }}>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                           <Link
                             to={`/problems/${prob.problemCode}`}
                             className="btn btn-outline"
                             style={{
-                              padding: '0.3rem 0.65rem',
+                              padding: '0.25rem 0.55rem',
                               fontSize: '0.72rem',
-                              borderRadius: 'var(--radius-md)',
+                              borderRadius: 'var(--radius-xs)',
+                              border: '1px solid var(--border-medium)',
                             }}
                           >
                             <span>Solve</span>
-                            <ChevronRight size={12} />
+                            <ChevronRight size={11} />
                           </Link>
                         </td>
                       </tr>
@@ -575,28 +564,27 @@ export const HomePage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '0.875rem 1.25rem',
-                  borderTop: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-secondary)',
+                  padding: '0.75rem 1.25rem',
+                  borderTop: '1px solid var(--border-medium)',
+                  background: '#080808',
                   flexWrap: 'wrap',
                   gap: '0.75rem',
                 }}
               >
                 {/* Left: Range Info */}
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   Showing{' '}
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                     {pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
                   </span>{' '}
                   –{' '}
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                     {Math.min(pagination.page * pagination.limit, pagination.total)}
                   </span>{' '}
                   of{' '}
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                     {pagination.total}
-                  </span>{' '}
-                  problems
+                  </span>
                 </div>
 
                 {/* Center: Page Controls */}
@@ -609,12 +597,13 @@ export const HomePage: React.FC = () => {
                       style={{
                         padding: '0.25rem 0.55rem',
                         fontSize: '0.75rem',
-                        opacity: pagination.page <= 1 ? 0.4 : 1,
+                        borderRadius: 'var(--radius-xs)',
+                        opacity: pagination.page <= 1 ? 0.35 : 1,
                         cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
                       }}
                       title="Previous Page"
                     >
-                      <ChevronLeft size={14} />
+                      <ChevronLeft size={13} />
                       <span>Prev</span>
                     </button>
 
@@ -623,17 +612,18 @@ export const HomePage: React.FC = () => {
                         key={p}
                         onClick={() => setPage(p)}
                         style={{
-                          minWidth: '28px',
-                          height: '28px',
-                          padding: '0 0.4rem',
+                          minWidth: '26px',
+                          height: '26px',
+                          padding: '0 0.35rem',
                           fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: 'var(--radius-sm)',
-                          border: p === pagination.page ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                          background: p === pagination.page ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                          color: p === pagination.page ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          fontWeight: p === pagination.page ? 600 : 400,
+                          borderRadius: 'var(--radius-xs)',
+                          border: p === pagination.page ? '1px solid var(--brand-white)' : '1px solid var(--border-medium)',
+                          background: p === pagination.page ? 'var(--brand-white)' : 'transparent',
+                          color: p === pagination.page ? 'var(--brand-black)' : 'var(--text-secondary)',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease',
+                          fontFamily: 'var(--font-mono)',
                         }}
                       >
                         {p}
@@ -647,19 +637,20 @@ export const HomePage: React.FC = () => {
                       style={{
                         padding: '0.25rem 0.55rem',
                         fontSize: '0.75rem',
-                        opacity: pagination.page >= pagination.totalPages ? 0.4 : 1,
+                        borderRadius: 'var(--radius-xs)',
+                        opacity: pagination.page >= pagination.totalPages ? 0.35 : 1,
                         cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
                       }}
                       title="Next Page"
                     >
                       <span>Next</span>
-                      <ChevronRight size={14} />
+                      <ChevronRight size={13} />
                     </button>
                   </div>
                 )}
 
                 {/* Right: Per-Page Selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   <span>Per page:</span>
                   <select
                     value={limit}
@@ -671,18 +662,18 @@ export const HomePage: React.FC = () => {
                       padding: '0.25rem 0.5rem',
                       fontSize: '0.75rem',
                       width: 'auto',
-                      background: 'var(--bg-elevated)',
+                      background: '#0a0a0a',
                       color: 'var(--text-primary)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-medium)',
+                      borderRadius: 'var(--radius-xs)',
                       cursor: 'pointer',
                       outline: 'none',
                     }}
                   >
-                    <option value={10} style={{ background: '#18181b', color: '#f4f4f5' }}>10</option>
-                    <option value={20} style={{ background: '#18181b', color: '#f4f4f5' }}>20 (Default)</option>
-                    <option value={30} style={{ background: '#18181b', color: '#f4f4f5' }}>30</option>
-                    <option value={50} style={{ background: '#18181b', color: '#f4f4f5' }}>50</option>
+                    <option value={10} style={{ background: '#0a0a0a', color: '#f7f7f7' }}>10</option>
+                    <option value={20} style={{ background: '#0a0a0a', color: '#f7f7f7' }}>20 (Default)</option>
+                    <option value={30} style={{ background: '#0a0a0a', color: '#f7f7f7' }}>30</option>
+                    <option value={50} style={{ background: '#0a0a0a', color: '#f7f7f7' }}>50</option>
                   </select>
                 </div>
               </div>

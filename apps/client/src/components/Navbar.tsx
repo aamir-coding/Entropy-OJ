@@ -1,24 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api/client';
 import {
   Code2,
   User,
   LogOut,
   ChevronDown,
-  Terminal,
-  Activity,
   Shield,
-  Sparkles,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, stats, isAdmin, logout, openAuthModal } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [systemHealth, setSystemHealth] = useState<'healthy' | 'degraded' | 'checking'>('checking');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Active route tracking for the underline indicator
+  const isHome = location.pathname === '/';
+  const isProblems = location.pathname.startsWith('/problems') || location.pathname.startsWith('/problem');
+  const isGalaxy = location.pathname === '/galaxy';
 
   // Outside-click and Escape key handler for user dropdown
   useEffect(() => {
@@ -45,34 +46,6 @@ export const Navbar: React.FC = () => {
     };
   }, [dropdownOpen]);
 
-  // System Health poll (every 60s)
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkHealth = async () => {
-      try {
-        const res = await api.get('/health');
-        if (isMounted && res.data?.status === 'healthy') {
-          setSystemHealth('healthy');
-        } else if (isMounted) {
-          setSystemHealth('degraded');
-        }
-      } catch {
-        if (isMounted) {
-          setSystemHealth('degraded');
-        }
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 60000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
   const handleLogout = async () => {
     await logout();
     setDropdownOpen(false);
@@ -83,174 +56,109 @@ export const Navbar: React.FC = () => {
     <header
       style={{
         height: 'var(--header-height)',
-        background: 'rgba(13, 13, 13, 0.88)',
-        backdropFilter: 'blur(20px) saturate(1.6)',
-        WebkitBackdropFilter: 'blur(20px) saturate(1.6)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--border-faint)',
         position: 'sticky',
         top: 0,
         zIndex: 100,
       }}
     >
-      <div className="container" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem' }}>
+      <div
+        className="container"
+        style={{
+          height: '100%',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
+        {/* ── Left Section: Navigation Links (Home, Problems, Galaxy) ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', justifySelf: 'start' }}>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <Link
+              to="/"
+              className={`navbar-nav-link ${isHome ? 'active' : ''}`}
+            >
+              Home
+            </Link>
+            <Link
+              to="/problems"
+              className={`navbar-nav-link ${isProblems ? 'active' : ''}`}
+            >
+              Problems
+            </Link>
+            <Link
+              to="/galaxy"
+              className={`navbar-nav-link ${isGalaxy ? 'active' : ''}`}
+            >
+              Galaxy
+            </Link>
+          </nav>
+        </div>
+
+        {/* ── Center Section: Brand Name (Centered in Header) ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
           <Link
             to="/"
-            aria-label="Anti Online Judge Homepage"
+            aria-label="Entropy Homepage"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.6rem',
+              gap: '0.65rem',
               textDecoration: 'none',
               color: 'var(--text-primary)',
             }}
           >
             <div
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '9px',
-                background: 'linear-gradient(135deg, #4dabf7 0%, #818cf8 100%)',
+                width: '26px',
+                height: '26px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-medium)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 14px rgba(77,171,247,0.35)',
                 flexShrink: 0,
               }}
             >
-              <Code2 size={17} color="#ffffff" strokeWidth={2.2} />
+              <Code2 size={14} color="var(--brand-white)" strokeWidth={1.8} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
-                ANTI<span style={{ color: 'var(--accent-cyan)' }}>_OJ</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', lineHeight: 1 }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontWeight: 350,
+                  fontSize: '0.925rem',
+                  letterSpacing: '0.18em',
+                  color: 'var(--brand-white)',
+                }}
+              >
+                ENTROPY
               </span>
               <span
                 style={{
                   fontSize: '0.6rem',
-                  fontWeight: 600,
-                  padding: '0.05rem 0.35rem',
-                  background: 'rgba(77,171,247,0.12)',
-                  color: 'var(--accent-cyan)',
-                  borderRadius: '3px',
-                  border: '1px solid rgba(77,171,247,0.22)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  marginTop: '2px',
-                  alignSelf: 'flex-start',
+                  fontWeight: 400,
+                  padding: '0.05rem 0.3rem',
+                  color: 'var(--text-muted)',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px dashed var(--border-medium)',
+                  textTransform: 'lowercase',
+                  letterSpacing: '0.04em',
                 }}
               >
-                sandbox
+                oj
               </span>
             </div>
           </Link>
-
-          {/* Nav Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <Link
-              to="/"
-              style={{
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-                textDecoration: 'none',
-                padding: '0.35rem 0.7rem',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                transition: 'color var(--transition-fast), background-color var(--transition-fast)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <Terminal size={13} />
-              <span>Problems</span>
-            </Link>
-            <Link
-              to="/galaxy"
-              style={{
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: 'var(--accent-cyan)',
-                textDecoration: 'none',
-                padding: '0.35rem 0.75rem',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                background: 'rgba(77, 171, 247, 0.08)',
-                border: '1px solid rgba(77, 171, 247, 0.22)',
-                transition: 'all var(--transition-fast)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#ffffff';
-                e.currentTarget.style.backgroundColor = 'rgba(77, 171, 247, 0.16)';
-                e.currentTarget.style.borderColor = 'rgba(77, 171, 247, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--accent-cyan)';
-                e.currentTarget.style.backgroundColor = 'rgba(77, 171, 247, 0.08)';
-                e.currentTarget.style.borderColor = 'rgba(77, 171, 247, 0.22)';
-              }}
-            >
-              <Sparkles size={14} />
-              <span>Galaxy Map</span>
-            </Link>
-            {isAdmin && (
-              <Link
-                to="/admin"
-                style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: '#60a5fa',
-                  textDecoration: 'none',
-                  padding: '0.35rem 0.7rem',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  background: 'rgba(59, 130, 246, 0.12)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
-                  transition: 'all var(--transition-fast)',
-                }}
-              >
-                <Shield size={13} />
-                <span>Admin Studio</span>
-              </Link>
-            )}
-          </nav>
         </div>
 
-        {/* Right Section: System Status & Auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          {/* Live Judge Health Status */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              padding: '0.2rem 0.625rem',
-              background: systemHealth === 'healthy' ? 'rgba(52,211,153,0.08)' : 'rgba(251,191,36,0.08)',
-              border: `1px solid ${systemHealth === 'healthy' ? 'rgba(52,211,153,0.18)' : 'rgba(251,191,36,0.18)'}`,
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              color: systemHealth === 'healthy' ? '#34d399' : '#fbbf24',
-              letterSpacing: '0.02em',
-            }}
-          >
-            <Activity size={11} className={systemHealth === 'healthy' ? 'animate-pulse' : ''} />
-            <span>{systemHealth === 'healthy' ? 'Judge Online' : 'System Degraded'}</span>
-          </div>
-
-          {/* User Auth state */}
+        {/* ── Right Section: Profile & Auth Buttons ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', justifySelf: 'end' }}>
           {user ? (
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <button
@@ -263,41 +171,42 @@ export const Navbar: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-full)',
-                  padding: '0.25rem 0.6rem 0.25rem 0.3rem',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-xs)',
+                  padding: '0.25rem 0.6rem 0.25rem 0.35rem',
                   cursor: 'pointer',
                   color: 'var(--text-primary)',
                   transition: 'border-color var(--transition-fast), background-color var(--transition-fast)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-medium)';
-                  e.currentTarget.style.backgroundColor = 'var(--bg-overlay)';
+                  e.currentTarget.style.borderColor = 'var(--border-hover)';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                  e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  e.currentTarget.style.borderColor = 'var(--border-medium)';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
                 }}
               >
                 <div
                   style={{
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #818cf8, #c084fc)',
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: 'var(--brand-neutral-600)',
+                    border: '1px solid var(--border-medium)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    color: '#fff',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    color: 'var(--brand-white)',
                     flexShrink: 0,
                   }}
                 >
                   {user.fullName.charAt(0).toUpperCase()}
                 </div>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{user.fullName.split(' ')[0]}</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{user.fullName.split(' ')[0]}</span>
                 <ChevronDown size={13} style={{ color: 'var(--text-muted)' }} />
               </button>
 
@@ -312,7 +221,7 @@ export const Navbar: React.FC = () => {
                     width: '228px',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border-medium)',
-                    borderRadius: 'var(--radius-xl)',
+                    borderRadius: 'var(--radius-sm)',
                     boxShadow: 'var(--shadow-overlay)',
                     padding: '0.5rem',
                     display: 'flex',
@@ -352,22 +261,24 @@ export const Navbar: React.FC = () => {
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.5rem 0.75rem',
-                        borderRadius: 'var(--radius-lg)',
+                        borderRadius: 'var(--radius-xs)',
                         fontSize: '0.8125rem',
-                        color: '#60a5fa',
+                        color: 'var(--text-primary)',
                         textDecoration: 'none',
-                        background: 'rgba(59, 130, 246, 0.08)',
-                        border: '1px solid rgba(59, 130, 246, 0.15)',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-medium)',
                         transition: 'color var(--transition-fast), background-color var(--transition-fast)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.18)';
+                        e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                        e.currentTarget.style.borderColor = 'var(--border-hover)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.08)';
+                        e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+                        e.currentTarget.style.borderColor = 'var(--border-medium)';
                       }}
                     >
-                      <Shield size={14} style={{ color: '#60a5fa' }} />
+                      <Shield size={14} style={{ color: 'var(--brand-neutral-200)' }} />
                       <span>Problem Studio (Admin)</span>
                     </Link>
                   )}
@@ -381,7 +292,7 @@ export const Navbar: React.FC = () => {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      borderRadius: 'var(--radius-lg)',
+                      borderRadius: 'var(--radius-xs)',
                       fontSize: '0.8125rem',
                       color: 'var(--text-secondary)',
                       textDecoration: 'none',
@@ -389,14 +300,14 @@ export const Navbar: React.FC = () => {
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = 'var(--text-primary)';
-                      e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.color = 'var(--text-secondary)';
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    <User size={14} style={{ color: 'var(--accent-cyan)' }} />
+                    <User size={14} style={{ color: 'var(--brand-neutral-200)' }} />
                     <span>My Profile & History</span>
                   </Link>
 
@@ -408,7 +319,7 @@ export const Navbar: React.FC = () => {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      borderRadius: 'var(--radius-lg)',
+                      borderRadius: 'var(--radius-xs)',
                       fontSize: '0.8125rem',
                       color: 'var(--verdict-wa)',
                       background: 'transparent',

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
@@ -18,6 +18,9 @@ const ProfilePage = lazy(() =>
 const GalaxyPage = lazy(() =>
   import('./pages/GalaxyPage').then((m) => ({ default: m.GalaxyPage }))
 );
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage }))
+);
 const AdminDashboardPage = lazy(() =>
   import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
 );
@@ -31,52 +34,63 @@ const RouteLoadingFallback = () => (
   </div>
 );
 
+/* Shell that conditionally renders Navbar (hidden on landing page) */
+const AppShell: React.FC = () => {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {!isLanding && <Navbar />}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/problems" element={<HomePage />} />
+            <Route path="/galaxy" element={<GalaxyPage />} />
+            <Route path="/problems/:code" element={<ProblemDetailPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+
+            {/* Protected Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboardPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/problems/new"
+              element={
+                <AdminRoute>
+                  <AdminProblemEditorPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/problems/:id/edit"
+              element={
+                <AdminRoute>
+                  <AdminProblemEditorPage />
+                </AdminRoute>
+              }
+            />
+
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </main>
+      <AuthModal />
+    </div>
+  );
+};
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Navbar />
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/galaxy" element={<GalaxyPage />} />
-                <Route path="/problems/:code" element={<ProblemDetailPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-              
-              {/* Protected Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <AdminRoute>
-                    <AdminDashboardPage />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="/admin/problems/new"
-                element={
-                  <AdminRoute>
-                    <AdminProblemEditorPage />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="/admin/problems/:id/edit"
-                element={
-                  <AdminRoute>
-                    <AdminProblemEditorPage />
-                  </AdminRoute>
-                }
-              />
-
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </main>
-          <AuthModal />
-        </div>
+        <AppShell />
       </AuthProvider>
     </BrowserRouter>
   );

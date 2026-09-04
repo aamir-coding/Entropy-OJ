@@ -107,14 +107,14 @@ export const AuthModal: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-elevated)',
+            background: '#080808',
           }}
         >
           <div>
-            <h2 id="auth-modal-title" style={{ fontSize: '1.125rem', fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h2 id="auth-modal-title" style={{ fontSize: '1.125rem', fontWeight: 500, letterSpacing: '-0.03em', color: 'var(--brand-white)' }}>
               {authModalMode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
               {authModalMode === 'login' ? 'Sign in to track your progress' : 'Start solving problems today'}
             </p>
           </div>
@@ -128,7 +128,7 @@ export const AuthModal: React.FC = () => {
               cursor: 'pointer',
               display: 'flex',
               padding: '0.25rem',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: 'var(--radius-xs)',
               transition: 'color var(--transition-fast)',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
@@ -139,7 +139,7 @@ export const AuthModal: React.FC = () => {
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '1.375rem 1.5rem' }}>
+        <div style={{ padding: '1.375rem 1.5rem', background: '#050505' }}>
           {error && (
             <div
               role="alert"
@@ -147,7 +147,7 @@ export const AuthModal: React.FC = () => {
                 background: 'var(--verdict-wa-bg)',
                 border: '1px solid var(--verdict-wa-border)',
                 padding: '0.625rem 0.875rem',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: 'var(--radius-xs)',
                 color: 'var(--verdict-wa)',
                 fontSize: '0.8125rem',
                 display: 'flex',
@@ -284,7 +284,7 @@ export const AuthModal: React.FC = () => {
               type="submit"
               disabled={isSubmitting}
               className="btn btn-primary"
-              style={{ width: '100%', marginTop: '0.25rem', padding: '0.6rem', fontSize: '0.875rem' }}
+              style={{ width: '100%', marginTop: '0.5rem', padding: '0.625rem', fontSize: '0.875rem' }}
             >
               {isSubmitting ? (
                 <>
@@ -305,7 +305,7 @@ export const AuthModal: React.FC = () => {
               fontSize: '0.8125rem',
               color: 'var(--text-muted)',
               paddingTop: '1rem',
-              borderTop: '1px solid var(--border-faint)',
+              borderTop: '1px solid var(--border-subtle)',
             }}
           >
             {authModalMode === 'login' ? (
@@ -316,10 +316,12 @@ export const AuthModal: React.FC = () => {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--accent-cyan)',
-                    fontWeight: 600,
+                    color: 'var(--brand-white)',
+                    fontWeight: 500,
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '3px',
                   }}
                 >
                   Create one
@@ -333,10 +335,12 @@ export const AuthModal: React.FC = () => {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'var(--accent-cyan)',
-                    fontWeight: 600,
+                    color: 'var(--brand-white)',
+                    fontWeight: 500,
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '3px',
                   }}
                 >
                   Sign In

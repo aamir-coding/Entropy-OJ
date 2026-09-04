@@ -13,6 +13,9 @@
   "dependencies": {
     "@anti-oj/shared": "*",
     "@monaco-editor/react": "^4.7.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@types/three": "^0.185.4",
     "axios": "^1.8.1",
     "clsx": "^2.1.1",
     "katex": "^0.18.4",
@@ -24,7 +27,8 @@
     "react-router-dom": "^7.2.0",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
