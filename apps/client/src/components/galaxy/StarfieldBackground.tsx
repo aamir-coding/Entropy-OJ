@@ -23,17 +23,17 @@ export const StarfieldBackground: React.FC = () => {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Create 180 random micro-stars
+    // Create 200 monochromatic micro-stars (deep-space pinpoints)
     const stars: Star[] = [];
-    const colors = ['#ffffff', '#bae6fd', '#c7d2fe', '#fbcfe8', '#fef08a'];
+    const colors = ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0', '#cbd5e1', '#94a3b8'];
 
-    for (let i = 0; i < 180; i++) {
+    for (let i = 0; i < 200; i++) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        radius: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.7 + 0.3,
-        twinkleSpeed: (Math.random() * 0.015 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
+        radius: Math.random() * 0.9 + 0.4,
+        alpha: Math.random() * 0.7 + 0.25,
+        twinkleSpeed: (Math.random() * 0.012 + 0.004) * (Math.random() > 0.5 ? 1 : -1),
         color: colors[Math.floor(Math.random() * colors.length)],
       });
     }

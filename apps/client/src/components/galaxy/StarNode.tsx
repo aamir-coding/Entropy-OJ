@@ -53,24 +53,19 @@ export const StarNode: React.FC<StarNodeProps> = ({
   const hitAreaSize = isHard ? 54 : isMedium ? 44 : 36;
   const coreRadius = isHard ? 7.5 : isMedium ? 5.5 : 4.2;
 
-  // Colors based on Solve Status
-  let spikeColor = 'rgba(203, 213, 225, 0.45)';
-  let coreFill = 'radial-gradient(circle, #f1f5f9 0%, #94a3b8 70%, #334155 100%)';
-  let coreBorder = 'rgba(255, 255, 255, 0.5)';
-  let glowFilter = 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.3))';
+  // Starlight Diffraction Colors in Full Dark Minimal
+  // Unsolved stars: crisp incandescent silver starlight
+  let spikeColor = 'rgba(255, 255, 255, 0.4)';
+  let coreFill = '#ffffff';
+  let coreBorder = 'rgba(255, 255, 255, 0.6)';
+  let glowFilter = 'drop-shadow(0 0 3px rgba(255, 255, 255, 0.35))';
 
   if (isSolved) {
-    // Supernova: Radiant Cyan with diamond flare
-    spikeColor = '#38bdf8';
-    coreFill = 'radial-gradient(circle, #ffffff 0%, #38bdf8 60%, #0284c7 100%)';
+    // Supernova: Radiant Pure White Starlight Flare
+    spikeColor = '#ffffff';
+    coreFill = '#ffffff';
     coreBorder = '#ffffff';
-    glowFilter = 'drop-shadow(0 0 8px #38bdf8) drop-shadow(0 0 16px rgba(56, 189, 248, 0.6))';
-  } else if (isAttempted) {
-    // Protostar: Warm Amber with golden flare
-    spikeColor = '#fbbf24';
-    coreFill = 'radial-gradient(circle, #fef08a 0%, #f59e0b 60%, #b45309 100%)';
-    coreBorder = '#fef08a';
-    glowFilter = 'drop-shadow(0 0 6px #fbbf24) drop-shadow(0 0 12px rgba(251, 191, 36, 0.5))';
+    glowFilter = 'drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 14px rgba(255, 255, 255, 0.8))';
   }
 
   return (
@@ -87,14 +82,14 @@ export const StarNode: React.FC<StarNodeProps> = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Sci-fi Targeting Reticle on Hover */}
+      {/* Precision Astronomical Targeting Reticle on Hover */}
       {hovered && (
         <div
           className="targeting-reticle"
           style={{
             position: 'absolute',
             inset: isHard ? '-14px' : '-10px',
-            border: `1.5px dashed ${diffColor}`,
+            border: '1.2px dashed rgba(255, 255, 255, 0.45)',
             borderRadius: '50%',
             pointerEvents: 'none',
             animation: 'reticleSpin 6s linear infinite',
@@ -102,10 +97,8 @@ export const StarNode: React.FC<StarNodeProps> = ({
         />
       )}
 
-      {/* Light pulsating white ring for Solved stars */}
+      {/* Light pulsating white ring ONLY for Solved stars (unsolved stars remain clean & static) */}
       {isSolved && <div className="supernova-pulse-ring" style={{ inset: isHard ? '-8px' : '-6px' }} />}
-      {/* Amber pulsating ring only for Attempted (unsolved) stars */}
-      {!isSolved && isAttempted && <div className="protostar-pulse-ring" style={{ inset: isHard ? '-6px' : '-4px' }} />}
 
       {/* The Celestial Star Node (SVG Diffraction Spikes + Circular Center) */}
       <button
@@ -150,7 +143,7 @@ export const StarNode: React.FC<StarNodeProps> = ({
               cx="0"
               cy="0"
               r={coreRadius}
-              fill={isSolved ? '#38bdf8' : isAttempted ? '#f59e0b' : '#cbd5e1'}
+              fill={isSolved ? '#ffffff' : '#f1f5f9'}
               stroke={coreBorder}
               strokeWidth="1.2"
             />
@@ -189,7 +182,7 @@ export const StarNode: React.FC<StarNodeProps> = ({
               cx="0"
               cy="0"
               r={coreRadius}
-              fill={isSolved ? '#38bdf8' : isAttempted ? '#f59e0b' : '#cbd5e1'}
+              fill={isSolved ? '#ffffff' : '#f1f5f9'}
               stroke={coreBorder}
               strokeWidth="1.4"
             />
@@ -223,7 +216,7 @@ export const StarNode: React.FC<StarNodeProps> = ({
               cx="0"
               cy="0"
               r={coreRadius}
-              fill={isSolved ? '#38bdf8' : isAttempted ? '#f59e0b' : '#cbd5e1'}
+              fill={isSolved ? '#ffffff' : '#f1f5f9'}
               stroke={coreBorder}
               strokeWidth="1.8"
             />
@@ -239,52 +232,59 @@ export const StarNode: React.FC<StarNodeProps> = ({
             position: 'absolute',
             bottom: '100%',
             left: '50%',
-            transform: 'translateX(-50%) translateY(-12px)',
-            background: 'rgba(11, 15, 23, 0.95)',
+            transform: 'translateX(-50%) translateY(-10px)',
+            background: 'rgba(10, 10, 10, 0.96)',
             backdropFilter: 'blur(16px)',
-            border: `1px solid ${diffColor}55`,
-            boxShadow: `0 10px 30px rgba(0, 0, 0, 0.7), 0 0 16px ${diffColor}33`,
-            borderRadius: '10px',
-            padding: '0.45rem 0.8rem',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid var(--border-medium)',
+            boxShadow: 'var(--shadow-overlay)',
+            borderRadius: 'var(--radius-xs)',
+            padding: '0.4rem 0.65rem',
             whiteSpace: 'nowrap',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.2rem',
+            gap: '0.25rem',
             pointerEvents: 'none',
             animation: 'fadeIn 0.15s ease',
             zIndex: 50,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
               #{problem.order}
             </span>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--brand-white)' }}>
               {problem.title}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span
               style={{
-                fontSize: '0.65rem',
-                fontWeight: 700,
+                fontSize: '0.625rem',
+                fontWeight: 600,
+                fontFamily: 'var(--font-mono)',
                 color: diffColor,
+                background: `${diffColor}18`,
+                border: `1px solid ${diffColor}40`,
+                padding: '0.05rem 0.35rem',
+                borderRadius: 'var(--radius-xs)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
               }}
             >
               {problem.difficulty}
             </span>
-            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>•</span>
+            <span style={{ fontSize: '0.625rem', color: 'var(--border-strong)' }}>|</span>
             <span
               style={{
-                fontSize: '0.66rem',
-                fontWeight: 600,
-                color: isSolved ? '#34d399' : isAttempted ? '#fbbf24' : 'var(--text-muted)',
+                fontSize: '0.6875rem',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 500,
+                color: isSolved ? 'var(--verdict-ac)' : isAttempted ? 'var(--verdict-tle)' : 'var(--text-muted)',
               }}
             >
-              {isSolved ? 'Solved' : isAttempted ? 'In Progress' : 'Not Attempted'}
+              {isSolved ? 'Solved' : isAttempted ? 'In Progress' : 'Uncharted'}
             </span>
           </div>
         </div>

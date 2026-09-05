@@ -28,10 +28,10 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
         position: 'sticky',
         top: 'var(--header-height, 58px)',
         zIndex: 100,
-        background: 'rgba(8, 12, 20, 0.85)',
-        backdropFilter: 'blur(20px) saturate(1.8)',
-        WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'rgba(0, 0, 0, 0.88)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--border-subtle)',
         padding: '0.65rem 0',
       }}
     >
@@ -46,61 +46,74 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
         }}
       >
         {/* Left: Universe Ignition Metric */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #ec4899 100%)',
+                width: '34px',
+                height: '34px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-medium)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 16px rgba(56, 189, 248, 0.4)',
-                color: '#fff',
+                boxShadow: 'var(--glass-shadow)',
+                color: 'var(--brand-white)',
                 flexShrink: 0,
               }}
             >
-              <Orbit size={20} />
+              <Orbit size={16} />
             </div>
 
             <div>
               <div
                 style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  color: 'var(--text-secondary)',
+                  fontSize: '0.6875rem',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.06em',
+                  color: 'var(--text-muted)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
+                  gap: '0.4rem',
                 }}
               >
                 <span>GALAXY NODE MAP</span>
-                <span style={{ color: '#38bdf8', fontWeight: 800 }}>{percentage}% IGNITED</span>
+                <span
+                  style={{
+                    color: 'var(--brand-white)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-xs)',
+                    padding: '0.05rem 0.35rem',
+                    fontSize: '0.625rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {percentage}% IGNITED
+                </span>
               </div>
               <div
                 style={{
-                  fontSize: '0.95rem',
-                  fontWeight: 800,
-                  color: '#ffffff',
+                  fontSize: '0.9375rem',
+                  fontWeight: 500,
+                  color: 'var(--brand-white)',
                   fontFamily: 'var(--font-mono)',
                   letterSpacing: '-0.02em',
                 }}
               >
-                {totalSolved} <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>/ {totalProblems} Stars</span>
+                {totalSolved} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ {totalProblems} Stars</span>
               </div>
             </div>
           </div>
 
-          {/* Progress Bar */}
+          {/* Precision Progress Bar */}
           <div
             style={{
-              width: '160px',
-              height: '7px',
-              background: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: '999px',
+              width: '140px',
+              height: '3px',
+              background: 'var(--border-subtle)',
+              borderRadius: '1px',
               overflow: 'hidden',
               display: 'flex',
             }}
@@ -109,9 +122,8 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
               style={{
                 height: '100%',
                 width: `${percentage}%`,
-                background: 'linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #34d399 100%)',
-                borderRadius: '999px',
-                boxShadow: '0 0 10px rgba(56, 189, 248, 0.5)',
+                background: 'var(--brand-white)',
+                borderRadius: '1px',
                 transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             />
@@ -119,16 +131,16 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
 
           {/* Difficulty Counters */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
-            <span style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#34d399', boxShadow: '0 0 6px #34d399' }} />
+            <span style={{ color: 'var(--diff-easy)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--diff-easy)' }} />
               {easySolved} Easy
             </span>
-            <span style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fbbf24', boxShadow: '0 0 6px #fbbf24' }} />
+            <span style={{ color: 'var(--diff-medium)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--diff-medium)' }} />
               {medSolved} Med
             </span>
-            <span style={{ color: '#fb7185', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#fb7185', boxShadow: '0 0 6px #fb7185' }} />
+            <span style={{ color: 'var(--diff-hard)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--diff-hard)' }} />
               {hardSolved} Hard
             </span>
           </div>
@@ -139,22 +151,25 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '10px',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-xs)',
               padding: '0.45rem 0.85rem',
-              color: '#ffffff',
-              fontSize: '0.8rem',
-              fontWeight: 600,
+              color: 'var(--brand-white)',
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              fontFamily: 'var(--font-sans)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
-              transition: 'all 0.2s',
+              boxShadow: 'var(--glass-shadow)',
+              transition: 'border-color var(--transition-fast)',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-medium)')}
           >
-            <Compass size={16} color="#38bdf8" />
+            <Compass size={15} color="var(--brand-neutral-200)" />
             <span>Sector Teleport (18 Systems)</span>
             <ChevronDown size={14} color="var(--text-muted)" />
           </button>
@@ -165,30 +180,34 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
                 position: 'absolute',
                 top: '100%',
                 right: 0,
-                marginTop: '8px',
-                width: '300px',
-                maxHeight: '420px',
+                marginTop: '6px',
+                width: '320px',
+                maxHeight: '400px',
                 overflowY: 'auto',
-                background: 'rgba(11, 16, 26, 0.98)',
+                background: 'rgba(10, 10, 10, 0.98)',
                 backdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '16px',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.15)',
-                padding: '0.6rem',
+                WebkitBackdropFilter: 'blur(24px)',
+                border: '1px solid var(--border-medium)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: 'var(--shadow-overlay)',
+                padding: '0.5rem',
                 zIndex: 200,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.25rem',
+                gap: '0.2rem',
               }}
             >
               <div
                 style={{
-                  padding: '0.4rem 0.5rem',
-                  fontSize: '0.68rem',
-                  fontWeight: 800,
+                  padding: '0.4rem 0.6rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
                   color: 'var(--text-muted)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
+                  fontFamily: 'var(--font-mono)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  marginBottom: '0.25rem',
                 }}
               >
                 Available Star Systems
@@ -205,39 +224,43 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
                     background: 'transparent',
                     border: 'none',
                     padding: '0.5rem 0.65rem',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-xs)',
                     textAlign: 'left',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    transition: 'background 0.15s',
+                    transition: 'background var(--transition-fast)',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     <span
                       style={{
-                        width: '9px',
-                        height: '9px',
+                        width: '8px',
+                        height: '8px',
                         borderRadius: '50%',
                         backgroundColor: c.spectralColor,
-                        boxShadow: `0 0 8px ${c.spectralColor}`,
+                        boxShadow: `0 0 6px ${c.spectralColor}`,
                         flexShrink: 0,
                       }}
                     />
                     <div>
-                      <div style={{ fontSize: '0.8rem', color: '#ffffff', fontWeight: 600 }}>{c.name}</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{c.designation}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--brand-white)', fontWeight: 500 }}>{c.name}</div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{c.designation}</div>
                     </div>
                   </div>
 
                   <span
                     style={{
-                      fontSize: '0.68rem',
+                      fontSize: '0.6875rem',
                       fontFamily: 'var(--font-mono)',
                       color: 'var(--text-secondary)',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: 'var(--radius-xs)',
                     }}
                   >
                     {c.problems.length} Stars

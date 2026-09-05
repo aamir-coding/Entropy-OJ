@@ -98,12 +98,12 @@ export const GalaxyPage: React.FC = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '1.25rem',
+          gap: '1rem',
         }}
       >
-        <Loader2 size={40} className="animate-spin" style={{ color: 'var(--accent-cyan)' }} />
-        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.04em' }}>
-          Calibrating Interstellar Star Systems...
+        <Loader2 size={32} className="animate-spin" style={{ color: 'var(--brand-neutral-200)' }} />
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em' }}>
+          CALIBRATING INTERSTELLAR STAR SYSTEMS...
         </span>
       </div>
     );
@@ -117,14 +117,29 @@ export const GalaxyPage: React.FC = () => {
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#05070d',
+        backgroundColor: '#000000',
         overflowX: 'hidden',
       }}
     >
       {/* Background Canvas Starfield */}
       <StarfieldBackground />
 
-      {/* Dynamic Shifting Nebula Gradients (Shifts as you scroll) */}
+      {/* Precision Astrometric Coordinate Grid */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
+
+      {/* Dynamic Shifting Deep-Space Gravitational Lensing & Luminance (Shifts across sectors) */}
       <div
         style={{
           position: 'absolute',
@@ -133,14 +148,15 @@ export const GalaxyPage: React.FC = () => {
           right: 0,
           bottom: 0,
           background: `
-            radial-gradient(ellipse at 30% 5%, rgba(56, 189, 248, 0.16) 0%, transparent 45%),
-            radial-gradient(ellipse at 80% 20%, rgba(96, 165, 250, 0.14) 0%, transparent 45%),
-            radial-gradient(ellipse at 20% 45%, rgba(167, 139, 250, 0.16) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
-            radial-gradient(ellipse at 50% 95%, rgba(251, 191, 36, 0.18) 0%, transparent 50%)
+            radial-gradient(ellipse at 30% 4%, rgba(255, 255, 255, 0.055) 0%, transparent 48%),
+            radial-gradient(ellipse at 80% 18%, rgba(241, 245, 249, 0.035) 0%, transparent 45%),
+            radial-gradient(ellipse at 20% 42%, rgba(203, 213, 225, 0.045) 0%, transparent 52%),
+            radial-gradient(ellipse at 80% 65%, rgba(148, 163, 184, 0.035) 0%, transparent 48%),
+            radial-gradient(ellipse at 50% 90%, rgba(255, 255, 255, 0.065) 0%, transparent 55%),
+            radial-gradient(ellipse at 50% 99%, rgba(248, 250, 252, 0.045) 0%, transparent 45%)
           `,
           pointerEvents: 'none',
-          zIndex: 1,
+          zIndex: 2,
         }}
       />
 
@@ -169,15 +185,16 @@ export const GalaxyPage: React.FC = () => {
         <div
           style={{
             textAlign: 'center',
-            marginBottom: '4.5rem',
-            padding: '2.2rem 2rem',
-            borderRadius: '28px',
-            background: 'rgba(11, 16, 26, 0.7)',
+            marginBottom: '4rem',
+            padding: '2rem 2.25rem',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(10, 10, 10, 0.85)',
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            boxShadow: '0 16px 45px rgba(0, 0, 0, 0.6)',
-            maxWidth: '820px',
-            margin: '0 auto 4.5rem auto',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid var(--border-medium)',
+            boxShadow: 'var(--shadow-elevated)',
+            maxWidth: '800px',
+            margin: '0 auto 4rem auto',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -185,32 +202,33 @@ export const GalaxyPage: React.FC = () => {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              fontSize: '0.72rem',
-              fontWeight: 800,
+              gap: '0.45rem',
+              fontSize: '0.6875rem',
+              fontWeight: 500,
               fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.12em',
-              color: '#38bdf8',
+              letterSpacing: '0.08em',
+              color: 'var(--brand-neutral-100)',
               textTransform: 'uppercase',
-              marginBottom: '0.5rem',
-              background: 'rgba(56, 189, 248, 0.1)',
+              marginBottom: '0.75rem',
+              background: 'var(--bg-surface)',
               padding: '0.2rem 0.65rem',
-              borderRadius: '999px',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
+              borderRadius: 'var(--radius-xs)',
+              border: '1px solid var(--border-subtle)',
             }}
           >
-            <Sparkles size={13} />
+            <Sparkles size={12} color="var(--brand-neutral-200)" />
             INTERSTELLAR CURRICULUM • 18 SYSTEMS • 150 STARS
           </div>
 
           <h1
             style={{
-              margin: '0 0 0.6rem 0',
-              fontSize: '2.5rem',
-              fontWeight: 900,
-              fontFamily: 'var(--font-display)',
-              letterSpacing: '-0.03em',
-              color: '#ffffff',
+              margin: '0 0 0.5rem 0',
+              fontSize: '2rem',
+              fontWeight: 400,
+              fontFamily: 'var(--font-heading)',
+              letterSpacing: '-0.035em',
+              color: 'var(--brand-white)',
+              lineHeight: 1.2,
             }}
           >
             The Galaxy Node Map
@@ -218,19 +236,70 @@ export const GalaxyPage: React.FC = () => {
 
           <p
             style={{
-              margin: '0 auto',
-              maxWidth: '620px',
-              fontSize: '0.94rem',
+              margin: '0 auto 1.25rem auto',
+              maxWidth: '580px',
+              fontSize: '0.875rem',
               color: 'var(--text-secondary)',
-              lineHeight: 1.65,
+              lineHeight: 1.6,
             }}
           >
             A non-linear cosmic odyssey through 18 algorithmic star systems. Hover over any solar core to preview its
             orbital constellation, or click to lock orbit.
           </p>
+
+          {/* Precision Controls Hint Row */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.6rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-xs)',
+                padding: '0.15rem 0.5rem',
+              }}
+            >
+              <strong style={{ color: 'var(--brand-neutral-100)' }}>HOVER</strong> PREVIEW ORBIT
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-xs)',
+                padding: '0.15rem 0.5rem',
+              }}
+            >
+              <strong style={{ color: 'var(--brand-neutral-100)' }}>CLICK CORE</strong> LOCK / UNLOCK
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.6875rem',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-xs)',
+                padding: '0.15rem 0.5rem',
+              }}
+            >
+              <strong style={{ color: 'var(--brand-neutral-100)' }}>CLICK STAR</strong> INSPECT PROBLEM
+            </span>
+          </div>
         </div>
 
-        {/* ── THE 15 STAR SYSTEMS IN A LAZY ZIG-ZAG ────────────────────────── */}
+        {/* ── THE 18 STAR SYSTEMS IN A LAZY ZIG-ZAG ────────────────────────── */}
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
           {STAR_CLUSTERS.map((cluster, index) => {
             const horizontalOffset = getClusterHorizontalOffset(index, STAR_CLUSTERS.length);
@@ -241,70 +310,70 @@ export const GalaxyPage: React.FC = () => {
                 {index === 3 && (
                   <div
                     style={{
-                      margin: '5rem 0 3rem 0',
+                      margin: '5rem 0 3.5rem 0',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '1rem',
-                      opacity: 0.85,
                     }}
                   >
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.4))' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, var(--border-medium))' }} />
                     <div
                       style={{
-                        padding: '0.4rem 1rem',
-                        borderRadius: '999px',
-                        background: 'rgba(167, 139, 250, 0.1)',
-                        border: '1px solid rgba(167, 139, 250, 0.35)',
-                        fontSize: '0.74rem',
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: 'var(--radius-xs)',
+                        background: 'rgba(10, 10, 10, 0.95)',
+                        border: '1px solid var(--border-medium)',
+                        boxShadow: 'var(--glass-shadow)',
+                        fontSize: '0.6875rem',
                         fontFamily: 'var(--font-mono)',
-                        fontWeight: 800,
-                        color: '#c4b5fd',
+                        fontWeight: 600,
+                        color: 'var(--brand-neutral-100)',
                         letterSpacing: '0.08em',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                       }}
                     >
-                      <Radio size={14} color="#a78bfa" />
+                      <Radio size={13} color="var(--brand-neutral-200)" />
                       SECTOR II • THE QUANTUM RIFT // DEPTH: 1,400 LY
                     </div>
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(167, 139, 250, 0.4), transparent)' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, var(--border-medium), transparent)' }} />
                   </div>
                 )}
 
                 {index === 9 && (
                   <div
                     style={{
-                      margin: '5rem 0 3rem 0',
+                      margin: '5rem 0 3.5rem 0',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '1rem',
-                      opacity: 0.85,
                     }}
                   >
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.4))' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, var(--border-medium))' }} />
                     <div
                       style={{
-                        padding: '0.4rem 1rem',
-                        borderRadius: '999px',
-                        background: 'rgba(244, 63, 94, 0.1)',
-                        border: '1px solid rgba(244, 63, 94, 0.35)',
-                        fontSize: '0.74rem',
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: 'var(--radius-xs)',
+                        background: 'rgba(10, 10, 10, 0.95)',
+                        border: '1px solid var(--border-medium)',
+                        boxShadow: 'var(--glass-shadow)',
+                        fontSize: '0.6875rem',
                         fontFamily: 'var(--font-mono)',
-                        fontWeight: 800,
-                        color: '#fda4af',
+                        fontWeight: 600,
+                        color: 'var(--brand-neutral-100)',
                         letterSpacing: '0.08em',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
                       }}
                     >
-                      <ShieldAlert size={14} color="#f43f5e" />
+                      <ShieldAlert size={13} color="var(--diff-hard)" />
                       SECTOR III • THE EVENT HORIZON // CRITICAL VELOCITY
                     </div>
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(244, 63, 94, 0.4), transparent)' }} />
+                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, var(--border-medium), transparent)' }} />
                   </div>
                 )}
 

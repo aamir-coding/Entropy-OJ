@@ -57,7 +57,7 @@ export const StarModal: React.FC<StarModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 7, 18, 0.75)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         display: 'flex',
@@ -73,10 +73,10 @@ export const StarModal: React.FC<StarModalProps> = ({
         style={{
           width: '100%',
           maxWidth: '480px',
-          background: 'rgba(13, 18, 30, 0.96)',
-          border: '1px solid rgba(56, 189, 248, 0.25)',
-          borderRadius: '24px',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.2)',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-medium)',
+          borderRadius: 'var(--radius-sm)',
+          boxShadow: 'var(--shadow-overlay)',
           padding: '1.75rem',
           position: 'relative',
           display: 'flex',
@@ -93,60 +93,63 @@ export const StarModal: React.FC<StarModalProps> = ({
             position: 'absolute',
             top: '1.25rem',
             right: '1.25rem',
-            background: 'rgba(255, 255, 255, 0.06)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-xs)',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-secondary)',
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all var(--transition-fast)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
-            e.currentTarget.style.color = '#fff';
+            e.currentTarget.style.borderColor = 'var(--border-hover)';
+            e.currentTarget.style.color = 'var(--brand-white)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+            e.currentTarget.style.borderColor = 'var(--border-subtle)';
             e.currentTarget.style.color = 'var(--text-secondary)';
           }}
         >
-          <X size={16} />
+          <X size={14} />
         </button>
 
         {/* Top Designation Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           <span
             style={{
-              fontSize: '0.68rem',
-              fontWeight: 800,
+              fontSize: '0.6875rem',
+              fontWeight: 600,
               fontFamily: 'var(--font-mono)',
-              background: 'rgba(56, 189, 248, 0.12)',
-              color: '#38bdf8',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
+              background: 'var(--bg-secondary)',
+              color: 'var(--brand-white)',
+              border: '1px solid var(--border-medium)',
               padding: '0.15rem 0.55rem',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-xs)',
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
             }}
           >
-            <Orbit size={13} />
+            <Orbit size={12} color="var(--brand-neutral-200)" />
             STAR #{problem.order}
           </span>
 
           <span
             style={{
-              fontSize: '0.68rem',
-              fontWeight: 700,
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              fontFamily: 'var(--font-mono)',
               color: diffColor,
               background: `${diffColor}18`,
               border: `1px solid ${diffColor}40`,
               padding: '0.15rem 0.55rem',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-xs)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
             }}
           >
             {problem.difficulty}
@@ -154,11 +157,13 @@ export const StarModal: React.FC<StarModalProps> = ({
 
           <span
             style={{
-              fontSize: '0.68rem',
+              fontSize: '0.6875rem',
+              fontFamily: 'var(--font-mono)',
               color: 'var(--text-muted)',
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
               padding: '0.15rem 0.55rem',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-xs)',
             }}
           >
             {problem.category}
@@ -170,65 +175,68 @@ export const StarModal: React.FC<StarModalProps> = ({
           <h2
             style={{
               margin: '0 0 0.35rem 0',
-              fontSize: '1.45rem',
-              fontWeight: 800,
-              fontFamily: 'var(--font-display)',
-              letterSpacing: '-0.02em',
-              color: '#ffffff',
+              fontSize: '1.375rem',
+              fontWeight: 500,
+              fontFamily: 'var(--font-heading)',
+              letterSpacing: '-0.025em',
+              color: 'var(--brand-white)',
             }}
           >
             {problem.title}
           </h2>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-            Designation Key: <code style={{ color: '#38bdf8' }}>{problem.code}</code>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            Designation Key:{' '}
+            <code
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--brand-white)',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.1rem 0.4rem',
+                borderRadius: 'var(--radius-xs)',
+              }}
+            >
+              {problem.code}
+            </code>
           </span>
         </div>
 
         {/* Stellar Status Banner */}
         <div
           style={{
-            borderRadius: '14px',
-            padding: '1rem',
+            borderRadius: 'var(--radius-xs)',
+            padding: '0.875rem 1rem',
             display: 'flex',
             alignItems: 'center',
             gap: '0.85rem',
-            background: isSolved
-              ? 'rgba(52, 211, 153, 0.08)'
-              : isAttempted
-              ? 'rgba(251, 191, 36, 0.08)'
-              : 'rgba(56, 189, 248, 0.06)',
-            border: `1px solid ${
-              isSolved
-                ? 'rgba(52, 211, 153, 0.3)'
-                : isAttempted
-                ? 'rgba(251, 191, 36, 0.3)'
-                : 'rgba(56, 189, 248, 0.2)'
-            }`,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-medium)',
           }}
         >
           {isSolved ? (
             <>
               <div
                 style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: 'rgba(52, 211, 153, 0.15)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid rgba(5, 223, 114, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  boxShadow: '0 0 16px rgba(52, 211, 153, 0.4)',
+                  boxShadow: 'var(--glass-shadow)',
                 }}
               >
-                <Sparkles size={20} color="#34d399" />
+                <Sparkles size={16} color="var(--verdict-ac)" />
               </div>
               <div>
-                <div style={{ fontWeight: 700, color: '#34d399', fontSize: '0.88rem' }}>
+                <div style={{ fontWeight: 600, color: 'var(--verdict-ac)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
                   Supernova Ignited (Solved)
                 </div>
-                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                  This celestial node has been conquered with an Accepted verdict. Constellation energy line is fully illuminated.
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                  Accepted verdict confirmed. Constellation energy vector is illuminated.
                 </div>
               </div>
             </>
@@ -236,25 +244,26 @@ export const StarModal: React.FC<StarModalProps> = ({
             <>
               <div
                 style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: 'rgba(251, 191, 36, 0.15)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  boxShadow: '0 0 16px rgba(251, 191, 36, 0.4)',
+                  boxShadow: 'var(--glass-shadow)',
                 }}
               >
-                <AlertCircle size={20} color="#fbbf24" />
+                <AlertCircle size={16} color="var(--verdict-tle)" />
               </div>
               <div>
-                <div style={{ fontWeight: 700, color: '#fbbf24', fontSize: '0.88rem' }}>
+                <div style={{ fontWeight: 600, color: 'var(--verdict-tle)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
                   Protostar (In-Progress)
                 </div>
-                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                  You have active submissions recorded for this trial. Resume coding to ignite this star into a supernova!
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                  Submissions recorded. Resume coding to ignite this star into a supernova.
                 </div>
               </div>
             </>
@@ -262,25 +271,26 @@ export const StarModal: React.FC<StarModalProps> = ({
             <>
               <div
                 style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: 'rgba(56, 189, 248, 0.12)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  boxShadow: '0 0 14px rgba(56, 189, 248, 0.3)',
+                  boxShadow: 'var(--glass-shadow)',
                 }}
               >
-                <Play size={18} color="#38bdf8" />
+                <Play size={15} color="var(--brand-neutral-200)" />
               </div>
               <div>
-                <div style={{ fontWeight: 700, color: '#38bdf8', fontSize: '0.88rem' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brand-white)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
                   Dim Star (Uncharted)
                 </div>
-                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                  A dormant star in this constellation. Warp to the IDE to initialize testing.
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                  Dormant celestial node. Warp to the workspace to initialize trial.
                 </div>
               </div>
             </>
@@ -294,31 +304,30 @@ export const StarModal: React.FC<StarModalProps> = ({
               onClick={handleWarp}
               style={{
                 width: '100%',
-                padding: '0.8rem 1.25rem',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 100%)',
-                color: '#ffffff',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '0.92rem',
+                padding: '0.75rem 1.25rem',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--brand-white)',
+                color: 'var(--brand-black)',
+                border: '1px solid var(--brand-white)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                fontFamily: 'var(--font-sans)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                boxShadow: '0 4px 20px rgba(56, 189, 248, 0.4)',
-                transition: 'transform 0.15s, box-shadow 0.15s',
+                boxShadow: 'var(--glass-shadow)',
+                transition: 'background var(--transition-fast)',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 26px rgba(56, 189, 248, 0.55)';
+                e.currentTarget.style.background = 'var(--brand-neutral-50)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(56, 189, 248, 0.4)';
+                e.currentTarget.style.background = 'var(--brand-white)';
               }}
             >
-              <ExternalLink size={18} />
+              <ExternalLink size={16} />
               {isSolved ? 'Warp to Review Solution' : 'Warp to Problem Workspace'}
             </button>
           ) : (
@@ -326,13 +335,14 @@ export const StarModal: React.FC<StarModalProps> = ({
               disabled
               style={{
                 width: '100%',
-                padding: '0.8rem 1.25rem',
-                borderRadius: '12px',
-                background: 'rgba(255, 255, 255, 0.05)',
+                padding: '0.75rem 1.25rem',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--bg-surface)',
                 color: 'var(--text-muted)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                fontWeight: 600,
-                fontSize: '0.88rem',
+                border: '1px solid var(--border-subtle)',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                fontFamily: 'var(--font-sans)',
                 cursor: 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
@@ -340,7 +350,7 @@ export const StarModal: React.FC<StarModalProps> = ({
                 gap: '0.5rem',
               }}
             >
-              <Lock size={16} />
+              <Lock size={15} />
               Awaiting Seeder Telemetry
             </button>
           )}

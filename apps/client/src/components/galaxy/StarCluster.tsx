@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { IStarCluster, IStarProblem } from '../../data/galaxyData';
 import { StarNode } from './StarNode';
 import { Sparkles } from 'lucide-react';
+import { ClusterCoreReticle } from './ClusterCoreReticle';
 
 interface StarClusterProps {
   cluster: IStarCluster;
@@ -146,15 +147,15 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         zIndex: isBlossomed ? 30 : 10,
       }}
     >
-      {/* Dynamic Ambient Sector Nebula Glow Backdrop */}
+      {/* Monochromatic Volumetric Starlight Depth Aura */}
       <div
         style={{
           position: 'absolute',
           width: isBlossomed ? `${svgDims.width * 0.9}px` : '320px',
           height: isBlossomed ? `${svgDims.height * 0.9}px` : '260px',
           borderRadius: '50%',
-          background: cluster.bgGlow,
-          filter: 'blur(50px)',
+          background: 'radial-gradient(circle, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 50%, transparent 70%)',
+          filter: 'blur(40px)',
           pointerEvents: 'none',
           transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
           zIndex: 1,
@@ -197,7 +198,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
             }}
             viewBox={`-${svgDims.halfW} -${svgDims.halfH} ${svgDims.width} ${svgDims.height}`}
           >
-            {/* Concentric Orbital Ellipse Rings */}
+            {/* Concentric Orbital Ellipse Rings (Delicate Astrometric Coordinate Rings) */}
             {orbitalRings.map((ring, rIdx) => (
               <ellipse
                 key={`ring-${rIdx}`}
@@ -207,12 +208,12 @@ export const StarCluster: React.FC<StarClusterProps> = ({
                 ry={ring.radius * 0.72}
                 fill="none"
                 stroke="rgba(255, 255, 255, 0.08)"
-                strokeWidth="1.2"
-                strokeDasharray="4 6"
+                strokeWidth="1"
+                strokeDasharray="2 4"
               />
             ))}
 
-            {/* Constellation Vectors: Originates directly at (0, 0) Center of Sun */}
+            {/* Constellation Vectors: CAD Astrometry Vectors radiating from Center of Singularity */}
             {orbitalNodes.map(({ prob, x, y }) => {
               const isSolved = solvedCodes.has(prob.code);
               return (
@@ -222,11 +223,11 @@ export const StarCluster: React.FC<StarClusterProps> = ({
                   y1="0"
                   x2={x}
                   y2={y}
-                  stroke={isSolved ? cluster.spectralColor : 'rgba(255, 255, 255, 0.14)'}
-                  strokeWidth={isSolved ? 1.8 : 1}
+                  stroke={isSolved ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.12)'}
+                  strokeWidth={isSolved ? 1.4 : 1}
                   strokeDasharray={isSolved ? 'none' : '2 4'}
                   style={{
-                    filter: isSolved ? `drop-shadow(0 0 6px ${cluster.spectralColor})` : 'none',
+                    filter: isSolved ? 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.6))' : 'none',
                     transition: 'stroke 0.4s ease',
                   }}
                 />
@@ -265,7 +266,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           </div>
         )}
 
-        {/* Central Core Sun */}
+        {/* Central Core: Gravitational Singularity */}
         <div
           onClick={handleCoreClick}
           className="cluster-core-sun"
@@ -284,7 +285,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           }}
           title={isExpanded ? 'Click core to unlock and collapse orbit' : 'Click core to lock orbit'}
         >
-          {/* SVG Orbital Progress Arc around the Sun */}
+          {/* Precision Caliber Progress Gauge around Singularity */}
           <svg
             style={{
               position: 'absolute',
@@ -300,65 +301,94 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               cy="50"
               r="44"
               fill="none"
-              stroke="rgba(255, 255, 255, 0.08)"
-              strokeWidth="3.5"
+              stroke="rgba(255, 255, 255, 0.06)"
+              strokeWidth="2"
             />
             <circle
               cx="50"
               cy="50"
               r="44"
               fill="none"
-              stroke={isMastered ? '#fbbf24' : cluster.spectralColor}
-              strokeWidth="4"
+              stroke={isMastered ? '#ffffff' : 'var(--brand-white)'}
+              strokeWidth="2"
               strokeLinecap="round"
               strokeDasharray="276"
               strokeDashoffset={276 * (1 - progressRatio)}
               style={{
-                filter: `drop-shadow(0 0 8px ${cluster.spectralColor})`,
+                filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.4))',
                 transition: 'stroke-dashoffset 0.6s ease',
               }}
             />
           </svg>
 
-          {/* Coronal Solar Flare */}
+          {/* Gravitational Lensing Halo */}
           <div
             className="solar-coronal-flare"
             style={{
               position: 'absolute',
-              inset: '-6px',
+              inset: '-8px',
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${cluster.coronaGlow} 0%, transparent 70%)`,
+              background: isMastered
+                ? 'radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 70%)'
+                : isBlossomed
+                ? `radial-gradient(circle, ${cluster.spectralColor}26 0%, rgba(255, 255, 255, 0.05) 45%, transparent 70%)`
+                : 'radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 70%)',
               pointerEvents: 'none',
+              transition: 'background 0.4s ease',
             }}
           />
 
-          {/* Inner Star Body: Pure glowing celestial orb (No zoom icons) */}
+          {/* Event Horizon Singularity Body with Whisper-Thin Anodized Accretion Rim */}
           <div
             style={{
               width: '100%',
               height: '100%',
               borderRadius: '50%',
               background: isMastered
-                ? 'radial-gradient(circle, #ffffff 0%, #fbbf24 60%, #b45309 100%)'
-                : `radial-gradient(circle, #ffffff 0%, ${cluster.spectralColor} 65%, #0f172a 100%)`,
-              boxShadow: `0 0 28px ${cluster.coronaGlow}, inset 0 0 14px rgba(255, 255, 255, 0.75)`,
+                ? 'radial-gradient(circle, #222222 0%, #0d0d0d 50%, #000000 100%)'
+                : isBlossomed
+                ? 'radial-gradient(circle, #1a1a1a 0%, #0c0c0c 60%, #000000 100%)'
+                : 'radial-gradient(circle, #141414 0%, #070707 60%, #000000 100%)',
+              boxShadow: isMastered
+                ? '0 0 24px rgba(255, 255, 255, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.25)'
+                : isBlossomed
+                ? `0 0 18px ${cluster.spectralColor}40, inset 0 0 8px rgba(255, 255, 255, 0.2), inset 0 0 14px ${cluster.spectralColor}25`
+                : `0 0 10px ${cluster.spectralColor}20, inset 0 0 6px rgba(255, 255, 255, 0.12)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid rgba(255, 255, 255, 0.6)',
+              border: isMastered
+                ? '1.5px solid rgba(255, 255, 255, 0.85)'
+                : isBlossomed
+                ? `1px solid ${cluster.spectralColor}99`
+                : `1px solid ${cluster.spectralColor}45`,
               position: 'relative',
+              overflow: 'hidden',
+              transition: 'border 0.4s ease, box-shadow 0.4s ease, background 0.4s ease',
             }}
           >
+            {/* Unique CAD Astrolabe Reticle Aperture */}
+            <ClusterCoreReticle
+              clusterId={cluster.id}
+              isHovered={isHovered}
+              isBlossomed={isBlossomed}
+              isMastered={isMastered}
+            />
+
+            {/* Central Precision Focal Pip or Mastery Sparkle */}
             {isMastered ? (
-              <Sparkles size={24} color="#0f172a" strokeWidth={2.5} />
+              <Sparkles size={18} color="#ffffff" strokeWidth={2} style={{ zIndex: 6, position: 'relative' }} />
             ) : (
               <div
                 style={{
-                  width: '28%',
-                  height: '28%',
+                  position: 'relative',
+                  zIndex: 6,
+                  width: isBlossomed ? '6px' : '5px',
+                  height: isBlossomed ? '6px' : '5px',
                   borderRadius: '50%',
                   background: '#ffffff',
-                  boxShadow: '0 0 12px #ffffff',
+                  boxShadow: '0 0 8px #ffffff, 0 0 14px rgba(255, 255, 255, 0.7)',
+                  transition: 'all 0.3s ease',
                 }}
               />
             )}
@@ -366,7 +396,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         </div>
       </div>
 
-      {/* Cluster Label & Info under Sun (Clutter text removed to keep space clean) */}
+      {/* Cluster Label & Info under Sun (Clean Technical Telemetry) */}
       <div
         onClick={handleCoreClick}
         style={{
@@ -379,27 +409,39 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           zIndex: 20,
         }}
       >
-        <span
-          style={{
-            fontSize: '0.66rem',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 800,
-            letterSpacing: '0.12em',
-            color: cluster.spectralColor,
-            textTransform: 'uppercase',
-          }}
-        >
-          {cluster.designation}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: cluster.spectralColor,
+              boxShadow: `0 0 6px ${cluster.spectralColor}`,
+              display: 'inline-block',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '0.6875rem',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 600,
+              letterSpacing: '0.1em',
+              color: 'var(--text-secondary)',
+              textTransform: 'uppercase',
+            }}
+          >
+            {cluster.designation}
+          </span>
+        </div>
 
         <h3
           style={{
-            margin: '0.2rem 0 0.25rem 0',
-            fontSize: isBlossomed ? '1.25rem' : '1.05rem',
-            fontWeight: 800,
-            fontFamily: 'var(--font-display)',
-            letterSpacing: '-0.02em',
-            color: '#ffffff',
+            margin: '0.2rem 0 0.35rem 0',
+            fontSize: isBlossomed ? '1.1875rem' : '1.05rem',
+            fontWeight: 500,
+            fontFamily: 'var(--font-heading)',
+            letterSpacing: '-0.025em',
+            color: 'var(--brand-white)',
             transition: 'font-size 0.3s ease',
           }}
         >
@@ -409,14 +451,15 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span
             style={{
-              fontSize: '0.72rem',
-              fontWeight: 700,
+              fontSize: '0.6875rem',
+              fontWeight: 500,
               fontFamily: 'var(--font-mono)',
-              color: isMastered ? '#fbbf24' : 'var(--text-secondary)',
-              background: 'rgba(255, 255, 255, 0.05)',
-              padding: '0.1rem 0.55rem',
-              borderRadius: '999px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: isMastered ? 'var(--brand-white)' : 'var(--text-secondary)',
+              background: isMastered ? 'rgba(255, 255, 255, 0.1)' : 'var(--bg-surface)',
+              padding: '0.1rem 0.5rem',
+              borderRadius: 'var(--radius-xs)',
+              border: `1px solid ${isMastered ? 'rgba(255, 255, 255, 0.4)' : 'var(--border-subtle)'}`,
+              boxShadow: 'var(--glass-shadow)',
             }}
           >
             {solvedCount} / {totalCount} Solved
