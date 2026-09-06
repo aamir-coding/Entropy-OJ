@@ -11,6 +11,10 @@ export const redisConnectionOptions: RedisOptions = {
     if (env.NODE_ENV === 'test') {
       return null;
     }
+    if (times > 10) {
+      console.error('[Worker Redis] Max reconnection attempts (10) reached.');
+      return null;
+    }
     return Math.min(times * 200, 3000);
   },
 };
@@ -39,6 +43,9 @@ export const redisClient = {
     return getRedisClient();
   },
   ping: () => getRedisClient().ping(),
+  get: (key: string) => getRedisClient().get(key),
+  set: (key: string, value: string, ...args: any[]) => (getRedisClient() as any).set(key, value, ...args),
+  del: (...keys: string[]) => getRedisClient().del(...keys),
   quit: async () => {
     if (clientInstance) {
       await clientInstance.quit();

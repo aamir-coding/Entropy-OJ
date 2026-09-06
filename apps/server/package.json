@@ -1,7 +1,7 @@
 {
   "name": "@anti-oj/server",
   "version": "1.0.0",
-  "description": "REST API Backend for Anti Online Judge",
+  "description": "REST API Backend for Entropy",
   "main": "dist/server.js",
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "seed": "tsx src/seeds/seedProblems.ts",
+    "seed:prod": "node dist/seeds/seedProblems.js",
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {

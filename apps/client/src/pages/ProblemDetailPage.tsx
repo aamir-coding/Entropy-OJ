@@ -6,6 +6,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeSanitize from 'rehype-sanitize';
+import { katexSanitizeSchema } from '../utils/sanitizeSchema';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { VerdictBadge } from '../components/VerdictBadge';
@@ -93,7 +95,18 @@ export const ProblemDetailPage: React.FC = () => {
   // Editor State
   const [language, setLanguage] = useState<SupportedLanguage>(SupportedLanguages.CPP);
   const [editorCode, setEditorCode] = useState<string>(LANGUAGE_CONFIGS.cpp.starterCode);
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({
+    [SupportedLanguages.CPP]: LANGUAGE_CONFIGS.cpp.starterCode,
+  });
   const [fontSize, setFontSize] = useState<number>(14);
+
+  // Responsive mobile workspace layout (<768px vertical split)
+  const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Console / Testcase Navigation State
   const [isConsoleCollapsed, setIsConsoleCollapsed] = useState(false);
@@ -193,26 +206,29 @@ export const ProblemDetailPage: React.FC = () => {
     language: 'cpp',
   });
 
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+  const loadPastSubmissionsRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const [activePollingId, setActivePollingId] = useState<string | null>(null);
 
   // Track component mount status and clean up all active timers (Issue L-2)
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
 
   // Synchronize and reset workspace when navigating between problems (Issue C-3)
   useEffect(() => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
+    setActivePollingId(null);
     setActiveSubmission(null);
     setSampleResults([]);
     setSampleRunError(null);
@@ -223,7 +239,9 @@ export const ProblemDetailPage: React.FC = () => {
     setConsoleTab('testcases');
     setResultView('sample');
     setHintState({ loading: false, hint: null, error: null });
-    setEditorCode(LANGUAGE_CONFIGS[language]?.starterCode || LANGUAGE_CONFIGS.cpp.starterCode);
+    const initialStarter = LANGUAGE_CONFIGS[language]?.starterCode || LANGUAGE_CONFIGS.cpp.starterCode;
+    setEditorCode(initialStarter);
+    setCodeDrafts({ [language]: initialStarter });
   }, [problemCodeParam]);
 
   // Update dynamic page title
@@ -277,6 +295,8 @@ export const ProblemDetailPage: React.FC = () => {
     }
   }, [problem, user]);
 
+  loadPastSubmissionsRef.current = loadPastSubmissions;
+
   useEffect(() => {
     if (leftTab === 'submissions' && user && problem) {
       loadPastSubmissions();
@@ -305,15 +325,26 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
-  // Handle language switch
+  // Handle language switch (High 2: Save active draft and restore new language draft)
   const handleLanguageChange = (newLang: SupportedLanguage) => {
+    setCodeDrafts((prev) => ({
+      ...prev,
+      [language]: editorCode,
+    }));
     setLanguage(newLang);
-    setEditorCode(LANGUAGE_CONFIGS[newLang].starterCode);
+    const existingDraft = codeDrafts[newLang];
+    const starter = LANGUAGE_CONFIGS[newLang]?.starterCode || '';
+    setEditorCode(existingDraft !== undefined ? existingDraft : starter);
   };
 
-  // Reset code
+  // Reset code (Preserves reset in active draft)
   const handleResetCode = () => {
-    setEditorCode(LANGUAGE_CONFIGS[language].starterCode);
+    const starter = LANGUAGE_CONFIGS[language].starterCode;
+    setEditorCode(starter);
+    setCodeDrafts((prev) => ({
+      ...prev,
+      [language]: starter,
+    }));
     setShowResetConfirm(false);
   };
 
@@ -370,39 +401,72 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
-  // Poll submission status until resolved (Issue H-4: Consecutive error tolerance)
+  // Poll submission status until resolved (Critical 3 & 4: Chained setTimeout with backoff; Low 2: Post-AC classification loop)
   const startPollingSubmission = (submissionId: string) => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    setActivePollingId(submissionId);
 
     let attempts = 0;
     let postAcAttempts = 0;
     let consecutiveErrors = 0;
-    const maxAttempts = 30; // 30 seconds max polling
-    const maxPostAcAttempts = 6; // Poll up to 6 seconds for async AI classification on Accepted
+    const maxAttempts = 50; // Chained polling up to ~90-120 seconds with backoff
+    const maxPostAcAttempts = 6; // Poll up to 6 cycles for async AI classification on Accepted
     const maxConsecutiveErrors = 4; // Allow up to 4 consecutive transient errors
     let historyLoaded = false;
     setSubmissionTimeoutMsg(null);
 
-    pollIntervalRef.current = setInterval(async () => {
-      if (!isMountedRef.current) {
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        return;
-      }
+    const scheduleNext = (delayMs: number, pollFn: () => void) => {
+      if (!isMountedRef.current) return;
+      pollTimeoutRef.current = setTimeout(pollFn, delayMs);
+    };
 
+    const pollClassification = () => {
+      if (!isMountedRef.current) return;
+      postAcAttempts++;
+      api
+        .get(`/submissions/${submissionId}`)
+        .then((res) => {
+          if (!isMountedRef.current) return;
+          if (res.data?.success && res.data?.data) {
+            const updated: ISubmissionResponse = res.data.data;
+            setActiveSubmission(updated);
+            if (updated.classification || postAcAttempts >= maxPostAcAttempts) {
+              return;
+            }
+          }
+          if (postAcAttempts < maxPostAcAttempts) {
+            scheduleNext(1500, pollClassification);
+          }
+        })
+        .catch((err) => {
+          console.warn('[Polling AI Classification] Transient error:', err);
+        });
+    };
+
+    const pollTick = async () => {
+      if (!isMountedRef.current) return;
       attempts++;
+
       try {
         const res = await api.get(`/submissions/${submissionId}`);
-        if (res.data.success && isMountedRef.current) {
+        if (!isMountedRef.current) return;
+
+        if (res.data?.success && res.data?.data) {
           consecutiveErrors = 0;
           const updated: ISubmissionResponse = res.data.data;
           setActiveSubmission(updated);
 
           if (updated.verdict !== Verdicts.PENDING) {
             setSubmitting(false);
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
             if (updated.verdict === Verdicts.ACCEPTED) {
               notifyStatsUpdated();
+              if (!updated.classification) {
+                scheduleNext(1500, pollClassification);
+              }
             }
 
             if (!historyLoaded) {
@@ -410,26 +474,40 @@ export const ProblemDetailPage: React.FC = () => {
               if (updated.verdict === Verdicts.COMPILATION_ERROR) {
                 setConsoleTab('compiler');
               }
-              loadPastSubmissions();
+              loadPastSubmissionsRef.current();
             }
+            return;
           } else if (attempts >= maxAttempts) {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setSubmitting(false);
-            setSubmissionTimeoutMsg('Evaluation is taking longer than expected. Please check your submission history for final verdict.');
+            setSubmissionTimeoutMsg('Evaluation is taking longer than expected. You can check status again or check your submission history.');
+            return;
           }
         }
       } catch (err) {
         consecutiveErrors++;
         console.warn(`[Polling] Transient network error (${consecutiveErrors}/${maxConsecutiveErrors}):`, err);
         if (consecutiveErrors >= maxConsecutiveErrors) {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           if (isMountedRef.current) {
             setSubmitting(false);
-            setSubmissionTimeoutMsg('Network connection lost during evaluation. Please check your submission history.');
+            setSubmissionTimeoutMsg('Network connection lost during evaluation. Click "Check Status" or verify in your submission history.');
           }
+          return;
         }
       }
-    }, 1000);
+
+      // Exponential backoff: starting at 1000ms scaling up to 2500ms
+      const delay = Math.min(1000 + attempts * 50, 2500);
+      scheduleNext(delay, pollTick);
+    };
+
+    scheduleNext(1000, pollTick);
+  };
+
+  const handleManualCheckStatus = () => {
+    if (!activePollingId) return;
+    setSubmitting(true);
+    setSubmissionTimeoutMsg(null);
+    startPollingSubmission(activePollingId);
   };
 
   // Submit code for full evaluation
@@ -618,7 +696,7 @@ export const ProblemDetailPage: React.FC = () => {
 
       {/* Main Viewport Workspace Split (Left: Problem Statement, Right: Monaco Editor + Bottom Console) */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Group orientation="horizontal" {...horizontalLayout} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+        <Group orientation={isMobile ? 'vertical' : 'horizontal'} {...horizontalLayout} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
           {/* LEFT PANEL: Problem Description & Submissions Tabs (Scrolls independently) */}
           <Panel id="problem-left-panel" defaultSize="45%" minSize="25%" maxSize="75%">
             <div
@@ -722,12 +800,12 @@ export const ProblemDetailPage: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Problem Statement Content rendered via ReactMarkdown & KaTeX (Issue M-1) */}
+                    {/* Problem Statement Content rendered via ReactMarkdown, KaTeX & rehype-sanitize (Issue M-1, High 6) */}
                     <div className="markdown-statement">
                       <ErrorBoundary fallback={<div style={{ padding: '1rem', color: 'var(--verdict-wa)' }}>Failed to render problem math/markdown format.</div>}>
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeKatex]}
+                          rehypePlugins={[rehypeKatex, [rehypeSanitize, katexSanitizeSchema]]}
                         >
                           {problem.statement}
                         </ReactMarkdown>
@@ -1411,11 +1489,23 @@ export const ProblemDetailPage: React.FC = () => {
                                     color: '#fbbf24',
                                     display: 'flex',
                                     alignItems: 'center',
+                                    justifyContent: 'space-between',
                                     gap: '0.5rem',
                                   }}
                                 >
-                                  <AlertCircle size={15} />
-                                  <span>{submissionTimeoutMsg}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <AlertCircle size={15} />
+                                    <span>{submissionTimeoutMsg}</span>
+                                  </div>
+                                  {activePollingId && (
+                                    <button
+                                      onClick={handleManualCheckStatus}
+                                      className="btn btn-outline"
+                                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderColor: '#fbbf24', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                    >
+                                      <RotateCcw size={12} /> Check Status
+                                    </button>
+                                  )}
                                 </div>
                               )}
 

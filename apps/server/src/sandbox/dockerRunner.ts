@@ -9,6 +9,72 @@ import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
 
+export class Semaphore {
+  private current = 0;
+  private queue: Array<() => void> = [];
+
+  constructor(public readonly max: number = 4) {}
+
+  async acquire(timeoutMs = 30000): Promise<() => void> {
+    if (this.current < this.max) {
+      this.current++;
+      let released = false;
+      return () => {
+        if (!released) {
+          released = true;
+          this.release();
+        }
+      };
+    }
+
+    return new Promise<() => void>((resolve, reject) => {
+      let timer: NodeJS.Timeout | null = null;
+      let released = false;
+
+      const onAcquire = () => {
+        if (timer) clearTimeout(timer);
+        resolve(() => {
+          if (!released) {
+            released = true;
+            this.release();
+          }
+        });
+      };
+
+      if (timeoutMs > 0) {
+        timer = setTimeout(() => {
+          const idx = this.queue.indexOf(onAcquire);
+          if (idx !== -1) {
+            this.queue.splice(idx, 1);
+            reject(new Error('Timed out waiting for Docker sandbox execution slot'));
+          }
+        }, timeoutMs);
+      }
+
+      this.queue.push(onAcquire);
+    });
+  }
+
+  private release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      if (next) next();
+    } else {
+      this.current = Math.max(0, this.current - 1);
+    }
+  }
+
+  get activeCount(): number {
+    return this.current;
+  }
+
+  get queueLength(): number {
+    return this.queue.length;
+  }
+}
+
+export const sandboxSemaphore = new Semaphore(4);
+
 export const activeContainers = new Set<string>();
 
 export async function killActiveContainers(): Promise<void> {
@@ -59,7 +125,7 @@ export class DockerSandbox {
   }
 
   static async create(): Promise<DockerSandbox> {
-    const tmpBase = path.join(os.tmpdir(), 'anti-oj-server-workspaces');
+    const tmpBase = path.join(os.tmpdir(), 'entropy-server-workspaces');
     await fs.mkdir(tmpBase, { recursive: true });
     const workspaceDir = await fs.mkdtemp(path.join(tmpBase, 'sample-'));
     return new DockerSandbox(workspaceDir);
@@ -84,7 +150,8 @@ export class DockerSandbox {
   }
 
   async compile(language: SupportedLanguage, timeoutMs = 15000): Promise<CompileResult> {
-    const containerName = `oj-cmp-sample-${crypto.randomUUID()}`;
+    const releaseSemaphore = await sandboxSemaphore.acquire(timeoutMs + 15000);
+    const containerName = `entropy-cmp-sample-${crypto.randomUUID()}`;
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
 
     const args = [
@@ -141,6 +208,7 @@ export class DockerSandbox {
       };
     } finally {
       activeContainers.delete(containerName);
+      releaseSemaphore();
     }
   }
 
@@ -150,11 +218,12 @@ export class DockerSandbox {
     timeLimitMs = 2000,
     memoryLimitKb = 256 * 1024
   ): Promise<RunExecutionResult> {
-    const containerName = `oj-run-sample-${crypto.randomUUID()}`;
+    const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
+    const releaseSemaphore = await sandboxSemaphore.acquire(wallTimeoutMs + 15000);
+    const containerName = `entropy-run-sample-${crypto.randomUUID()}`;
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
-    const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
 
     const args = [
       'run',
@@ -197,6 +266,7 @@ export class DockerSandbox {
       } catch {}
     } finally {
       activeContainers.delete(containerName);
+      releaseSemaphore();
     }
 
     let actualOutput = '';

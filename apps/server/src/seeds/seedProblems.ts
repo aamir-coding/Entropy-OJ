@@ -9,9 +9,9 @@ import { SeedProblemData } from './types';
 export { ALL_SEED_PROBLEMS };
 
 export async function seedDatabase(forceClean = false): Promise<void> {
-  // Production guard (Issue H-1 & L-3)
-  if (env.isProduction || process.env.NODE_ENV === 'production') {
-    console.error('[Seeder] ❌ Refusing to run database seeder in PRODUCTION mode!');
+  // Production guard (Issue H-1 & L-3): requires explicit ALLOW_PROD_SEED=true in production
+  if ((env.isProduction || process.env.NODE_ENV === 'production') && process.env.ALLOW_PROD_SEED !== 'true') {
+    console.error('[Seeder] ❌ Refusing to run database seeder in PRODUCTION mode without ALLOW_PROD_SEED=true!');
     process.exit(1);
   }
 
@@ -57,22 +57,29 @@ export async function seedDatabase(forceClean = false): Promise<void> {
     }
 
     // Seed default Admin user with configurable password
-    const adminEmail = process.env.ADMIN_SEED_EMAIL || 'admin@anti-oj.com';
-    const adminPassword = process.env.ADMIN_SEED_PASSWORD || 'DevAdmin@2026!';
+    const adminEmail = process.env.ADMIN_SEED_EMAIL || 'admin@entropy.dev';
+    const adminPassword = process.env.ADMIN_SEED_PASSWORD;
 
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    if (!existingAdmin) {
-      await User.create({
-        fullName: 'Judge Administrator',
-        email: adminEmail,
-        password: adminPassword,
-        role: 'admin',
-      });
-      console.log(`  ✔ Created Admin User: ${adminEmail} (Configured via ADMIN_SEED_PASSWORD)`);
-    } else if (existingAdmin.role !== 'admin') {
-      existingAdmin.role = 'admin';
-      await existingAdmin.save();
-      console.log(`  ✔ Promoted existing user to Admin: ${adminEmail}`);
+    if (!adminPassword && env.isProduction) {
+      console.warn('[Seeder] ⚠️ In production mode, ADMIN_SEED_PASSWORD is required to provision the admin user. Skipping admin creation.');
+    } else {
+      const effectivePassword = adminPassword || (env.isProduction ? undefined : 'DevAdmin@2026!');
+      if (effectivePassword) {
+        const existingAdmin = await User.findOne({ email: adminEmail });
+        if (!existingAdmin) {
+          await User.create({
+            fullName: 'Judge Administrator',
+            email: adminEmail,
+            password: effectivePassword,
+            role: 'admin',
+          });
+          console.log(`  ✔ Created Admin User: ${adminEmail} (Configured via ADMIN_SEED_PASSWORD)`);
+        } else if (existingAdmin.role !== 'admin') {
+          existingAdmin.role = 'admin';
+          await existingAdmin.save();
+          console.log(`  ✔ Promoted existing user to Admin: ${adminEmail}`);
+        }
+      }
     }
 
     console.log(`[Seeder] ✅ Database sync completed: ${ALL_SEED_PROBLEMS.length} problems verified/seeded (${totalTestCases} total test cases).`);
@@ -86,6 +93,10 @@ export async function seedDatabase(forceClean = false): Promise<void> {
  * Automatically invoked on server startup to guarantee reproducibility across all local sessions.
  */
 export async function ensureProblemsSeeded(): Promise<void> {
+  if (env.isProduction) {
+    console.log('[AutoSeeder] Production environment detected; skipping automatic database seeding.');
+    return;
+  }
   try {
     const count = await Problem.countDocuments();
     if (count < ALL_SEED_PROBLEMS.length) {

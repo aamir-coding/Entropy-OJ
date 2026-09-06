@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api, isCancel } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -45,11 +45,6 @@ export const HomePage: React.FC = () => {
     }
   }, [user?._id, refreshUser]);
 
-  // Reset to page 1 whenever filters or search query change
-  useEffect(() => {
-    setPage(1);
-  }, [selectedDifficulty, selectedTags, debouncedSearchQuery]);
-
   // Set page title
   useEffect(() => {
     document.title = 'Problems | Entropy';
@@ -66,24 +61,40 @@ export const HomePage: React.FC = () => {
 
   const [retryTrigger, setRetryTrigger] = useState(0);
 
-  // Fetch problems with request cancellation to prevent race conditions (Issue H-2)
+  // Consolidated filter-reset and data fetching (High 1: eliminates duplicate requests on page reset)
+  const filterKey = `${selectedDifficulty}|${selectedTags.slice().sort().join(',')}|${debouncedSearchQuery}`;
+  const prevFilterKeyRef = useRef(filterKey);
+
+  // Fetch problems with request cancellation to prevent race conditions (Issue H-2, Low 3)
   useEffect(() => {
+    // If filters or search changed while on page > 1, reset page synchronously and skip fetching with old page index
+    if (prevFilterKeyRef.current !== filterKey) {
+      prevFilterKeyRef.current = filterKey;
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
+    }
+
     const controller = new AbortController();
 
     const loadProblems = async () => {
       try {
         setLoading(true);
         setError(null);
-        const params: Record<string, string> = {
+        const params: Record<string, any> = {
           page: String(page),
           limit: String(limit),
         };
         if (selectedDifficulty !== 'All') params.difficulty = selectedDifficulty;
-        if (selectedTags.length > 0) params.tags = selectedTags.join(',');
+        if (selectedTags.length > 0) params.tags = selectedTags;
         if (debouncedSearchQuery.trim()) params.search = debouncedSearchQuery.trim();
 
         const res = await api.get('/problems', {
           params,
+          paramsSerializer: {
+            indexes: null,
+          },
           signal: controller.signal,
         });
         if (res.data.success) {
@@ -122,7 +133,7 @@ export const HomePage: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [selectedDifficulty, selectedTags, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
+  }, [filterKey, selectedDifficulty, selectedTags, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
 
   const handleTagClick = (tag: string) => {
     if (tag === 'All') {

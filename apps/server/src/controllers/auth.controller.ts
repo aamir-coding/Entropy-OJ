@@ -1,13 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { redisClient } from '../config/redis';
 import { User } from '../models/User';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { RegisterInput, LoginInput, Verdicts } from '@anti-oj/shared';
 
 function generateToken(userId: string, email: string): string {
-  return jwt.sign({ userId, email }, env.JWT_SECRET, {
+  const jti = crypto.randomUUID();
+  return jwt.sign({ userId, email, jti }, env.JWT_SECRET, {
     expiresIn: `${env.JWT_EXPIRES_DAYS}d`,
   });
 }
@@ -17,7 +20,7 @@ function setTokenCookie(res: Response, token: string): void {
   res.cookie('token', token, {
     httpOnly: true,
     secure: env.isProduction,
-    sameSite: env.isProduction ? 'strict' : 'lax',
+    sameSite: 'strict',
     maxAge,
   });
 }
@@ -115,17 +118,37 @@ export async function login(
   }
 }
 
-export async function logout(_req: Request, res: Response): Promise<void> {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: env.isProduction,
-    sameSite: env.isProduction ? 'strict' : 'lax',
-  });
+export async function logout(req: Request, res: Response): Promise<void> {
+  try {
+    const rawCookie = (req as any).cookies?.token;
+    const authHeader = req.headers.authorization;
+    const token = rawCookie || (authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim());
 
-  res.status(200).json({
-    success: true,
-    message: 'Logged out successfully',
-  });
+    if (token) {
+      try {
+        const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+        if (decoded?.jti && decoded?.exp) {
+          const remainingSeconds = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
+          if (remainingSeconds > 0) {
+            await redisClient.setex(`blacklist:jti:${decoded.jti}`, remainingSeconds, 'revoked');
+          }
+        }
+      } catch (err) {
+        console.warn('[Auth] Failed to blacklist token on logout:', err);
+      }
+    }
+  } finally {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: env.isProduction,
+      sameSite: 'strict',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  }
 }
 
 export async function getMe(

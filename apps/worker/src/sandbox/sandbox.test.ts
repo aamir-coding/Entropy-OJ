@@ -56,6 +56,28 @@ describe('Docker Sandbox & Evaluator Engine Tests', () => {
       assert.strictEqual(metrics.processExitStatus, 124);
       assert.strictEqual(metrics.cpuTimeMs, 1000);
     });
+
+    it('should parse OOM kill exit code 137 and SIGKILL process exit status', () => {
+      const raw = [
+        'WALL_SEC=0.45',
+        'USER_SEC=0.30',
+        'SYS_SEC=0.10',
+        'MAX_RSS_KB=262144',
+        'EXIT_CODE=137',
+        'PROCESS_EXIT_STATUS=137',
+      ].join('\n');
+
+      const metrics = parseMetrics(raw);
+      assert.strictEqual(metrics.exitCode, 137);
+      assert.strictEqual(metrics.processExitStatus, 137);
+      assert.strictEqual(metrics.maxRssKb, 262144);
+    });
+
+    it('should create and clean up local sandbox workspaces', async () => {
+      const sandbox = await DockerSandbox.create();
+      assert.ok(sandbox);
+      await sandbox.cleanup();
+    });
   });
 
   before(async () => {

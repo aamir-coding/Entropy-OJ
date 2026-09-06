@@ -1,5 +1,7 @@
 import http from 'http';
 import mongoose from 'mongoose';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { connectDB, disconnectDB } from './config/db';
 import { redisClient } from './config/redis';
 import { env } from './config/env';
@@ -10,9 +12,11 @@ import {
   sweepStaleWorkspaces,
 } from './sandbox/dockerRunner';
 
+const execFileAsync = promisify(execFile);
+
 async function bootstrap() {
   console.log('===================================================');
-  console.log('🛡️  Anti Online Judge — Sandbox Execution Worker');
+  console.log('🛡️  Entropy — Sandbox Execution Worker');
   console.log('===================================================');
 
   // Verify Database connection
@@ -42,17 +46,36 @@ async function bootstrap() {
 
   // Health probe HTTP server for container orchestrators (Issue M-3)
   const healthPort = env.WORKER_HEALTH_PORT;
-  const healthServer = http.createServer((req, res) => {
+  const healthServer = http.createServer(async (req, res) => {
     if (req.url === '/health' || req.url === '/live') {
       const isDbConnected = mongoose.connection.readyState === 1;
       const isWorkerRunning = worker.isRunning();
-      const isHealthy = isDbConnected && isWorkerRunning;
+
+      let isRedisConnected = false;
+      try {
+        const pong = await redisClient.ping();
+        isRedisConnected = pong === 'PONG';
+      } catch {}
+
+      let isDockerConnected = false;
+      try {
+        await execFileAsync('docker', ['info', '--format', '{{.ServerVersion}}'], { timeout: 3000, windowsHide: true });
+        isDockerConnected = true;
+      } catch {}
+
+      const isHealthy =
+        isDbConnected &&
+        isWorkerRunning &&
+        isRedisConnected &&
+        (env.NODE_ENV === 'test' || isDockerConnected);
 
       res.writeHead(isHealthy ? 200 : 503, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
           status: isHealthy ? 'healthy' : 'degraded',
           db: isDbConnected ? 'connected' : 'disconnected',
+          redis: isRedisConnected ? 'connected' : 'disconnected',
+          docker: isDockerConnected ? 'connected' : 'disconnected',
           worker: isWorkerRunning ? 'running' : 'stopped',
           uptime: process.uptime(),
         })
@@ -88,10 +111,14 @@ async function bootstrap() {
     } catch {}
 
     try {
-      await worker.close();
-      console.log('[Worker] BullMQ worker stopped.');
+      await Promise.race([
+        worker.close(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('worker.close timeout exceeded')), 10000)),
+      ]);
+      console.log('[Worker] BullMQ worker stopped cleanly.');
     } catch (err: any) {
-      console.error('[Worker] Error stopping BullMQ worker:', err.message);
+      console.warn('[Worker] Worker close timed out or encountered error, force cleaning active containers:', err.message);
+      await killActiveContainers();
     }
 
     try {
@@ -125,6 +152,7 @@ async function bootstrap() {
 
   process.on('unhandledRejection', (reason) => {
     console.error('[Worker] 💥 Unhandled Promise Rejection:', reason);
+    gracefulShutdown('unhandledRejection');
   });
 
   process.on('uncaughtException', async (error) => {

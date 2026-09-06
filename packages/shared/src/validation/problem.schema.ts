@@ -5,8 +5,9 @@ import { SupportedLanguages } from '../constants/languages';
 
 export const problemFilterSchema = z.object({
   difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES).optional(),
-  tag: z.union([z.string().max(200), z.array(z.string().max(50))]).optional(),
-  tags: z.union([z.string().max(200), z.array(z.string().max(50))]).optional(),
+  /** @deprecated Use `tags` instead */
+  tag: z.union([z.string().max(200), z.array(z.string().max(50)).max(20)]).optional(),
+  tags: z.union([z.string().max(200), z.array(z.string().max(50)).max(20)]).optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -14,14 +15,14 @@ export const problemFilterSchema = z.object({
 
 export const adminSampleCaseSchema = z.object({
   input: z.string().min(1, 'Sample input cannot be empty'),
-  output: z.string(),
+  output: z.string().min(1, 'Sample output cannot be empty'),
   explanation: z.string().optional(),
 });
 
 export const adminJudgeTestCaseSchema = z.object({
   _id: z.string().optional(),
   input: z.string().min(1, 'Testcase input cannot be empty'),
-  output: z.string(),
+  output: z.string().min(1, 'Testcase output cannot be empty'),
   isSample: z.boolean().default(false),
   order: z.number().int().optional(),
 });
@@ -58,14 +59,7 @@ export const createProblemSchema = z.object({
   testCases: z.array(adminJudgeTestCaseSchema).min(1, 'At least one test case is required'),
 });
 
-export const updateProblemSchema = createProblemSchema.partial().extend({
-  problemCode: z
-    .string()
-    .min(2)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/)
-    .optional(),
-});
+export const updateProblemSchema = createProblemSchema.partial();
 
 export const validateSolutionSchema = z.object({
   language: z.enum([SupportedLanguages.CPP, SupportedLanguages.PYTHON]),

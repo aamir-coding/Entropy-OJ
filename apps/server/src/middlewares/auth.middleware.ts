@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { redisClient } from '../config/redis';
 import { User, IUserDocument } from '../models/User';
 
 export interface AuthRequest extends Request {
@@ -11,6 +12,8 @@ export interface AuthRequest extends Request {
 interface JwtPayload {
   userId: string;
   email: string;
+  jti?: string;
+  exp?: number;
 }
 
 function extractToken(req: AuthRequest): string | undefined {
@@ -40,6 +43,23 @@ export async function requireAuth(
     }
 
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+
+    if (decoded.jti) {
+      try {
+        const isBlacklisted = await redisClient.get(`blacklist:jti:${decoded.jti}`);
+        if (isBlacklisted) {
+          res.status(401).json({
+            success: false,
+            error: 'Session has been revoked. Please log in again.',
+          });
+          return;
+        }
+      } catch (redisErr) {
+        // Fallback: log warning but do not prevent authentication if Redis is transiently unreachable
+        console.warn('[Auth] Redis token blacklist check encountered error:', redisErr);
+      }
+    }
+
     const user = await User.findById(decoded.userId).select('-password');
 
     if (!user) {

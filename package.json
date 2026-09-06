@@ -2,7 +2,7 @@
   "name": "anti-online-judge",
   "version": "1.0.0",
   "private": true,
-  "description": "Production-Grade Sandboxed MERN Online Judge Platform",
+  "description": "Entropy — Production-Grade Sandboxed MERN Algorithmic Evaluation Platform",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -13,6 +13,7 @@
     "build:worker": "npm --workspace=apps/worker run build",
     "build:server": "npm --workspace=apps/server run build",
     "build:client": "npm --workspace=apps/client run build",
+    "build:runner": "npm --workspace=apps/worker run build:image",
     "build": "npm run build:shared && npm run build:worker && npm run build:server && npm run build:client",
     "dev:server": "npm --workspace=apps/server run dev",
     "dev:worker": "npm --workspace=apps/worker run dev",

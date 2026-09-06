@@ -101,11 +101,20 @@ export class PerUserQuota {
         resetHourlySec: hourlyTtl > 0 ? hourlyTtl : 3600,
       };
     } catch (err) {
-      console.warn('[PerUserQuota] Redis check error, allowing request conservatively:', err);
+      if (process.env.NODE_ENV === 'test') {
+        return {
+          allowed: true,
+          remainingDaily: this.dailyLimit,
+          remainingHourly: this.hourlyLimit,
+          resetDailySec: 86400,
+          resetHourlySec: 3600,
+        };
+      }
+      console.error('[PerUserQuota] Redis check error, failing closed to protect AI quota:', err);
       return {
-        allowed: true,
-        remainingDaily: this.dailyLimit,
-        remainingHourly: this.hourlyLimit,
+        allowed: false,
+        remainingDaily: 0,
+        remainingHourly: 0,
         resetDailySec: 86400,
         resetHourlySec: 3600,
       };

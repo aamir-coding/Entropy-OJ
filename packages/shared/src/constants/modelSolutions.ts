@@ -84,5 +84,5 @@ export function hasModelSolution(
   if (language) {
     return Boolean(solutions[language]);
   }
-  return Boolean(solutions.python || solutions.cpp);
+  return Object.values(SupportedLanguages).some((lang) => Boolean(solutions[lang]));
 }

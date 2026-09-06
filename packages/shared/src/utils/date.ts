@@ -4,16 +4,23 @@
 
 export function toDate(value: string | Date): Date {
   if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new TypeError(`Invalid date input: ${String(value)}`);
+    }
     return value;
   }
-  return new Date(value);
+  if (!value || typeof value !== 'string') {
+    throw new TypeError(`Invalid date input: ${String(value)}`);
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    throw new TypeError(`Invalid date input: ${String(value)}`);
+  }
+  return d;
 }
 
 export function toISODateString(value: string | Date): string {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return new Date(value).toISOString();
+  return toDate(value).toISOString();
 }
 
 export function compareDates(a: string | Date, b: string | Date): number {

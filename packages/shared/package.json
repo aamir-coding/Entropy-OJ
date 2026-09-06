@@ -1,7 +1,7 @@
 {
   "name": "@anti-oj/shared",
   "version": "1.0.0",
-  "description": "Shared types, constants, schemas, and utilities for Anti Online Judge",
+  "description": "Shared types, constants, schemas, and utilities for Entropy",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
@@ -11,8 +11,17 @@
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
+    },
+    "./solutions": {
+      "types": "./dist/esm/constants/modelSolutions.d.ts",
+      "import": "./dist/esm/constants/modelSolutions.js",
+      "require": "./dist/cjs/constants/modelSolutions.js",
+      "default": "./dist/esm/constants/modelSolutions.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
@@ -20,7 +29,7 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
     "watch": "tsc -p tsconfig.esm.json -w",
-    "test": "tsc -p tsconfig.test.json --outDir ./dist/test && node --test dist/test/**/*.test.js"
+    "test": "node -e \"fs.rmSync('dist/test', { recursive: true, force: true })\" && tsc -p tsconfig.test.json --outDir ./dist/test && node --test dist/test/**/*.test.js"
   },
   "dependencies": {
     "zod": "^3.24.2"

@@ -80,9 +80,9 @@ export const AdminDashboardPage: React.FC = () => {
     return problems.filter((prob) => {
       const matchesSearch =
         searchQuery.trim() === '' ||
-        prob.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prob.problemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prob.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+        (prob.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (prob.problemCode?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (prob.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
 
       const matchesDifficulty =
         selectedDifficulty === 'All' || prob.difficulty === selectedDifficulty;
@@ -401,7 +401,7 @@ export const AdminDashboardPage: React.FC = () => {
 
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                          {prob.tags.slice(0, 3).map((tag) => (
+                          {(prob.tags || []).slice(0, 3).map((tag) => (
                             <span
                               key={tag}
                               style={{
@@ -415,9 +415,9 @@ export const AdminDashboardPage: React.FC = () => {
                               {tag}
                             </span>
                           ))}
-                          {prob.tags.length > 3 && (
+                          {(prob.tags?.length || 0) > 3 && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                              +{prob.tags.length - 3}
+                              +{(prob.tags?.length || 0) - 3}
                             </span>
                           )}
                         </div>

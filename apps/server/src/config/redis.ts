@@ -11,6 +11,10 @@ export const redisConnectionOptions: RedisOptions = {
     if (env.NODE_ENV === 'test') {
       return null; // Do not hang test runner if Redis is offline
     }
+    if (times > 10) {
+      console.error('[Redis] Max reconnection attempts (10) reached. Stopping reconnection retries.');
+      return null;
+    }
     return Math.min(times * 200, 3000);
   },
 };

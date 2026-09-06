@@ -79,8 +79,8 @@ export const Navbar: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', justifySelf: 'start' }}>
           <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <Link
-              to="/"
-              className={`navbar-nav-link ${isHome ? 'active' : ''}`}
+              to={user ? '/problems' : '/'}
+              className={`navbar-nav-link ${isHome && !user ? 'active' : ''}`}
             >
               Home
             </Link>
@@ -102,7 +102,7 @@ export const Navbar: React.FC = () => {
         {/* ── Center Section: Brand Name (Centered in Header) ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
           <Link
-            to="/"
+            to={user ? '/problems' : '/'}
             aria-label="Entropy Homepage"
             style={{
               display: 'flex',

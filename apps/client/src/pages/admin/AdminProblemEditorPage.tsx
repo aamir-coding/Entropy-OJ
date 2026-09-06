@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeSanitize from 'rehype-sanitize';
+import { katexSanitizeSchema } from '../../utils/sanitizeSchema';
 import { api } from '../../api/client';
 import {
   ProblemDifficulty,
@@ -14,8 +16,8 @@ import {
   IAdminValidateSolutionResponse,
   IProblemReviewResponse,
   SupportedLanguage,
-  getModelSolution,
 } from '@anti-oj/shared';
+import { getModelSolution } from '@anti-oj/shared/solutions';
 import {
   ArrowLeft,
   Save,
@@ -48,7 +50,7 @@ const MarkdownMathView: React.FC<{ content: string; className?: string; inline?:
     <div className={`markdown-math-view ${className}`} style={{ display: inline ? 'inline' : 'block' }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[rehypeKatex, [rehypeSanitize, katexSanitizeSchema]]}
         components={{
           p: ({ node, ...props }) => (
             <p style={{ margin: inline ? 0 : '0 0 0.35rem 0', display: inline ? 'inline' : 'block', lineHeight: 1.55 }} {...props} />
@@ -137,6 +139,7 @@ You may assume that each input would have **exactly one solution**, and you may 
   // Batch import state
   const [batchRawInput, setBatchRawInput] = useState('');
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   // Model Solution Validation State
   const [valLanguage, setValLanguage] = useState<SupportedLanguage>('python');
@@ -151,7 +154,7 @@ You may assume that each input would have **exactly one solution**, and you may 
 
   const handleRunAIReview = async () => {
     if (!isEditMode) {
-      alert('Please save the problem first before running AI Problem Review.');
+      setReviewError('Please save the problem first before running AI Problem Review.');
       return;
     }
     try {
@@ -282,18 +285,19 @@ You may assume that each input would have **exactly one solution**, and you may 
         setJudgeCases([...judgeCases, ...validCases]);
         setIsBatchModalOpen(false);
         setBatchRawInput('');
+        setBatchError(null);
         return;
       }
+      setBatchError('Please paste a valid JSON array of test cases: [{"input": "...", "output": "..."}]');
     } catch {
-      // If not JSON, parse by delimiter
-      alert('Please paste a valid JSON array of test cases: [{"input": "...", "output": "..."}]');
+      setBatchError('Invalid JSON format. Please paste a valid JSON array: [{"input": "...", "output": "..."}]');
     }
   };
 
   // Validate Model Solution
   const handleValidateSolution = async () => {
     if (!isEditMode) {
-      alert('Please save the problem first before running sandbox validation.');
+      setError('Please save the problem first before running sandbox validation.');
       return;
     }
     try {
@@ -887,7 +891,10 @@ You may assume that each input would have **exactly one solution**, and you may 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => setIsBatchModalOpen(true)}
+                  onClick={() => {
+                    setIsBatchModalOpen(true);
+                    setBatchError(null);
+                  }}
                   className="btn btn-outline"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
                 >
@@ -1357,6 +1364,22 @@ You may assume that each input would have **exactly one solution**, and you may 
               Paste a JSON array containing your hidden test cases:
             </p>
 
+            {batchError && (
+              <div
+                style={{
+                  padding: '0.6rem 0.8rem',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '6px',
+                  color: '#f87171',
+                  fontSize: '0.8rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                {batchError}
+              </div>
+            )}
+
             <textarea
               className="input"
               value={batchRawInput}
@@ -1367,7 +1390,14 @@ You may assume that each input would have **exactly one solution**, and you may 
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" onClick={() => setIsBatchModalOpen(false)} className="btn btn-outline">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBatchModalOpen(false);
+                  setBatchError(null);
+                }}
+                className="btn btn-outline"
+              >
                 Cancel
               </button>
               <button type="button" onClick={handleBatchImport} className="btn btn-primary">

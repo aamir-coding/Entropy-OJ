@@ -15,6 +15,10 @@ export const baseSubmissionSchema = z.object({
     .max(
       ExecutionLimits.MAX_CODE_SIZE_BYTES,
       `Code size cannot exceed ${ExecutionLimits.MAX_CODE_SIZE_BYTES / 1024} KB`
+    )
+    .refine(
+      (val) => new TextEncoder().encode(val).length <= ExecutionLimits.MAX_CODE_SIZE_BYTES,
+      `Code byte size cannot exceed ${ExecutionLimits.MAX_CODE_SIZE_BYTES / 1024} KB`
     ),
 });
 

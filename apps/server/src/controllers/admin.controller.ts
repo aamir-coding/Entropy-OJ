@@ -323,7 +323,45 @@ export async function deleteAdminProblem(
       query = { problemCode: id.toLowerCase() };
     }
 
-    const problem = await Problem.findOneAndDelete(query);
+    let problem = null;
+    let session: mongoose.ClientSession | null = null;
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+      problem = await Problem.findOneAndDelete(query, { session });
+      if (problem) {
+        await TestCase.deleteMany({ problem: problem._id }, { session });
+        await Solution.deleteMany({ problem: problem._id }, { session });
+      }
+      await session.commitTransaction();
+    } catch (txError: any) {
+      if (session) {
+        try {
+          await session.abortTransaction();
+        } catch {
+          // ignore abort error
+        }
+      }
+      // If transactions are not supported (e.g. standalone MongoDB without replica set), fallback to sequential delete
+      if (
+        txError?.message?.includes('replica set') ||
+        txError?.message?.includes('transactions') ||
+        txError?.code === 20
+      ) {
+        problem = await Problem.findOneAndDelete(query);
+        if (problem) {
+          await TestCase.deleteMany({ problem: problem._id });
+          await Solution.deleteMany({ problem: problem._id });
+        }
+      } else {
+        throw txError;
+      }
+    } finally {
+      if (session) {
+        await session.endSession();
+      }
+    }
+
     if (!problem) {
       res.status(404).json({
         success: false,
@@ -331,10 +369,6 @@ export async function deleteAdminProblem(
       });
       return;
     }
-
-    // Cascade delete associated test cases and solutions
-    await TestCase.deleteMany({ problem: problem._id });
-    await Solution.deleteMany({ problem: problem._id });
 
     res.status(200).json({
       success: true,

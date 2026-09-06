@@ -11,6 +11,9 @@ import { notFoundHandler, errorHandler } from './middlewares/error.middleware';
 export function createApp(): Express {
   const app = express();
 
+  // Trust first proxy (e.g. reverse proxy, Cloudflare, load balancer)
+  app.set('trust proxy', 1);
+
   // Security HTTP headers
   app.use(
     helmet({
@@ -37,9 +40,9 @@ export function createApp(): Express {
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
 
-  // Logging
+  // Logging (minimal non-PII format in production)
   if (env.NODE_ENV !== 'test') {
-    app.use(morgan(env.isProduction ? 'combined' : 'dev'));
+    app.use(morgan(env.isProduction ? ':method :url :status :response-time ms' : 'dev'));
   }
 
   // Rate limiting on API endpoints
@@ -56,7 +59,7 @@ export function createApp(): Express {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'anti-oj-server',
+      service: 'entropy-server',
     });
   };
 

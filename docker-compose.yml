@@ -1,16 +1,14 @@
-version: '3.8'
-
 services:
   mongo:
     image: mongo:7
-    container_name: oj-mongo
+    container_name: entropy-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
-      - oj-network
+      - entropy-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -19,14 +17,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: oj-redis
+    container_name: entropy-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - oj-network
+      - entropy-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -37,42 +35,47 @@ services:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
-    container_name: oj-server
+    container_name: entropy-server
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - PORT=5000
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongo:27017/anti_oj
+      - MONGO_URI=mongodb://mongo:27017/entropy_oj
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=super_secret_jwt_key_anti_online_judge_2026_production_grade
+      - JWT_SECRET=${JWT_SECRET:-entropy_prod_secret_f93a1c2e8b7d4e5f6a0c1b2d3e4f5a6b}
       - JWT_EXPIRES_DAYS=7
-      - CLIENT_URL=http://localhost
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:8080}
+      - ADMIN_SEED_PASSWORD=${ADMIN_SEED_PASSWORD:-AdminSecure2026!}
+      - RUNNER_IMAGE=entropy-runner:latest
     depends_on:
       mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - oj-network
+      - entropy-network
 
   worker:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
-    container_name: oj-worker
+    container_name: entropy-worker
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/workspaces:/tmp/workspaces
     environment:
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongo:27017/anti_oj
+      - MONGO_URI=mongodb://mongo:27017/entropy_oj
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - RUNNER_IMAGE=oj-runner:latest
+      - RUNNER_IMAGE=entropy-runner:latest
       - WORKER_CONCURRENCY=2
+      - HOST_WORKSPACES_DIR=/tmp/workspaces
+      - WORKSPACES_DIR=/tmp/workspaces
     depends_on:
       mongo:
         condition: service_healthy
@@ -81,25 +84,25 @@ services:
       server:
         condition: service_started
     networks:
-      - oj-network
+      - entropy-network
 
   client:
     build:
       context: .
       dockerfile: apps/client/Dockerfile
-    container_name: oj-client
+    container_name: entropy-client
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${CLIENT_PORT:-8080}:80"
     depends_on:
       - server
     networks:
-      - oj-network
+      - entropy-network
 
 volumes:
   mongo_data:
   redis_data:
 
 networks:
-  oj-network:
+  entropy-network:
     driver: bridge

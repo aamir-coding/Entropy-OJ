@@ -1,9 +1,9 @@
 process.env.NODE_ENV = 'test';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { MODEL_SOLUTIONS, getModelSolution, SupportedLanguages } from '@anti-oj/shared';
+import { MODEL_SOLUTIONS, getModelSolution } from '@anti-oj/shared/solutions';
+import { SupportedLanguages, diffOutput } from '@anti-oj/shared';
 import { DockerSandbox } from '../sandbox/dockerRunner';
-import { diffOutput } from '@anti-oj/shared';
 
 describe('Model Solutions Verification Tests', () => {
   const problems = [
@@ -68,13 +68,13 @@ describe('Model Solutions Verification Tests', () => {
       sandbox = await DockerSandbox.create();
 
       // Python
-      const pyCode = MODEL_SOLUTIONS['two-sum'].python;
+      const pyCode = getModelSolution('two-sum', SupportedLanguages.PYTHON);
       await sandbox.prepareSourceFile(pyCode, SupportedLanguages.PYTHON);
       const pyRes = await sandbox.runTestCase('4 9\n2 7 11 15', SupportedLanguages.PYTHON, 1000, 256 * 1024);
       assert.strictEqual(diffOutput(pyRes.actualOutput, '0 1').isMatch, true);
 
       // C++
-      const cppCode = MODEL_SOLUTIONS['two-sum'].cpp;
+      const cppCode = getModelSolution('two-sum', SupportedLanguages.CPP);
       await sandbox.prepareSourceFile(cppCode, SupportedLanguages.CPP);
       const compileRes = await sandbox.compile(SupportedLanguages.CPP, 10000);
       assert.strictEqual(compileRes.success, true);
@@ -92,7 +92,7 @@ describe('Model Solutions Verification Tests', () => {
     let sandbox: DockerSandbox | null = null;
     try {
       sandbox = await DockerSandbox.create();
-      const pyCode = MODEL_SOLUTIONS['valid-parentheses'].python;
+      const pyCode = getModelSolution('valid-parentheses', SupportedLanguages.PYTHON);
       await sandbox.prepareSourceFile(pyCode, SupportedLanguages.PYTHON);
       const res = await sandbox.runTestCase('3\n()\n()[]{}\n(]', SupportedLanguages.PYTHON, 1000, 256 * 1024);
       assert.strictEqual(diffOutput(res.actualOutput, 'true\ntrue\nfalse').isMatch, true);

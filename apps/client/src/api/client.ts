@@ -10,13 +10,35 @@ export const api = axios.create({
 
 export const isCancel = axios.isCancel;
 
-// Response interceptor for unified error extraction
+type UnauthorizedCallback = () => void;
+let onUnauthorizedCallback: UnauthorizedCallback | null = null;
+
+export const setOnUnauthorizedCallback = (cb: UnauthorizedCallback | null) => {
+  onUnauthorizedCallback = cb;
+};
+
+// Response interceptor for unified error extraction & session expiry detection (Issue H-3)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Preserve cancellation errors untouched so abort handlers work reliably
     if (axios.isCancel(error) || error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
       return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+
+    // Handle 401 unauthorized: notify AuthContext to clear state and prompt login
+    if (
+      status === 401 &&
+      !url.includes('/auth/login') &&
+      !url.includes('/auth/register') &&
+      !url.includes('/auth/me')
+    ) {
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
     }
 
     const message =

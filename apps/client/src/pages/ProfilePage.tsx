@@ -110,6 +110,7 @@ export const ProfilePage: React.FC = () => {
   const difficultyFilters = ['All', 'Easy', 'Medium', 'Hard'];
 
   const filteredSolved = solvedProblems.filter((item) => {
+    if (!item?.problem) return false;
     if (selectedDifficultyFilter === 'All') return true;
     return item.problem.difficulty === selectedDifficultyFilter;
   });
@@ -439,25 +440,40 @@ export const ProfilePage: React.FC = () => {
                         {/* Actions */}
                         <td style={{ padding: '0.875rem 1.25rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
-                            {item.code && (
-                              <button
-                                onClick={() =>
+                            <button
+                              onClick={async () => {
+                                if (item.code) {
                                   setViewCodeModal({
                                     open: true,
-                                    code: item.code || '',
+                                    code: item.code,
                                     language: item.language,
-                                    problemName: item.problem.name,
+                                    problemName: item.problem?.name,
                                     verdict: 'Accepted',
-                                  })
+                                  });
+                                } else {
+                                  try {
+                                    const res = await api.get(`/submissions/${item._id}`);
+                                    if (res.data?.success && res.data?.data) {
+                                      setViewCodeModal({
+                                        open: true,
+                                        code: res.data.data.code || '',
+                                        language: res.data.data.language,
+                                        problemName: item.problem?.name,
+                                        verdict: 'Accepted',
+                                      });
+                                    }
+                                  } catch (err) {
+                                    console.error('Failed to fetch submission code:', err);
+                                  }
                                 }
-                                className="btn btn-outline"
-                                style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem' }}
-                                title="View Accepted Code"
-                              >
-                                <FileCode size={12} />
-                                <span>Code</span>
-                              </button>
-                            )}
+                              }}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem' }}
+                              title="View Accepted Code"
+                            >
+                              <FileCode size={12} />
+                              <span>Code</span>
+                            </button>
                             <Link
                               to={`/problems/${item.problem.problemCode}`}
                               className="btn btn-ghost"

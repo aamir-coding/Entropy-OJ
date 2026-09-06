@@ -18,6 +18,9 @@ if [ "$MODE" = "compile" ]; then
             echo "0" > compile_status.txt
             exit 0
         else
+            if [ -f compile_err.txt ]; then
+                head -c 65536 compile_err.txt > compile_err.tmp && mv compile_err.tmp compile_err.txt
+            fi
             echo "1" > compile_status.txt
             exit 1
         fi
@@ -26,6 +29,9 @@ if [ "$MODE" = "compile" ]; then
             echo "0" > compile_status.txt
             exit 0
         else
+            if [ -f compile_err.txt ]; then
+                head -c 65536 compile_err.txt > compile_err.tmp && mv compile_err.tmp compile_err.txt
+            fi
             echo "1" > compile_status.txt
             exit 1
         fi
@@ -59,6 +65,9 @@ elif [ "$MODE" = "run" ]; then
         exit 1
     fi
 
+    # Enforce file output ceiling (131072 blocks = 64MB) to prevent disk exhaustion attacks
+    ulimit -f 131072 2>/dev/null || true
+
     # Execute with timeout and GNU time measurement directly to output file
     set +e
     timeout -k 1s "${WALL_TIMEOUT_SEC}s" /usr/bin/time -o "$METRICS_FILE" \
@@ -68,9 +77,12 @@ elif [ "$MODE" = "run" ]; then
     EXEC_STATUS=$?
     set -e
 
-    # Safely truncate output to 64KB without SIGPIPE or losing process exit status
+    # Safely truncate output and stderr to 64KB without SIGPIPE or losing process exit status
     if [ -f "$OUTPUT_FILE" ]; then
         head -c 65536 "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+    fi
+    if [ -f "$STDERR_FILE" ]; then
+        head -c 65536 "$STDERR_FILE" > "${STDERR_FILE}.tmp" && mv "${STDERR_FILE}.tmp" "$STDERR_FILE"
     fi
 
     echo "PROCESS_EXIT_STATUS=$EXEC_STATUS" >> "$METRICS_FILE"

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { api } from '../api/client';
+import { api, setOnUnauthorizedCallback } from '../api/client';
 import { IUser, UserStats, RegisterInput, LoginInput } from '@anti-oj/shared';
+
+const TAB_ID = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 interface AuthContextType {
   user: IUser | null;
@@ -54,12 +56,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         const bc = new BroadcastChannel('anti-oj-sync');
-        bc.postMessage({ type: 'STATS_UPDATED', timestamp: Date.now() });
+        bc.postMessage({ type: 'STATS_UPDATED', senderId: TAB_ID, timestamp: Date.now() });
         bc.close();
       }
       localStorage.setItem('anti-oj-last-ac-time', String(Date.now()));
     } catch {}
   }, [refreshUser]);
+
+  // Hook 401 unauthorized responses to clear stale auth and open login modal (Issue H-3)
+  useEffect(() => {
+    setOnUnauthorizedCallback(() => {
+      setUser(null);
+      setStats(null);
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+    });
+
+    return () => {
+      setOnUnauthorizedCallback(null);
+    };
+  }, []);
 
   // Initial fetch and cross-tab synchronization
   useEffect(() => {
@@ -70,7 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof BroadcastChannel !== 'undefined') {
         channel = new BroadcastChannel('anti-oj-sync');
         channel.onmessage = (event) => {
-          if (event.data?.type === 'STATS_UPDATED') {
+          // High 5: Avoid self-messaging in the origin tab
+          if (event.data?.type === 'STATS_UPDATED' && event.data?.senderId !== TAB_ID) {
             refreshUser();
           }
         };
@@ -83,8 +100,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    let lastFocusRefresh = 0;
+    const FOCUS_COOLDOWN_MS = 30000; // Low 4: 30s minimum cooldown on window focus
     const handleFocus = () => {
-      refreshUser();
+      const now = Date.now();
+      if (now - lastFocusRefresh >= FOCUS_COOLDOWN_MS) {
+        lastFocusRefresh = now;
+        refreshUser();
+      }
     };
 
     window.addEventListener('storage', handleStorage);

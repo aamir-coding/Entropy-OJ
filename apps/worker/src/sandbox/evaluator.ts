@@ -61,8 +61,25 @@ export async function evaluateSubmission(
       maxTimeMs = Math.max(maxTimeMs, metrics.cpuTimeMs);
       maxMemoryKb = Math.max(maxMemoryKb, metrics.maxRssKb);
 
-      // Check Time Limit Exceeded (Decision R3: CPU time or hard wall timeout)
-      if (runRes.timedOut || metrics.cpuTimeMs > timeLimitMs) {
+      // Check Container OOM Kill (Docker killed container with exit 137 / SIGKILL)
+      if (runRes.isOomKilled || metrics.exitCode === 137 || metrics.processExitStatus === 137) {
+        return {
+          submissionId,
+          verdict: Verdicts.MEMORY_LIMIT_EXCEEDED,
+          executionTime: maxTimeMs,
+          memoryUsed: Math.max(maxMemoryKb, memoryLimitKb),
+          failedTestCaseNumber: testCaseNumber,
+          totalTestCases: testCases.length,
+          passedTestCases: passedCount,
+        };
+      }
+
+      // Check Time Limit Exceeded (Decision R3: CPU time, hard wall timeout, or sleeping code wall limit)
+      if (
+        runRes.timedOut ||
+        metrics.cpuTimeMs > timeLimitMs ||
+        metrics.wallTimeSec * 1000 > timeLimitMs * 1.5
+      ) {
         return {
           submissionId,
           verdict: Verdicts.TIME_LIMIT_EXCEEDED,
@@ -89,9 +106,14 @@ export async function evaluateSubmission(
 
       // Check Runtime Error (non-zero process exit or abnormal signal)
       if (metrics.exitCode !== 0 || metrics.processExitStatus !== 0) {
+        const runtimeErrOutput = runRes.stderr?.trim()
+          ? runRes.stderr.slice(0, 16384).trim()
+          : `Process exited with code ${metrics.exitCode || metrics.processExitStatus}`;
+
         return {
           submissionId,
           verdict: Verdicts.RUNTIME_ERROR,
+          compileOutput: runtimeErrOutput,
           executionTime: maxTimeMs,
           memoryUsed: maxMemoryKb,
           failedTestCaseNumber: testCaseNumber,

@@ -74,9 +74,6 @@ export async function createSubmission(
       submittedAt: new Date(),
     });
 
-    // Increment problem totalSubmissions counter
-    await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
-
     // Enqueue submission to BullMQ worker queue
     try {
       await enqueueSubmission({
@@ -91,9 +88,11 @@ export async function createSubmission(
     } catch (queueErr) {
       console.error('[Submission] Enqueue failed. Rolling back database records...', queueErr);
       await Solution.findByIdAndDelete(solution._id);
-      await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: -1 } });
       throw queueErr;
     }
+
+    // Increment problem totalSubmissions counter only after successful enqueue
+    await Problem.findByIdAndUpdate(problem._id, { $inc: { totalSubmissions: 1 } });
 
     const response: ISubmissionResponse = {
       submissionId: solution._id.toString(),
@@ -114,7 +113,7 @@ export async function createSubmission(
     console.error('[Submission] Error creating submission:', err);
     res.status(500).json({
       success: false,
-      error: 'Failed to create submission: ' + (err.message || 'Internal error'),
+      error: 'Failed to create submission. Please try again later.',
     });
   }
 }
@@ -452,11 +451,12 @@ export async function getUserSolvedProblems(
 
     const targetUserId = req.userId!;
 
-    // Query all accepted submissions for the user
+    // Query all accepted submissions for the user (exclude heavy source code)
     const acceptedSolutions = await Solution.find({
       user: targetUserId,
       verdict: Verdicts.ACCEPTED,
     })
+      .select('-code -compileOutput')
       .populate<{ problem: { _id: string; problemCode: string; name: string; difficulty: 'Easy' | 'Medium' | 'Hard'; tags: string[] } }>(
         'problem',
         'problemCode name difficulty tags'
@@ -483,7 +483,6 @@ export async function getUserSolvedProblems(
           language: sub.language,
           executionTime: sub.executionTime,
           memoryUsed: sub.memoryUsed,
-          code: sub.code,
           solvedAt: sub.submittedAt,
         });
       }

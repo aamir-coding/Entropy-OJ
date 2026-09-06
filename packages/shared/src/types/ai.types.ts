@@ -1,3 +1,5 @@
+import { SupportedLanguage } from '../constants/languages';
+
 export type AIProviderName = 'groq' | 'gemini' | 'openrouter';
 
 export type AIFeature = 'hints' | 'review' | 'classify';
@@ -54,7 +56,7 @@ export interface IClassifyJobPayload {
   submissionId: string;
   problemId: string;
   code: string;
-  language: string;
+  language: SupportedLanguage;
   problemStatement: string;
   problemName: string;
 }

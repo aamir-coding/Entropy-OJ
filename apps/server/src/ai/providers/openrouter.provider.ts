@@ -90,7 +90,7 @@ export class OpenRouterProvider implements AIProvider {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.apiKey}`,
             'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:5173',
-            'X-Title': 'Anti Online Judge',
+            'X-Title': 'Entropy',
           },
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(30000),

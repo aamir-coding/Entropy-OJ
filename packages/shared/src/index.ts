@@ -1,7 +1,6 @@
 export * from './constants/verdicts';
 export * from './constants/languages';
 export * from './constants/limits';
-export * from './constants/modelSolutions';
 export * from './types';
 export * from './utils/diffOutput';
 export * from './utils/date';

@@ -190,20 +190,40 @@ export async function getGalaxyProgress(
     let attemptedCodes: string[] = [];
 
     if (req.userId) {
-      const userSolutions = await Solution.find({ user: req.userId })
-        .populate<{ problem: { problemCode: string } }>('problem', 'problemCode')
-        .select('problem verdict')
-        .lean();
+      const userObjId = new mongoose.Types.ObjectId(req.userId);
+      const aggregated = await Solution.aggregate([
+        { $match: { user: userObjId } },
+        {
+          $group: {
+            _id: '$problem',
+            verdicts: { $addToSet: '$verdict' },
+          },
+        },
+        {
+          $lookup: {
+            from: 'problems',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'problemDoc',
+          },
+        },
+        { $unwind: '$problemDoc' },
+        {
+          $project: {
+            problemCode: '$problemDoc.problemCode',
+            verdicts: 1,
+          },
+        },
+      ]);
 
       const solvedSet = new Set<string>();
       const attemptedSet = new Set<string>();
 
-      for (const sol of userSolutions) {
-        if (sol.problem && typeof sol.problem === 'object' && (sol.problem as any).problemCode) {
-          const code = (sol.problem as any).problemCode;
-          attemptedSet.add(code);
-          if (sol.verdict === Verdicts.ACCEPTED) {
-            solvedSet.add(code);
+      for (const item of aggregated) {
+        if (item.problemCode) {
+          attemptedSet.add(item.problemCode);
+          if (item.verdicts && item.verdicts.includes(Verdicts.ACCEPTED)) {
+            solvedSet.add(item.problemCode);
           }
         }
       }

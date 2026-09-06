@@ -285,14 +285,21 @@ export default function ParticlesCursorAnimation() {
     });
   }, [pictureTexture, displacement.texture, planeSize.aspect, size.width, size.height, displacementForce, particleSize, smoothstepMin, smoothstepMax, motionBlurStrength]);
 
+  // Dedicated cleanup for icosahedronEngine on component unmount ONLY (Critical 1)
+  useEffect(() => {
+    return () => {
+      icosahedronEngine.dispose();
+    };
+  }, [icosahedronEngine]);
+
+  // Cleanup dynamic Three.js resources when they are recalculated on resize
   useEffect(() => {
     return () => {
       displacement.texture.dispose();
       geometry.dispose();
       material.dispose();
-      icosahedronEngine.dispose();
     };
-  }, [displacement.texture, geometry, material, icosahedronEngine]);
+  }, [displacement.texture, geometry, material]);
 
   // Track mouse position, hold-and-spin dragging, and normalized device coordinates
   useEffect(() => {

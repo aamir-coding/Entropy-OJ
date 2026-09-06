@@ -7,7 +7,9 @@
  * 5. Caps excessively large strings (up to 1MB) to prevent heap exhaustion.
  */
 export const MAX_NORMALIZE_LENGTH = 1024 * 1024; // 1M characters safety cap
-export const MAX_NORMALIZE_SIZE_BYTES = MAX_NORMALIZE_LENGTH; // Backward compatibility alias
+export const MAX_NORMALIZE_LENGTH_CHARS = MAX_NORMALIZE_LENGTH;
+/** @deprecated Use MAX_NORMALIZE_LENGTH or MAX_NORMALIZE_LENGTH_CHARS instead. Note: JavaScript string length counts UTF-16 code units, not raw bytes. */
+export const MAX_NORMALIZE_SIZE_BYTES = MAX_NORMALIZE_LENGTH;
 
 export function normalizeOutput(str: string): string {
   if (!str) return '';

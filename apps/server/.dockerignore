@@ -5,7 +5,6 @@ build
 .gitignore
 .env
 .env.*
-**/.env
-**/.env.*
 *.log
 coverage
+tests

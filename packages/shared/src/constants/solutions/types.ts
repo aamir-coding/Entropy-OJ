@@ -1,3 +1,3 @@
 import { SupportedLanguage } from '../languages';
 
-export type IProblemModelSolutions = Record<SupportedLanguage, string>;
+export type IProblemModelSolutions = Partial<Record<SupportedLanguage, string>>;

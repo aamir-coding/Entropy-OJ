@@ -30,7 +30,7 @@ async function bootstrap() {
 
   const server = app.listen(env.PORT, () => {
     console.log(`===================================================`);
-    console.log(`🚀 Anti Online Judge API Server running on port ${env.PORT}`);
+    console.log(`🚀 Entropy API Server running on port ${env.PORT}`);
     console.log(`📡 Environment: ${env.NODE_ENV}`);
     console.log(`🌐 Allowed Client URL: ${env.CLIENT_URL}`);
     console.log(`===================================================`);
@@ -110,11 +110,12 @@ async function bootstrap() {
 
   process.on('unhandledRejection', (reason) => {
     console.error('[Server] 💥 Unhandled Promise Rejection:', reason);
+    gracefulShutdown('unhandledRejection');
   });
 
   process.on('uncaughtException', (error) => {
     console.error('[Server] 💥 Uncaught Exception:', error);
-    process.exit(1);
+    gracefulShutdown('uncaughtException');
   });
 }
 

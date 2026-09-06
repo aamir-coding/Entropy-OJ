@@ -34,6 +34,7 @@ const solutionSchema = new Schema<ISolutionDocument>(
     code: {
       type: String,
       required: true,
+      maxlength: 65536,
     },
     language: {
       type: String,
@@ -48,6 +49,7 @@ const solutionSchema = new Schema<ISolutionDocument>(
     },
     compileOutput: {
       type: String,
+      maxlength: 65536,
     },
     executionTime: {
       type: Number,

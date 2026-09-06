@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IStarProblem } from '../../data/galaxyData';
 import { X, ExternalLink, CheckCircle2, AlertCircle, Play, Sparkles, Orbit, Lock } from 'lucide-react';
@@ -20,10 +20,50 @@ export const StarModal: React.FC<StarModalProps> = ({
 }) => {
   const navigate = useNavigate();
 
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
+    const modalElement = modalRef.current;
+    if (!modalElement) return;
+
+    // Focus first interactive element on open
+    const focusable = modalElement.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      // Tab focus trap (Medium 7)
+      if (e.key === 'Tab') {
+        const currentFocusable = modalElement.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (currentFocusable.length === 0) return;
+
+        const first = currentFocusable[0];
+        const last = currentFocusable[currentFocusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
@@ -70,6 +110,10 @@ export const StarModal: React.FC<StarModalProps> = ({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Star Details"
         style={{
           width: '100%',
           maxWidth: '480px',

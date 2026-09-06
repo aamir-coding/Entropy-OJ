@@ -8,7 +8,7 @@ import {
   ALL_SUPPORTED_LANGUAGES,
   Verdict,
 } from '@anti-oj/shared';
-import { redisConnectionOptions } from '../config/redis';
+import { redisConnectionOptions, redisClient } from '../config/redis';
 import { evaluateSubmission } from '../sandbox/evaluator';
 import { env } from '../config/env';
 
@@ -106,7 +106,7 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
       console.log(`\n[Worker] 📥 Processing Job ${job.id} - Submission ${job.data?.submissionId} (${job.data?.language})`);
       const startTime = Date.now();
 
-      // Runtime payload validation (Issue H-1)
+      // Runtime payload validation (Issue H-1 & Critical 3)
       if (
         !job.data ||
         typeof job.data.submissionId !== 'string' ||
@@ -117,6 +117,25 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         !ALL_SUPPORTED_LANGUAGES.includes(job.data.language as any)
       ) {
         console.error(`[Worker] ❌ Invalid or corrupt job payload for Job ${job.id}:`, job.data);
+        if (job.data?.submissionId && typeof job.data.submissionId === 'string') {
+          await SolutionModel.findOneAndUpdate(
+            { _id: job.data.submissionId, verdict: Verdicts.PENDING },
+            {
+              $set: {
+                verdict: Verdicts.INTERNAL_ERROR,
+                compileOutput: 'Invalid or corrupt job payload received by worker.',
+              },
+            }
+          );
+        }
+        throw new Error(`Invalid job payload for Job ${job.id}`);
+      }
+
+      const evalLockKey = `lock:evaluating:${job.data.submissionId}`;
+      // Acquire Redis evaluation lease (300s) to prevent duplicate sandbox runs on stalled jobs
+      const acquired = await redisClient.set(evalLockKey, String(job.id), 'EX', 300, 'NX');
+      if (!acquired) {
+        console.log(`[Worker] Submission ${job.data.submissionId} is already actively being evaluated. Skipping duplicate run.`);
         return;
       }
 
@@ -124,8 +143,8 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         // Idempotency Check: Verify Solution exists and is in PENDING state
         const currentSolution = await SolutionModel.findById(job.data.submissionId);
         if (!currentSolution) {
-          console.warn(`[Worker] Submission ${job.data.submissionId} not found in database. Skipping.`);
-          return;
+          console.warn(`[Worker] Submission ${job.data.submissionId} not found in database.`);
+          throw new Error(`Submission ${job.data.submissionId} not found in database`);
         }
 
         // If this job was already evaluated to completion, do not re-run (idempotency guard)
@@ -134,8 +153,9 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
           return;
         }
 
-        // Fetch test cases for this problem from MongoDB
+        // Fetch test cases for this problem with lean projection
         const testCases = await TestCaseModel.find({ problem: job.data.problemId })
+          .select('input output isSample order')
           .sort({ order: 1 })
           .lean();
 
@@ -156,28 +176,68 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         // Run sandboxed evaluation
         const result = await evaluateSubmission(job.data, testCases);
 
-        // Atomic transition: Update Solution verdict only if currently PENDING
-        const updatedSolution = await SolutionModel.findOneAndUpdate(
-          { _id: job.data.submissionId, verdict: Verdicts.PENDING },
-          {
-            $set: {
-              verdict: result.verdict,
-              compileOutput: result.compileOutput,
-              executionTime: result.executionTime,
-              memoryUsed: result.memoryUsed,
-              failedTestCaseNumber: result.failedTestCaseNumber,
-              totalTestCases: result.totalTestCases,
-              passedTestCases: result.passedTestCases,
-            },
-          },
-          { new: false }
-        );
+        const updateFields = {
+          verdict: result.verdict,
+          compileOutput: result.compileOutput,
+          executionTime: result.executionTime,
+          memoryUsed: result.memoryUsed,
+          failedTestCaseNumber: result.failedTestCaseNumber,
+          totalTestCases: result.totalTestCases,
+          passedTestCases: result.passedTestCases,
+        };
 
-        // Only increment problem's acceptedSubmissions if this was a successful first-time transition to ACCEPTED
-        if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
-          await ProblemModel.findByIdAndUpdate(job.data.problemId, {
-            $inc: { acceptedSubmissions: 1 },
-          });
+        // Atomic transition: Update Solution verdict + problem counter in session with fallback
+        let session: mongoose.ClientSession | null = null;
+        try {
+          session = await mongoose.startSession();
+          session.startTransaction();
+
+          const updatedSolution = await SolutionModel.findOneAndUpdate(
+            { _id: job.data.submissionId, verdict: Verdicts.PENDING },
+            { $set: updateFields },
+            { session, new: false }
+          );
+
+          if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
+            await ProblemModel.findByIdAndUpdate(
+              job.data.problemId,
+              { $inc: { acceptedSubmissions: 1 } },
+              { session }
+            );
+          }
+
+          await session.commitTransaction();
+        } catch (txErr: any) {
+          if (session) {
+            try {
+              await session.abortTransaction();
+            } catch {}
+          }
+          if (
+            txErr?.message?.includes('replica set') ||
+            txErr?.message?.includes('transactions') ||
+            txErr?.code === 20
+          ) {
+            // Standalone MongoDB fallback
+            const updatedSolution = await SolutionModel.findOneAndUpdate(
+              { _id: job.data.submissionId, verdict: Verdicts.PENDING },
+              { $set: updateFields },
+              { new: false }
+            );
+
+            if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
+              await ProblemModel.findByIdAndUpdate(
+                job.data.problemId,
+                { $inc: { acceptedSubmissions: 1 } }
+              );
+            }
+          } else {
+            throw txErr;
+          }
+        } finally {
+          if (session) {
+            await session.endSession();
+          }
         }
 
         const duration = Date.now() - startTime;
@@ -188,19 +248,26 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         );
       } catch (error: any) {
         console.error(`[Worker] ❌ Unhandled worker error for submission ${job.data.submissionId} (Attempt ${job.attemptsMade + 1}):`, error);
-        // Do NOT pre-write INTERNAL_ERROR here! Re-throw to allow BullMQ configured retries to run.
-        // Final DLQ marking is handled cleanly in the worker.on('failed') listener when retries are exhausted.
         throw error;
+      } finally {
+        await redisClient.del(evalLockKey).catch(() => {});
       }
     },
     {
       connection: redisConnectionOptions,
       concurrency: env.WORKER_CONCURRENCY,
+      removeOnComplete: { age: 3600, count: 1000 },
+      removeOnFail: { age: 86400, count: 5000 },
     }
   );
 
   worker.on('ready', () => {
     console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY})`);
+  });
+
+  // Handle transient Redis connection drops without crashing Node runtime (Critical 1)
+  worker.on('error', (err) => {
+    console.error('[Worker] ⚠️ BullMQ Worker connection error:', err.message);
   });
 
   // DLQ / Final Failure Handler: Catch jobs that exhausted retries

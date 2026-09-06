@@ -50,56 +50,27 @@ export function extractCandidateJson(raw: string): string {
   return text;
 }
 
-import vm from 'vm';
-
 /**
- * Safely evaluates a JavaScript object literal in an isolated, null-prototype VM context.
- * Handles string concatenation ("a" + "b"), string `.repeat()`, comments, and single quotes.
- * Never executes with global process privileges.
+ * Safe parser for AI-generated object representations.
+ * Handles string concatenation ("a" + "b"), string `.repeat()`, comments,
+ * single quotes, and unquoted keys via deterministic text normalization
+ * and native JSON.parse — NEVER executes code in a VM context.
  */
 export function evaluateJsObject(code: string): any {
   if (!code || typeof code !== 'string') return null;
 
-  // Security guardrails: disallow dangerous global/prototype access
-  const forbiddenPatterns = [
-    /\bprocess\b/,
-    /\brequire\b/,
-    /\bimport\b/,
-    /\bglobal\b/,
-    /\bglobalThis\b/,
-    /\bwindow\b/,
-    /\bdocument\b/,
-    /\beval\b/,
-    /\bFunction\b/,
-    /\b__proto__\b/,
-    /\bconstructor\b/,
-    /\bthis\b/,
-  ];
-
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(code)) {
+  try {
+    const repaired = repairJsonString(code);
+    return JSON.parse(repaired);
+  } catch {
+    try {
+      // Relax unquoted object keys (e.g. { foo: "bar" } -> { "foo": "bar" })
+      const normalizedKeys = code.replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":');
+      const repaired = repairJsonString(normalizedKeys);
+      return JSON.parse(repaired);
+    } catch {
       return null;
     }
-  }
-
-  // Pre-sanitize dangerous large repeat counts to avoid memory exhaustion
-  const safeCode = code.replace(/\.repeat\(\s*(\d+)\s*\)/g, (_, countStr) => {
-    const count = parseInt(countStr, 10);
-    // Limit repeat count in JS eval to at most 1,000 items for safety
-    const safeCount = Math.min(isNaN(count) ? 0 : count, 1000);
-    return `.repeat(${safeCount})`;
-  });
-
-  try {
-    const sandbox = Object.freeze(Object.create(null));
-    const script = new vm.Script(`"use strict"; (${safeCode})`);
-    return script.runInNewContext(sandbox, {
-      timeout: 200,
-      displayErrors: false,
-      breakOnSigint: true,
-    });
-  } catch {
-    return null;
   }
 }
 
@@ -114,22 +85,22 @@ export function repairJsonString(raw: string): string {
   // Line comments not inside quotes
   s = s.replace(/(^|[^\\])\/\/.*$/gm, '$1');
 
-  // 2. Resolve basic string concatenation: "foo" + "bar" -> "foobar"
+  // 2. Resolve string .repeat(N) into safe expanded literals (capped to prevent DoS)
+  s = s.replace(
+    /"((?:[^"\\]|\\.)*)"\.repeat\((\d+)\)/g,
+    (_, repeatStr, count) => {
+      const repCount = parseInt(count, 10);
+      const safeCount = Math.min(repCount, 100);
+      return `"${repeatStr.repeat(safeCount)}"`;
+    }
+  );
+
+  // 3. Resolve basic string concatenation: "foo" + "bar" -> "foobar"
   let prev = '';
   while (prev !== s) {
     prev = s;
     s = s.replace(/"((?:[^"\\]|\\.)*)"\s*\+\s*"((?:[^"\\]|\\.)*)"/g, '"$1$2"');
   }
-
-  // 3. Resolve "..." + "0 ".repeat(N) + "..." expressions into plain strings
-  s = s.replace(
-    /"((?:[^"\\]|\\.)*)"\s*\+\s*"((?:[^"\\]|\\.)*)"\.repeat\((\d+)\)(?:\s*\+\s*"((?:[^"\\]|\\.)*)")?/g,
-    (_, prefix, repeatStr, count, suffix = '') => {
-      const repCount = parseInt(count, 10);
-      const preview = `${prefix}${repeatStr.repeat(Math.min(repCount, 5))}... [${count} items]${suffix}`;
-      return JSON.stringify(preview);
-    }
-  );
 
   // 4. Remove trailing commas in arrays and objects: , ] -> ] and , } -> }
   s = s.replace(/,\s*([}\]])/g, '$1');

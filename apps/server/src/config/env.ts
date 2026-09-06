@@ -28,14 +28,14 @@ const envSchema = z
   .object({
     PORT: z.coerce.number().int().default(5000),
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    MONGO_URI: z.string().min(1, 'MONGO_URI is required').default('mongodb://localhost:27017/anti_oj'),
+    MONGO_URI: z.string().min(1, 'MONGO_URI is required').default('mongodb://localhost:27017/entropy_oj'),
     REDIS_HOST: z.string().default('localhost'),
     REDIS_PORT: z.coerce.number().int().default(6379),
     REDIS_PASSWORD: z.string().optional().transform((val) => val || undefined),
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters for security'),
     JWT_EXPIRES_DAYS: z.coerce.number().int().min(1).default(7),
     CLIENT_URL: z.string().default('http://localhost:5173'),
-    RUNNER_IMAGE: z.string().default('oj-runner:latest'),
+    RUNNER_IMAGE: z.string().default('entropy-runner:latest'),
 
     // AI Feature Flags (parsed as booleans)
     FEATURE_AI_HINTS: booleanFeatureFlag,

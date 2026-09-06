@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { env } from '../config/env';
 
 export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json({
@@ -13,18 +14,24 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  if (process.env.NODE_ENV === 'production') {
-    console.error(`[Error Middleware] Status ${err.statusCode || 500}: ${err.message}`);
+  const statusCode = err.statusCode || 500;
+
+  if (env.isProduction) {
+    console.error(`[Error Middleware] Status ${statusCode}: ${err.message}\n${err.stack}`);
   } else {
     console.error('[Error Middleware]:', err);
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  // In production, mask >= 500 internal errors to prevent information disclosure
+  const message =
+    env.isProduction && statusCode >= 500
+      ? 'Internal Server Error'
+      : (err.message || 'Internal Server Error');
 
   res.status(statusCode).json({
     success: false,
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(!env.isProduction && { stack: err.stack }),
   });
 }
+

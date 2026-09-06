@@ -14,24 +14,26 @@ import { createSubmissionSchema, runSampleSchema } from '@anti-oj/shared';
 
 const router = Router();
 
-// Dedicated rate limiter for code evaluations (15 submissions per 15 minutes per IP)
+// Dedicated rate limiter for code evaluations (per user or IP fallback)
 const submissionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req: any) => req.userId || req.ip,
   message: {
     success: false,
     error: 'Too many submissions. Please wait a few minutes before submitting again.',
   },
 });
 
-// Dedicated rate limiter for live sample code runs (20 runs per 5 minutes)
+// Dedicated rate limiter for live sample code runs (per user or IP fallback)
 const sampleRunLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req: any) => req.userId || req.ip,
   message: {
     success: false,
     error: 'Too many sample run requests. Please wait a moment before testing code again.',
