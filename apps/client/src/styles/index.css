@@ -839,5 +839,14 @@ code, pre {
   background-color: var(--brand-white);
 }
 
-
-
+/* ── Deep Space Stellar Core Animations ─────────────────────────────────── */
+@keyframes stellarBreathingGlow {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}

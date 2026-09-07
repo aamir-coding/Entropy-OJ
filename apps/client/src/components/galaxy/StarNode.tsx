@@ -102,7 +102,11 @@ export const StarNode: React.FC<StarNodeProps> = ({
 
       {/* The Celestial Star Node (SVG Diffraction Spikes + Circular Center) */}
       <button
-        onClick={() => onClick(problem)}
+        className="star-node-button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(problem);
+        }}
         style={{
           width: `${hitAreaSize}px`,
           height: `${hitAreaSize}px`,
@@ -284,7 +288,7 @@ export const StarNode: React.FC<StarNodeProps> = ({
                 color: isSolved ? 'var(--verdict-ac)' : isAttempted ? 'var(--verdict-tle)' : 'var(--text-muted)',
               }}
             >
-              {isSolved ? 'Solved' : isAttempted ? 'In Progress' : 'Uncharted'}
+              {isSolved ? 'Solved' : isAttempted ? 'In Progress' : 'Unsolved'}
             </span>
           </div>
         </div>

@@ -25,9 +25,8 @@ export const GalaxyHUD: React.FC<GalaxyHUDProps> = ({
   return (
     <header
       style={{
-        position: 'sticky',
-        top: 'var(--header-height, 58px)',
-        zIndex: 100,
+        position: 'relative',
+        zIndex: 20,
         background: 'rgba(0, 0, 0, 0.88)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',

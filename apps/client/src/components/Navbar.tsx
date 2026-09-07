@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  Code2,
   User,
   LogOut,
   ChevronDown,
@@ -62,7 +61,7 @@ export const Navbar: React.FC = () => {
         borderBottom: '1px solid var(--border-faint)',
         position: 'sticky',
         top: 0,
-        zIndex: 100,
+        zIndex: 1000,
       }}
     >
       <div
@@ -79,8 +78,8 @@ export const Navbar: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', justifySelf: 'start' }}>
           <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <Link
-              to={user ? '/problems' : '/'}
-              className={`navbar-nav-link ${isHome && !user ? 'active' : ''}`}
+              to="/"
+              className={`navbar-nav-link ${isHome ? 'active' : ''}`}
             >
               Home
             </Link>
@@ -99,61 +98,59 @@ export const Navbar: React.FC = () => {
           </nav>
         </div>
 
-        {/* ── Center Section: Brand Name (Centered in Header) ── */}
+        {/* ── Center Section: Brand (Centered in Header) ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifySelf: 'center' }}>
           <Link
-            to={user ? '/problems' : '/'}
+            to="/"
             aria-label="Entropy Homepage"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.65rem',
+              gap: '0.85rem',
               textDecoration: 'none',
-              color: 'var(--text-primary)',
+              transition: 'opacity var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.85';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
             }}
           >
-            <div
+            <img
+              src="/logo.png"
+              alt="Entropy Logo"
               style={{
-                width: '26px',
-                height: '26px',
-                borderRadius: 'var(--radius-xs)',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-medium)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
+                width: isHome ? '34px' : '26px',
+                height: isHome ? '34px' : '26px',
+                objectFit: 'contain',
+                display: 'block',
+                filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))',
+                transition: 'all var(--transition-fast)',
               }}
-            >
-              <Code2 size={14} color="var(--brand-white)" strokeWidth={1.8} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', lineHeight: 1 }}>
+            />
+
+            {!isHome && (
               <span
                 style={{
-                  fontFamily: 'var(--font-sans)',
-                  fontWeight: 350,
-                  fontSize: '0.925rem',
-                  letterSpacing: '0.18em',
-                  color: 'var(--brand-white)',
+                  fontFamily: "'Inter', 'Outfit', sans-serif",
+                  fontWeight: 200,
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.35em',
+                  textTransform: 'uppercase',
+                  color: '#f7f7f7',
+                  background: 'linear-gradient(270deg, rgba(247,247,247,0.65) 0%, #f7f7f7 30%, #f7f7f7 70%, rgba(247,247,247,0.65) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  lineHeight: 1,
+                  userSelect: 'none',
+                  paddingLeft: '0.15em',
                 }}
               >
                 ENTROPY
               </span>
-              <span
-                style={{
-                  fontSize: '0.6rem',
-                  fontWeight: 400,
-                  padding: '0.05rem 0.3rem',
-                  color: 'var(--text-muted)',
-                  borderRadius: 'var(--radius-xs)',
-                  border: '1px dashed var(--border-medium)',
-                  textTransform: 'lowercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                oj
-              </span>
-            </div>
+            )}
           </Link>
         </div>
 

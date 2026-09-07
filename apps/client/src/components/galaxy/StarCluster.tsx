@@ -2,7 +2,212 @@ import React, { useState, useMemo } from 'react';
 import { IStarCluster, IStarProblem } from '../../data/galaxyData';
 import { StarNode } from './StarNode';
 import { Sparkles } from 'lucide-react';
-import { ClusterCoreReticle } from './ClusterCoreReticle';
+
+interface StellarPhysics {
+  baseSize: number;
+  blossomSize: number;
+  coreGradient: string;
+  coronaInset: string;
+  coronaBlur: string;
+  pulseDuration: string;
+  pipScale: string;
+}
+
+const getStellarPhysics = (cluster: IStarCluster): StellarPhysics => {
+  const { id, spectralColor } = cluster;
+  switch (id) {
+    case 'arrays-hashing':
+      return {
+        baseSize: 82,
+        blossomSize: 98,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, ${spectralColor} 50%, #050b18 80%, #000000 100%)`,
+        coronaInset: '-12px',
+        coronaBlur: '14px',
+        pulseDuration: '4.8s',
+        pipScale: '28%',
+      };
+    case 'two-pointers':
+      return {
+        baseSize: 80,
+        blossomSize: 96,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #a5f3fc 35%, ${spectralColor} 65%, #05141e 100%)`,
+        coronaInset: '-10px',
+        coronaBlur: '12px',
+        pulseDuration: '3.6s',
+        pipScale: '26%',
+      };
+    case 'sliding-window':
+      return {
+        baseSize: 76,
+        blossomSize: 92,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #93c5fd 40%, ${spectralColor} 70%, #030712 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '10px',
+        pulseDuration: '3.2s',
+        pipScale: '25%',
+      };
+    case 'stack':
+      return {
+        baseSize: 74,
+        blossomSize: 90,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #c4b5fd 42%, ${spectralColor} 68%, #0d091a 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '9px',
+        pulseDuration: '3.0s',
+        pipScale: '24%',
+      };
+    case 'binary-search':
+      return {
+        baseSize: 72,
+        blossomSize: 88,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #67e8f9 35%, ${spectralColor} 62%, #02121c 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '10px',
+        pulseDuration: '2.2s',
+        pipScale: '22%',
+      };
+    case 'linked-list':
+      return {
+        baseSize: 78,
+        blossomSize: 94,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #6ee7b7 40%, ${spectralColor} 70%, #02180e 100%)`,
+        coronaInset: '-10px',
+        coronaBlur: '12px',
+        pulseDuration: '3.8s',
+        pipScale: '27%',
+      };
+    case 'trees':
+      return {
+        baseSize: 82,
+        blossomSize: 98,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #86efac 42%, ${spectralColor} 70%, #041a09 100%)`,
+        coronaInset: '-12px',
+        coronaBlur: '14px',
+        pulseDuration: '4.2s',
+        pipScale: '30%',
+      };
+    case 'tries':
+      return {
+        baseSize: 76,
+        blossomSize: 92,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #5eead4 40%, ${spectralColor} 68%, #031816 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '10px',
+        pulseDuration: '3.4s',
+        pipScale: '26%',
+      };
+    case 'heap':
+      return {
+        baseSize: 78,
+        blossomSize: 94,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #fde047 40%, ${spectralColor} 70%, #1f1200 100%)`,
+        coronaInset: '-10px',
+        coronaBlur: '12px',
+        pulseDuration: '3.6s',
+        pipScale: '27%',
+      };
+    case 'backtracking':
+      return {
+        baseSize: 76,
+        blossomSize: 92,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #fdba74 40%, ${spectralColor} 68%, #1c0800 100%)`,
+        coronaInset: '-9px',
+        coronaBlur: '11px',
+        pulseDuration: '2.8s',
+        pipScale: '25%',
+      };
+    case 'graphs':
+      return {
+        baseSize: 80,
+        blossomSize: 96,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #7dd3fc 40%, ${spectralColor} 68%, #021220 100%)`,
+        coronaInset: '-11px',
+        coronaBlur: '13px',
+        pulseDuration: '4.0s',
+        pipScale: '28%',
+      };
+    case 'advanced-graphs':
+      return {
+        baseSize: 78,
+        blossomSize: 94,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #a5b4fc 42%, ${spectralColor} 70%, #0b0d26 100%)`,
+        coronaInset: '-10px',
+        coronaBlur: '12px',
+        pulseDuration: '3.5s',
+        pipScale: '26%',
+      };
+    case '1d-dp':
+      return {
+        baseSize: 84,
+        blossomSize: 100,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #fda4af 38%, ${spectralColor} 66%, #1a0208 100%)`,
+        coronaInset: '-14px',
+        coronaBlur: '16px',
+        pulseDuration: '5.2s',
+        pipScale: '32%',
+      };
+    case '2d-dp':
+      return {
+        baseSize: 80,
+        blossomSize: 96,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #f472b6 40%, ${spectralColor} 68%, #1c0210 100%)`,
+        coronaInset: '-11px',
+        coronaBlur: '13px',
+        pulseDuration: '3.8s',
+        pipScale: '28%',
+      };
+    case 'greedy':
+      return {
+        baseSize: 86,
+        blossomSize: 102,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #fde68a 35%, ${spectralColor} 65%, #241300 100%)`,
+        coronaInset: '-16px',
+        coronaBlur: '18px',
+        pulseDuration: '4.6s',
+        pipScale: '34%',
+      };
+    case 'intervals':
+      return {
+        baseSize: 78,
+        blossomSize: 94,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #5eead4 40%, ${spectralColor} 70%, #021815 100%)`,
+        coronaInset: '-10px',
+        coronaBlur: '12px',
+        pulseDuration: '3.6s',
+        pipScale: '27%',
+      };
+    case 'math-geometry':
+      return {
+        baseSize: 82,
+        blossomSize: 98,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #a5b4fc 42%, ${spectralColor} 70%, #0b0c2a 100%)`,
+        coronaInset: '-12px',
+        coronaBlur: '14px',
+        pulseDuration: '4.4s',
+        pipScale: '29%',
+      };
+    case 'bit-manipulation':
+      return {
+        baseSize: 72,
+        blossomSize: 88,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, #fda4af 35%, ${spectralColor} 65%, #22040c 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '10px',
+        pulseDuration: '2.0s',
+        pipScale: '22%',
+      };
+    default:
+      return {
+        baseSize: 78,
+        blossomSize: 94,
+        coreGradient: `radial-gradient(circle, #ffffff 0%, ${spectralColor} 65%, #0f172a 100%)`,
+        coronaInset: '-8px',
+        coronaBlur: '10px',
+        pulseDuration: '3.6s',
+        pipScale: '28%',
+      };
+  }
+};
 
 interface StarClusterProps {
   cluster: IStarCluster;
@@ -45,9 +250,10 @@ export const StarCluster: React.FC<StarClusterProps> = ({
 
   const isMastered = solvedCount === totalCount && totalCount > 0;
   const progressRatio = totalCount > 0 ? solvedCount / totalCount : 0;
+  const physics = useMemo(() => getStellarPhysics(cluster), [cluster]);
 
   // Multi-tier Concentric Orbit Engine for decluttering large problem sets
-  const { orbitalRings, orbitalNodes, svgDims } = useMemo(() => {
+  const { orbitalRings, orbitalNodes, svgDims, maxRadius } = useMemo(() => {
     const N = cluster.problems.length;
     let ringConfigs: { radius: number; count: number }[] = [];
 
@@ -118,8 +324,15 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         halfW: svgWidth / 2,
         halfH: svgHeight / 2,
       },
+      maxRadius,
     };
   }, [cluster.problems]);
+
+  // Side-docking telemetry logic:
+  // If the star system is on the right side of the page (offset >= 50%), slide to the LEFT (inward).
+  // If on the left side (offset < 50%), slide to the RIGHT (inward).
+  const isRightSide = horizontalOffsetPercent >= 50;
+  const sideDistance = maxRadius + 42;
 
   const handleCoreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -133,12 +346,11 @@ export const StarCluster: React.FC<StarClusterProps> = ({
   return (
     <div
       id={`cluster-${cluster.id}`}
-      onClick={(e) => e.stopPropagation()}
       style={{
         position: 'relative',
         left: `${horizontalOffsetPercent}%`,
         transform: 'translateX(-50%)',
-        margin: isBlossomed ? '7rem 0' : '4.5rem 0',
+        margin: isBlossomed ? '5.5rem 0' : '4.25rem 0',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -147,34 +359,33 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         zIndex: isBlossomed ? 30 : 10,
       }}
     >
-      {/* Monochromatic Volumetric Starlight Depth Aura */}
+      {/* Volumetric Starlight & Atmospheric Sector Glow Aura */}
       <div
         style={{
           position: 'absolute',
           width: isBlossomed ? `${svgDims.width * 0.9}px` : '320px',
           height: isBlossomed ? `${svgDims.height * 0.9}px` : '260px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 50%, transparent 70%)',
-          filter: 'blur(40px)',
+          background: isBlossomed
+            ? cluster.bgGlow
+            : `radial-gradient(circle, ${cluster.coronaGlow} 0%, transparent 70%)`,
+          filter: 'blur(42px)',
+          opacity: isBlossomed ? 0.85 : 0.55,
           pointerEvents: 'none',
           transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
           zIndex: 1,
         }}
       />
 
+
       {/* ── CENTRAL SOLAR ANCHOR CONTAINER ──────────────────────────────────
           Unifies Core Sun, SVG lines, and StarNodes with pixel-perfect center alignment */}
       <div
         className="cluster-solar-anchor"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setHoverSuppressed(false);
-        }}
         style={{
           position: 'relative',
-          width: isBlossomed ? '94px' : '78px',
-          height: isBlossomed ? '94px' : '78px',
+          width: isBlossomed ? `${physics.blossomSize}px` : `${physics.baseSize}px`,
+          height: isBlossomed ? `${physics.blossomSize}px` : `${physics.baseSize}px`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -266,9 +477,14 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           </div>
         )}
 
-        {/* Central Core: Gravitational Singularity */}
+        {/* Central Celestial Orb (Authentic Organic Stellar Core) */}
         <div
           onClick={handleCoreClick}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setHoverSuppressed(false);
+          }}
           className="cluster-core-sun"
           style={{
             position: 'relative',
@@ -285,7 +501,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           }}
           title={isExpanded ? 'Click core to unlock and collapse orbit' : 'Click core to lock orbit'}
         >
-          {/* Precision Caliber Progress Gauge around Singularity */}
+          {/* SVG Orbital Progress Arc around the Sun */}
           <svg
             style={{
               position: 'absolute',
@@ -293,102 +509,72 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               width: 'calc(100% + 24px)',
               height: 'calc(100% + 24px)',
               transform: 'rotate(-90deg)',
+              pointerEvents: 'none',
             }}
             viewBox="0 0 100 100"
           >
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="3.5" />
             <circle
               cx="50"
               cy="50"
               r="44"
               fill="none"
-              stroke="rgba(255, 255, 255, 0.06)"
-              strokeWidth="2"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke={isMastered ? '#ffffff' : 'var(--brand-white)'}
-              strokeWidth="2"
+              stroke={isMastered ? '#fbbf24' : cluster.spectralColor}
+              strokeWidth="3.8"
               strokeLinecap="round"
               strokeDasharray="276"
               strokeDashoffset={276 * (1 - progressRatio)}
               style={{
-                filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.4))',
+                filter: `drop-shadow(0 0 8px ${cluster.spectralColor})`,
                 transition: 'stroke-dashoffset 0.6s ease',
               }}
             />
           </svg>
 
-          {/* Gravitational Lensing Halo */}
+          {/* Coronal Solar Flare: Soft Atmospheric Aura */}
           <div
             className="solar-coronal-flare"
             style={{
               position: 'absolute',
-              inset: '-8px',
+              inset: physics.coronaInset,
               borderRadius: '50%',
-              background: isMastered
-                ? 'radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 45%, transparent 70%)'
-                : isBlossomed
-                ? `radial-gradient(circle, ${cluster.spectralColor}26 0%, rgba(255, 255, 255, 0.05) 45%, transparent 70%)`
-                : 'radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 70%)',
+              background: `radial-gradient(circle, ${cluster.coronaGlow} 0%, transparent 70%)`,
+              filter: `blur(${physics.coronaBlur})`,
               pointerEvents: 'none',
-              transition: 'background 0.4s ease',
+              animation: `stellarBreathingGlow ${physics.pulseDuration} ease-in-out infinite`,
             }}
           />
 
-          {/* Event Horizon Singularity Body with Whisper-Thin Anodized Accretion Rim */}
+          {/* Inner Star Body: Volumetric Glowing Celestial Orb */}
           <div
             style={{
               width: '100%',
               height: '100%',
               borderRadius: '50%',
               background: isMastered
-                ? 'radial-gradient(circle, #222222 0%, #0d0d0d 50%, #000000 100%)'
-                : isBlossomed
-                ? 'radial-gradient(circle, #1a1a1a 0%, #0c0c0c 60%, #000000 100%)'
-                : 'radial-gradient(circle, #141414 0%, #070707 60%, #000000 100%)',
+                ? 'radial-gradient(circle, #ffffff 0%, #fbbf24 60%, #b45309 100%)'
+                : physics.coreGradient,
               boxShadow: isMastered
-                ? '0 0 24px rgba(255, 255, 255, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.25)'
-                : isBlossomed
-                ? `0 0 18px ${cluster.spectralColor}40, inset 0 0 8px rgba(255, 255, 255, 0.2), inset 0 0 14px ${cluster.spectralColor}25`
-                : `0 0 10px ${cluster.spectralColor}20, inset 0 0 6px rgba(255, 255, 255, 0.12)`,
+                ? '0 0 32px rgba(251, 191, 36, 0.7), inset 0 0 16px rgba(255, 255, 255, 0.9)'
+                : `0 0 28px ${cluster.coronaGlow}, inset 0 0 14px rgba(255, 255, 255, 0.75)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: isMastered
-                ? '1.5px solid rgba(255, 255, 255, 0.85)'
-                : isBlossomed
-                ? `1px solid ${cluster.spectralColor}99`
-                : `1px solid ${cluster.spectralColor}45`,
+              border: isMastered ? '2px solid rgba(255, 255, 255, 0.95)' : '2px solid rgba(255, 255, 255, 0.6)',
               position: 'relative',
-              overflow: 'hidden',
-              transition: 'border 0.4s ease, box-shadow 0.4s ease, background 0.4s ease',
+              transition: 'box-shadow 0.4s ease, border 0.4s ease',
             }}
           >
-            {/* Unique CAD Astrolabe Reticle Aperture */}
-            <ClusterCoreReticle
-              clusterId={cluster.id}
-              isHovered={isHovered}
-              isBlossomed={isBlossomed}
-              isMastered={isMastered}
-            />
-
-            {/* Central Precision Focal Pip or Mastery Sparkle */}
             {isMastered ? (
-              <Sparkles size={18} color="#ffffff" strokeWidth={2} style={{ zIndex: 6, position: 'relative' }} />
+              <Sparkles size={24} color="#0f172a" strokeWidth={2.5} />
             ) : (
               <div
                 style={{
-                  position: 'relative',
-                  zIndex: 6,
-                  width: isBlossomed ? '6px' : '5px',
-                  height: isBlossomed ? '6px' : '5px',
+                  width: physics.pipScale,
+                  height: physics.pipScale,
                   borderRadius: '50%',
                   background: '#ffffff',
-                  boxShadow: '0 0 8px #ffffff, 0 0 14px rgba(255, 255, 255, 0.7)',
-                  transition: 'all 0.3s ease',
+                  boxShadow: `0 0 12px #ffffff, 0 0 20px ${cluster.spectralColor}99`,
                 }}
               />
             )}
@@ -396,19 +582,36 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         </div>
       </div>
 
-      {/* Cluster Label & Info under Sun (Clean Technical Telemetry) */}
+      {/* Cluster Label & Info: Glides smoothly to the side when blossomed */}
       <div
+        className="cluster-label-telemetry"
         onClick={handleCoreClick}
         style={{
-          marginTop: isBlossomed ? '18px' : '14px',
+          position: 'relative',
+          marginTop: '14px',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
+          alignItems: isBlossomed ? (isRightSide ? 'flex-end' : 'flex-start') : 'center',
+          textAlign: isBlossomed ? (isRightSide ? 'right' : 'left') : 'center',
           cursor: isExpanded ? unlockCursor : lockCursor,
-          textAlign: 'center',
-          zIndex: 20,
+          zIndex: 35,
+          width: 'max-content',
+          maxWidth: isBlossomed ? '280px' : '220px',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none',
+          padding: 0,
+          transform: isBlossomed
+            ? isRightSide
+              ? `translate(calc(-50% - ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`
+              : `translate(calc(50% + ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`
+            : 'translate(0, 0)',
+          transition: 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.4s ease',
+          pointerEvents: 'auto',
+          userSelect: 'none',
         }}
       >
+        {/* Designation Tag */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <span
             style={{
@@ -416,7 +619,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               height: '6px',
               borderRadius: '50%',
               backgroundColor: cluster.spectralColor,
-              boxShadow: `0 0 6px ${cluster.spectralColor}`,
+              boxShadow: `0 0 8px ${cluster.spectralColor}`,
               display: 'inline-block',
             }}
           />
@@ -425,29 +628,34 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               fontSize: '0.6875rem',
               fontFamily: 'var(--font-mono)',
               fontWeight: 600,
-              letterSpacing: '0.1em',
+              letterSpacing: '0.12em',
               color: 'var(--text-secondary)',
               textTransform: 'uppercase',
+              textShadow: '0 1px 6px rgba(0, 0, 0, 0.95)',
             }}
           >
             {cluster.designation}
           </span>
         </div>
 
+        {/* System Name */}
         <h3
           style={{
-            margin: '0.2rem 0 0.35rem 0',
-            fontSize: isBlossomed ? '1.1875rem' : '1.05rem',
+            margin: '0.25rem 0 0.35rem 0',
+            fontSize: isBlossomed ? '1.25rem' : '1.05rem',
             fontWeight: 500,
             fontFamily: 'var(--font-heading)',
             letterSpacing: '-0.025em',
             color: 'var(--brand-white)',
+            textShadow: '0 2px 10px rgba(0, 0, 0, 0.95), 0 0 20px rgba(0, 0, 0, 0.75)',
             transition: 'font-size 0.3s ease',
+            lineHeight: 1.2,
           }}
         >
           {cluster.name}
         </h3>
 
+        {/* Solved Progress Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span
             style={{
@@ -455,16 +663,36 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               fontWeight: 500,
               fontFamily: 'var(--font-mono)',
               color: isMastered ? 'var(--brand-white)' : 'var(--text-secondary)',
-              background: isMastered ? 'rgba(255, 255, 255, 0.1)' : 'var(--bg-surface)',
-              padding: '0.1rem 0.5rem',
+              background: isMastered ? 'rgba(255, 255, 255, 0.12)' : 'rgba(20, 20, 25, 0.65)',
+              padding: '0.12rem 0.55rem',
               borderRadius: 'var(--radius-xs)',
-              border: `1px solid ${isMastered ? 'rgba(255, 255, 255, 0.4)' : 'var(--border-subtle)'}`,
-              boxShadow: 'var(--glass-shadow)',
+              border: `1px solid ${isMastered ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.12)'}`,
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
             }}
           >
             {solvedCount} / {totalCount} Solved
           </span>
         </div>
+
+        {/* Sector Brief Description (Revealed directly on the stars when blossomed) */}
+        {isBlossomed && (
+          <p
+            style={{
+              margin: '0.45rem 0 0 0',
+              fontSize: '0.75rem',
+              color: 'rgba(226, 232, 240, 0.8)',
+              fontFamily: 'var(--font-sans)',
+              lineHeight: 1.45,
+              textShadow: '0 1px 8px rgba(0, 0, 0, 0.95)',
+              animation: 'fadeIn 0.3s ease',
+              maxWidth: '260px',
+            }}
+          >
+            {cluster.sectorDescription}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'arrays-hashing',
     name: 'Arrays & Hashing',
-    designation: 'SOLARIS PRIME',
+    designation: 'SGR A*',
     sector: 'I',
     sectorName: 'Sector I: The Genesis Shallows',
     sectorDescription: 'Foundational memory architectures and fast hash lookups',
@@ -51,7 +51,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'two-pointers',
     name: 'Two Pointers',
-    designation: 'GEMINI BINARY',
+    designation: 'OJ 287',
     sector: 'I',
     sectorName: 'Sector I: The Genesis Shallows',
     sectorDescription: 'Converging index trajectories and boundary trapping',
@@ -69,7 +69,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'sliding-window',
     name: 'Sliding Window',
-    designation: 'VELA TORRENT',
+    designation: 'CYG X-1',
     sector: 'I',
     sectorName: 'Sector I: The Genesis Shallows',
     sectorDescription: 'Dynamic range filters and rolling sub-segment states',
@@ -90,7 +90,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'stack',
     name: 'Stack',
-    designation: 'MONOLITH VAULT',
+    designation: 'GW 150914',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'LIFO depth accumulators and monotonic sequences',
@@ -110,7 +110,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'binary-search',
     name: 'Binary Search',
-    designation: 'PULSAR PRISM',
+    designation: 'SS 433',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'Logarithmic division of sorted celestial search spaces',
@@ -130,7 +130,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'linked-list',
     name: 'Linked List',
-    designation: 'HELIOS STRAND',
+    designation: 'Q2237+030',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'Unidirectional and circular pointer linkages',
@@ -154,7 +154,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'trees',
     name: 'Trees & BST',
-    designation: 'YGGDRASIL CANOPY',
+    designation: 'SWIFT J1644',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'Branching hierarchies, recursive traversals, and balance factors',
@@ -182,7 +182,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'tries',
     name: 'Tries',
-    designation: 'ORACLE NEXUS',
+    designation: 'NGC 1275',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'Prefix tree indexing and fast lexicon lookup webs',
@@ -198,7 +198,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'heap',
     name: 'Heap / Priority Queue',
-    designation: 'TITAN GRAVITY WELL',
+    designation: 'J1148+1930',
     sector: 'II',
     sectorName: 'Sector II: The Quantum Rift',
     sectorDescription: 'Priority ordering, min/max extraction, and streaming medians',
@@ -220,7 +220,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'backtracking',
     name: 'Backtracking',
-    designation: 'MIRROR DIMENSION',
+    designation: 'MAXI J1820',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Combinatorial space traversal, state pruning, and constraint solvers',
@@ -242,7 +242,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'graphs',
     name: 'Graphs',
-    designation: 'SYNAPSE NEBULA',
+    designation: 'GRO J1655',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'BFS, DFS, topological sorting, and union-find connectivity',
@@ -268,7 +268,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'advanced-graphs',
     name: 'Advanced Graphs',
-    designation: 'STORM SINGULARITY',
+    designation: 'GRS 1915',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Shortest paths, Dijkstra, minimum spanning trees, and network flow',
@@ -287,7 +287,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: '1d-dp',
     name: '1-D Dynamic Programming',
-    designation: 'AETHELGARD FORGE',
+    designation: 'M87*',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Optimal substructure, memoized recurrence, and knapsack transitions',
@@ -312,7 +312,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: '2d-dp',
     name: '2-D Dynamic Programming',
-    designation: 'CHRONOS CITADEL',
+    designation: 'V404 CYG',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Grid states, edit distances, string interleaving, and boundary limits',
@@ -336,7 +336,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'greedy',
     name: 'Greedy',
-    designation: 'PHOENIX ASCENT',
+    designation: 'TON 618',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Local greedy heuristics, step optimality, and frontier jumping',
@@ -357,7 +357,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'intervals',
     name: 'Intervals',
-    designation: 'CHRONO NEXUS',
+    designation: '3C 75',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Temporal overlaps, segment intersections, and sweep-line algorithms',
@@ -376,7 +376,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'math-geometry',
     name: 'Math & Geometry',
-    designation: 'CELESTIAL MATRIX',
+    designation: 'HOLMB 15A',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Coordinate rotations, modular arithmetic, spiral matrix traversal, and numerical power',
@@ -397,7 +397,7 @@ export const STAR_CLUSTERS: IStarCluster[] = [
   {
     id: 'bit-manipulation',
     name: 'Bit Manipulation',
-    designation: 'QUANTUM SINGULARITY',
+    designation: 'SGR 1806-20',
     sector: 'III',
     sectorName: 'Sector III: The Event Horizon',
     sectorDescription: 'Binary masks, XOR arithmetic, bitwise shifts, and register logic',

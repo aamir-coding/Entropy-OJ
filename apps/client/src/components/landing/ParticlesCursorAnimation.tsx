@@ -142,11 +142,37 @@ const controls = {
   canvasResolution: 256,
 };
 
+// Preload glow texture at module execution time so it is in memory immediately
+let sharedGlowImage: HTMLImageElement | null = null;
+if (typeof window !== "undefined") {
+  sharedGlowImage = new Image();
+  sharedGlowImage.src = "/glow.png";
+}
+
+// Procedural radial glow canvas as an instantaneous zero-latency fallback
+const fallbackGlowCanvas = (() => {
+  if (typeof document === "undefined") return null;
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, "rgba(255, 255, 255, 1)");
+  g.addColorStop(0.3, "rgba(255, 255, 255, 0.6)");
+  g.addColorStop(0.7, "rgba(255, 255, 255, 0.15)");
+  g.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return c;
+})();
+
 export default function ParticlesCursorAnimation() {
   const { size, camera, raycaster, gl } = useThree();
   const meshRef = useRef<THREE.Points>(null);
   const interactivePlaneRef = useRef<THREE.Mesh>(null);
   const intersectionsRef = useRef<THREE.Intersection[]>([]);
+  const isCursorActiveRef = useRef<boolean>(false);
 
   // Track previous cursor positions to optimize raycaster and canvas updates
   const previousScreenCursorRef = useRef<THREE.Vector2>(
@@ -204,7 +230,10 @@ export default function ParticlesCursorAnimation() {
   }, [canvasResolution]);
 
   const glowImage = useMemo(() => {
-    const img = new Image();
+    if (sharedGlowImage && sharedGlowImage.complete && sharedGlowImage.naturalWidth > 0) {
+      return sharedGlowImage;
+    }
+    const img = sharedGlowImage || new Image();
     img.src = "/glow.png";
     return img;
   }, []);
@@ -338,6 +367,7 @@ export default function ParticlesCursorAnimation() {
       displacement.canvasCursorTarget.set(9999, 9999);
       displacement.canvasCursorSmoothed.set(9999, 9999);
       previousCanvasCursorRef.current.set(9999, 9999);
+      isCursorActiveRef.current = false;
     };
 
     canvas.addEventListener("pointerdown", handlePointerDown);
@@ -417,6 +447,8 @@ export default function ParticlesCursorAnimation() {
       previousScreenCursorRef.current.x !== displacement.screenCursor.x ||
       previousScreenCursorRef.current.y !== displacement.screenCursor.y;
 
+    let isFirstEnterFrame = false;
+
     if (hasPointerInView && cursorChanged) {
       // Update raycaster with current camera and mouse position
       raycaster.setFromCamera(displacement.screenCursor, camera);
@@ -430,9 +462,20 @@ export default function ParticlesCursorAnimation() {
 
       if (intersections.length > 0 && intersections[0].uv) {
         const uv = intersections[0].uv;
-        displacement.canvasCursorTarget.x = uv.x * displacement.canvas.width;
-        displacement.canvasCursorTarget.y =
-          (1 - uv.y) * displacement.canvas.height;
+        const targetX = uv.x * displacement.canvas.width;
+        const targetY = (1 - uv.y) * displacement.canvas.height;
+        displacement.canvasCursorTarget.x = targetX;
+        displacement.canvasCursorTarget.y = targetY;
+
+        // Instant Snap on initial contact: eliminates the 30+ frame delay of lerping from (9999, 9999)
+        if (!isCursorActiveRef.current) {
+          displacement.canvasCursorSmoothed.set(targetX, targetY);
+          displacement.canvasCursor.set(targetX, targetY);
+          displacement.canvasCursorPrevious.set(targetX, targetY);
+          previousCanvasCursorRef.current.set(targetX, targetY);
+          isCursorActiveRef.current = true;
+          isFirstEnterFrame = true;
+        }
       }
 
       // Update previous cursor position
@@ -440,6 +483,7 @@ export default function ParticlesCursorAnimation() {
     } else if (!hasPointerInView) {
       // Reset previous cursor when pointer leaves view
       previousScreenCursorRef.current.set(9999, 9999);
+      isCursorActiveRef.current = false;
     }
 
     // Smooth cursor movement with exponential interpolation
@@ -490,11 +534,13 @@ export default function ParticlesCursorAnimation() {
       displacement.canvasCursor
     );
     displacement.canvasCursorPrevious.copy(displacement.canvasCursor);
-    const alpha = Math.min(cursorDistance * speedAlphaMultiplier, 1);
+    const alpha = isFirstEnterFrame
+      ? 0.6
+      : Math.min(cursorDistance * speedAlphaMultiplier, 1);
 
     // Only update canvas if cursor moved significantly or if we need to draw glow
     const shouldUpdateCanvas =
-      canvasCursorMoved || (alpha > 0.001 && glowImage.complete);
+      canvasCursorMoved || alpha > 0.001 || isFirstEnterFrame;
 
     if (shouldUpdateCanvas) {
       displacement.context.globalCompositeOperation = "source-over";
@@ -507,17 +553,24 @@ export default function ParticlesCursorAnimation() {
         displacement.canvas.height
       );
 
-      if (alpha > 0.001 && glowImage.complete) {
-        const glowSize = displacement.canvas.width * mouseAreaSize;
-        displacement.context.globalCompositeOperation = "lighten";
-        displacement.context.globalAlpha = alpha;
-        displacement.context.drawImage(
-          glowImage,
-          displacement.canvasCursor.x - glowSize * 0.5,
-          displacement.canvasCursor.y - glowSize * 0.5,
-          glowSize,
-          glowSize
-        );
+      if (alpha > 0.001) {
+        const glowDrawable =
+          glowImage && glowImage.complete && glowImage.naturalWidth > 0
+            ? glowImage
+            : fallbackGlowCanvas;
+
+        if (glowDrawable) {
+          const glowSize = displacement.canvas.width * mouseAreaSize;
+          displacement.context.globalCompositeOperation = "lighten";
+          displacement.context.globalAlpha = alpha;
+          displacement.context.drawImage(
+            glowDrawable,
+            displacement.canvasCursor.x - glowSize * 0.5,
+            displacement.canvasCursor.y - glowSize * 0.5,
+            glowSize,
+            glowSize
+          );
+        }
       }
 
       displacement.texture.needsUpdate = true;

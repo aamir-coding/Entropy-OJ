@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IStarProblem } from '../../data/galaxyData';
-import { X, ExternalLink, CheckCircle2, AlertCircle, Play, Sparkles, Orbit, Lock } from 'lucide-react';
+import { X, ExternalLink, CheckCircle2, AlertCircle, Orbit, Lock } from 'lucide-react';
 
 interface StarModalProps {
   problem: IStarProblem | null;
@@ -94,6 +94,7 @@ export const StarModal: React.FC<StarModalProps> = ({
 
   return (
     <div
+      className="star-modal-backdrop"
       style={{
         position: 'fixed',
         inset: 0,
@@ -107,25 +108,29 @@ export const StarModal: React.FC<StarModalProps> = ({
         padding: '1.25rem',
         animation: 'fadeIn 0.2s ease',
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
     >
       <div
         ref={modalRef}
+        className="star-modal-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="Star Details"
         style={{
           width: '100%',
-          maxWidth: '480px',
+          maxWidth: '440px',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-medium)',
           borderRadius: 'var(--radius-sm)',
           boxShadow: 'var(--shadow-overlay)',
-          padding: '1.75rem',
+          padding: '1.5rem',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
+          gap: '1.15rem',
           animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -161,8 +166,16 @@ export const StarModal: React.FC<StarModalProps> = ({
           <X size={14} />
         </button>
 
-        {/* Top Designation Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+        {/* Top Designation & Status Pills */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            flexWrap: 'wrap',
+            paddingRight: '2rem',
+          }}
+        >
           <span
             style={{
               fontSize: '0.6875rem',
@@ -171,7 +184,7 @@ export const StarModal: React.FC<StarModalProps> = ({
               background: 'var(--bg-secondary)',
               color: 'var(--brand-white)',
               border: '1px solid var(--border-medium)',
-              padding: '0.15rem 0.55rem',
+              padding: '0.18rem 0.55rem',
               borderRadius: 'var(--radius-xs)',
               display: 'flex',
               alignItems: 'center',
@@ -190,7 +203,7 @@ export const StarModal: React.FC<StarModalProps> = ({
               color: diffColor,
               background: `${diffColor}18`,
               border: `1px solid ${diffColor}40`,
-              padding: '0.15rem 0.55rem',
+              padding: '0.18rem 0.55rem',
               borderRadius: 'var(--radius-xs)',
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
@@ -206,142 +219,92 @@ export const StarModal: React.FC<StarModalProps> = ({
               color: 'var(--text-muted)',
               background: 'var(--bg-secondary)',
               border: '1px solid var(--border-subtle)',
-              padding: '0.15rem 0.55rem',
+              padding: '0.18rem 0.55rem',
               borderRadius: 'var(--radius-xs)',
             }}
           >
             {problem.category}
           </span>
+
+          {/* Compact Status Badge */}
+          <span
+            style={{
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              fontFamily: 'var(--font-mono)',
+              color: isSolved
+                ? 'var(--verdict-ac)'
+                : isAttempted
+                ? 'var(--verdict-tle)'
+                : 'var(--text-muted)',
+              background: isSolved
+                ? 'rgba(5, 223, 114, 0.1)'
+                : isAttempted
+                ? 'rgba(245, 158, 11, 0.1)'
+                : 'var(--bg-secondary)',
+              border: `1px solid ${
+                isSolved
+                  ? 'rgba(5, 223, 114, 0.3)'
+                  : isAttempted
+                  ? 'rgba(245, 158, 11, 0.3)'
+                  : 'var(--border-subtle)'
+              }`,
+              padding: '0.18rem 0.55rem',
+              borderRadius: 'var(--radius-xs)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              letterSpacing: '0.02em',
+            }}
+          >
+            {isSolved ? (
+              <CheckCircle2 size={11} color="var(--verdict-ac)" />
+            ) : isAttempted ? (
+              <AlertCircle size={11} color="var(--verdict-tle)" />
+            ) : (
+              <span
+                style={{
+                  width: '5px',
+                  height: '5px',
+                  borderRadius: '50%',
+                  background: 'var(--text-muted)',
+                  display: 'inline-block',
+                }}
+              />
+            )}
+            {isSolved ? 'Solved' : isAttempted ? 'In Progress' : 'Unsolved'}
+          </span>
         </div>
 
-        {/* Problem Title */}
+        {/* Problem Title & Key */}
         <div>
           <h2
             style={{
-              margin: '0 0 0.35rem 0',
-              fontSize: '1.375rem',
+              margin: '0 0 0.25rem 0',
+              fontSize: '1.3125rem',
               fontWeight: 500,
               fontFamily: 'var(--font-heading)',
               letterSpacing: '-0.025em',
               color: 'var(--brand-white)',
+              lineHeight: 1.25,
             }}
           >
             {problem.title}
           </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            Designation Key:{' '}
-            <code
-              style={{
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--brand-white)',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                padding: '0.1rem 0.4rem',
-                borderRadius: 'var(--radius-xs)',
-              }}
-            >
-              {problem.code}
-            </code>
+          <span
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 400,
+              letterSpacing: '0.01em',
+            }}
+          >
+            {problem.code}
           </span>
         </div>
 
-        {/* Stellar Status Banner */}
-        <div
-          style={{
-            borderRadius: 'var(--radius-xs)',
-            padding: '0.875rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.85rem',
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-medium)',
-          }}
-        >
-          {isSolved ? (
-            <>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: 'var(--radius-xs)',
-                  background: 'var(--bg-surface)',
-                  border: '1px solid rgba(5, 223, 114, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: 'var(--glass-shadow)',
-                }}
-              >
-                <Sparkles size={16} color="var(--verdict-ac)" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: 'var(--verdict-ac)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
-                  Supernova Ignited (Solved)
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
-                  Accepted verdict confirmed. Constellation energy vector is illuminated.
-                </div>
-              </div>
-            </>
-          ) : isAttempted ? (
-            <>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: 'var(--radius-xs)',
-                  background: 'var(--bg-surface)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: 'var(--glass-shadow)',
-                }}
-              >
-                <AlertCircle size={16} color="var(--verdict-tle)" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: 'var(--verdict-tle)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
-                  Protostar (In-Progress)
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
-                  Submissions recorded. Resume coding to ignite this star into a supernova.
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: 'var(--radius-xs)',
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: 'var(--glass-shadow)',
-                }}
-              >
-                <Play size={15} color="var(--brand-neutral-200)" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: 'var(--brand-white)', fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
-                  Dim Star (Uncharted)
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
-                  Dormant celestial node. Warp to the workspace to initialize trial.
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Warp Button */}
+        {/* Action Button */}
         <div>
           {isAvailable ? (
             <button
@@ -371,8 +334,8 @@ export const StarModal: React.FC<StarModalProps> = ({
                 e.currentTarget.style.background = 'var(--brand-white)';
               }}
             >
-              <ExternalLink size={16} />
-              {isSolved ? 'Warp to Review Solution' : 'Warp to Problem Workspace'}
+              <ExternalLink size={15} />
+              {isSolved ? 'Review Solution' : isAttempted ? 'Resume Problem' : 'Solve Problem'}
             </button>
           ) : (
             <button
@@ -394,8 +357,8 @@ export const StarModal: React.FC<StarModalProps> = ({
                 gap: '0.5rem',
               }}
             >
-              <Lock size={15} />
-              Awaiting Seeder Telemetry
+              <Lock size={14} />
+              Problem Unavailable
             </button>
           )}
         </div>

@@ -57,6 +57,35 @@ export const GalaxyPage: React.FC = () => {
     setExpandedClusterId((prev) => (prev === clusterId ? null : clusterId));
   };
 
+  // Reliable global click-to-unlock: clicking outside the active locked star system collapses it
+  useEffect(() => {
+    if (!expandedClusterId) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      // If problem inspection modal is open or clicked, do not unlock the cluster
+      if (
+        selectedProblem ||
+        (e.target as HTMLElement).closest?.('.star-modal-backdrop') ||
+        (e.target as HTMLElement).closest?.('.star-modal-dialog')
+      ) {
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+      // If the click is inside a solar core, a star problem node, or telemetry text, let it pass
+      if (
+        !target.closest('.cluster-core-sun') &&
+        !target.closest('.star-node-button') &&
+        !target.closest('.cluster-label-telemetry')
+      ) {
+        setExpandedClusterId(null);
+      }
+    };
+
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [expandedClusterId, selectedProblem]);
+
   const handleTeleportToCluster = (clusterId: string) => {
     setExpandedClusterId(clusterId);
     setTimeout(() => {
@@ -111,7 +140,6 @@ export const GalaxyPage: React.FC = () => {
 
   return (
     <div
-      onClick={() => setExpandedClusterId(null)}
       style={{
         minHeight: '100vh',
         position: 'relative',
@@ -178,15 +206,15 @@ export const GalaxyPage: React.FC = () => {
           maxWidth: '1240px',
           width: '100%',
           margin: '0 auto',
-          padding: '2.5rem 1.5rem 10rem 1.5rem',
+          padding: '1.5rem 1.5rem 8rem 1.5rem',
         }}
       >
         {/* Galaxy Map Intro Header */}
         <div
           style={{
             textAlign: 'center',
-            marginBottom: '4rem',
-            padding: '2rem 2.25rem',
+            marginBottom: '3.5rem',
+            padding: '1.75rem 2.25rem',
             borderRadius: 'var(--radius-sm)',
             background: 'rgba(10, 10, 10, 0.85)',
             backdropFilter: 'blur(20px)',
@@ -194,9 +222,8 @@ export const GalaxyPage: React.FC = () => {
             border: '1px solid var(--border-medium)',
             boxShadow: 'var(--shadow-elevated)',
             maxWidth: '800px',
-            margin: '0 auto 4rem auto',
+            margin: '0 auto 3.5rem auto',
           }}
-          onClick={(e) => e.stopPropagation()}
         >
           <div
             style={{
