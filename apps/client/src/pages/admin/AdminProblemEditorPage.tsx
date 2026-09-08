@@ -18,6 +18,7 @@ import {
   SupportedLanguage,
 } from '@anti-oj/shared';
 import { getModelSolution } from '@anti-oj/shared/solutions';
+import { Tooltip } from '../../components/motion/tooltip';
 import {
   ArrowLeft,
   Save,
@@ -410,13 +411,15 @@ You may assume that each input would have **exactly one solution**, and you may 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link
-            to="/admin"
-            className="btn btn-sm btn-outline"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
-          >
-            <ArrowLeft size={14} /> Back to Studio
-          </Link>
+          <Tooltip content="Return to problem list" side="bottom">
+            <Link
+              to="/admin"
+              className="btn btn-sm btn-outline"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+            >
+              <ArrowLeft size={14} /> Back to Studio
+            </Link>
+          </Tooltip>
           <div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {isEditMode ? `Edit Problem: ${name || 'Untitled'}` : 'Create New Problem'}
@@ -817,14 +820,15 @@ You may assume that each input would have **exactly one solution**, and you may 
                     Sample Case #{idx + 1}
                   </span>
                   {sampleCases.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSampleCase(idx)}
-                      style={{ background: 'none', border: 'none', color: 'var(--verdict-wa)', cursor: 'pointer' }}
-                      title="Remove Case"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <Tooltip content="Remove sample testcase" side="top">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSampleCase(idx)}
+                        style={{ background: 'none', border: 'none', color: 'var(--verdict-wa)', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
 
@@ -917,14 +921,15 @@ You may assume that each input would have **exactly one solution**, and you may 
                   <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Lock size={13} /> Hidden Judge Case #{idx + 1}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveJudgeCase(idx)}
-                    style={{ background: 'none', border: 'none', color: 'var(--verdict-wa)', cursor: 'pointer' }}
-                    title="Remove Case"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  <Tooltip content="Remove hidden testcase" side="top">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveJudgeCase(idx)}
+                      style={{ background: 'none', border: 'none', color: 'var(--verdict-wa)', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -989,16 +994,17 @@ You may assume that each input would have **exactly one solution**, and you may 
                     <option value="cpp" style={{ background: '#1e293b' }}>C++17 (g++)</option>
                   </select>
 
-                  <button
-                    type="button"
-                    onClick={() => setValCode(getModelSolution(problemCode, valLanguage))}
-                    className="btn btn-outline"
-                    title="Load standard reference model solution for this problem"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.25rem 0.55rem' }}
-                  >
-                    <RotateCcw size={13} />
-                    <span>Reset to Model</span>
-                  </button>
+                  <Tooltip content="Load reference model solution" side="top">
+                    <button
+                      type="button"
+                      onClick={() => setValCode(getModelSolution(problemCode, valLanguage))}
+                      className="btn btn-outline"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.25rem 0.55rem' }}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Reset to Model</span>
+                    </button>
+                  </Tooltip>
 
                   <button
                     type="button"

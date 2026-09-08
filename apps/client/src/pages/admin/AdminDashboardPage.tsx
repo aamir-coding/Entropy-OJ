@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { IAdminProblemListItem, ProblemDifficulty, ALL_PROBLEM_DIFFICULTIES } from '@anti-oj/shared';
+import { Tooltip } from '../../components/motion/tooltip';
 import {
   Shield,
   Plus,
@@ -424,39 +425,45 @@ export const AdminDashboardPage: React.FC = () => {
                       </td>
 
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: '#38bdf8',
-                            background: 'rgba(56, 189, 248, 0.1)',
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '4px',
-                          }}
-                        >
-                          <Eye size={12} /> {prob.sampleCasesCount}
-                        </span>
+                        <Tooltip content={`${prob.sampleCasesCount} sample test case${prob.sampleCasesCount === 1 ? '' : 's'}`} side="top">
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              color: '#38bdf8',
+                              background: 'rgba(56, 189, 248, 0.1)',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '4px',
+                              cursor: 'default',
+                            }}
+                          >
+                            <Eye size={12} /> {prob.sampleCasesCount}
+                          </span>
+                        </Tooltip>
                       </td>
 
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: '#a78bfa',
-                            background: 'rgba(167, 139, 250, 0.1)',
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '4px',
-                          }}
-                        >
-                          <Lock size={12} /> {prob.hiddenCasesCount}
-                        </span>
+                        <Tooltip content={`${prob.hiddenCasesCount} hidden test case${prob.hiddenCasesCount === 1 ? '' : 's'}`} side="top">
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              color: '#a78bfa',
+                              background: 'rgba(167, 139, 250, 0.1)',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '4px',
+                              cursor: 'default',
+                            }}
+                          >
+                            <Lock size={12} /> {prob.hiddenCasesCount}
+                          </span>
+                        </Tooltip>
                       </td>
 
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
@@ -470,28 +477,30 @@ export const AdminDashboardPage: React.FC = () => {
 
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => navigate(`/admin/problems/${prob._id}/edit`)}
-                            className="btn btn-sm btn-outline"
-                            title="Edit Problem & Test Cases"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}
-                          >
-                            <Edit size={13} /> Edit
-                          </button>
-                          <button
-                            onClick={() => setDeletingProblem(prob)}
-                            className="btn btn-sm"
-                            title="Delete Problem"
-                            style={{
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              color: 'var(--verdict-wa)',
-                              borderColor: 'rgba(239, 68, 68, 0.25)',
-                              fontSize: '0.75rem',
-                              padding: '0.35rem 0.6rem',
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <Tooltip content="Edit problem & test cases" side="top">
+                            <button
+                              onClick={() => navigate(`/admin/problems/${prob._id}/edit`)}
+                              className="btn btn-sm btn-outline"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}
+                            >
+                              <Edit size={13} /> Edit
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="Delete problem" side="top">
+                            <button
+                              onClick={() => setDeletingProblem(prob)}
+                              className="btn btn-sm"
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: 'var(--verdict-wa)',
+                                borderColor: 'rgba(239, 68, 68, 0.25)',
+                                fontSize: '0.75rem',
+                                padding: '0.35rem 0.6rem',
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </Tooltip>
                         </div>
                       </td>
                     </tr>
@@ -533,21 +542,22 @@ export const AdminDashboardPage: React.FC = () => {
               {/* Center: Page Controls */}
               {totalPages > 1 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="btn btn-outline"
-                    style={{
-                      padding: '0.25rem 0.55rem',
-                      fontSize: '0.75rem',
-                      opacity: page <= 1 ? 0.4 : 1,
-                      cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                    }}
-                    title="Previous Page"
-                  >
-                    <ChevronLeft size={14} />
-                    <span>Prev</span>
-                  </button>
+                  <Tooltip content="Previous page" side="top">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.75rem',
+                        opacity: page <= 1 ? 0.4 : 1,
+                        cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                      <span>Prev</span>
+                    </button>
+                  </Tooltip>
 
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <button
@@ -571,21 +581,22 @@ export const AdminDashboardPage: React.FC = () => {
                     </button>
                   ))}
 
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="btn btn-outline"
-                    style={{
-                      padding: '0.25rem 0.55rem',
-                      fontSize: '0.75rem',
-                      opacity: page >= totalPages ? 0.4 : 1,
-                      cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                    }}
-                    title="Next Page"
-                  >
-                    <span>Next</span>
-                    <ChevronRight size={14} />
-                  </button>
+                  <Tooltip content="Next page" side="top">
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="btn btn-outline"
+                      style={{
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.75rem',
+                        opacity: page >= totalPages ? 0.4 : 1,
+                        cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </Tooltip>
                 </div>
               )}
 

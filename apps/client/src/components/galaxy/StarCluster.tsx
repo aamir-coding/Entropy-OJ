@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { IStarCluster, IStarProblem } from '../../data/galaxyData';
 import { StarNode } from './StarNode';
+import { Tooltip } from '../motion/tooltip';
 
 interface StellarPhysics {
   baseSize: number;
@@ -477,106 +478,110 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         )}
 
         {/* Central Celestial Orb (Authentic Organic Stellar Core) */}
-        <div
-          onClick={handleCoreClick}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => {
-            setIsHovered(false);
-            setHoverSuppressed(false);
-          }}
-          className="cluster-core-sun"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: isExpanded ? unlockCursor : lockCursor,
-            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-            zIndex: 20,
-            userSelect: 'none',
-          }}
-          title={isExpanded ? 'Click core to unlock and collapse orbit' : 'Click core to lock orbit'}
+        <Tooltip
+          content={isExpanded ? 'Click core to unlock and collapse orbit' : 'Click core to lock orbit'}
+          side="top"
         >
-          {/* SVG Orbital Progress Arc around the Sun */}
-          <svg
-            style={{
-              position: 'absolute',
-              inset: '-12px',
-              width: 'calc(100% + 24px)',
-              height: 'calc(100% + 24px)',
-              transform: 'rotate(-90deg)',
-              pointerEvents: 'none',
-              overflow: 'visible',
-              borderRadius: '50%',
-            }}
-            viewBox="0 0 100 100"
-          >
-            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="3.5" />
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke={isMastered ? '#fbbf24' : cluster.spectralColor}
-              strokeWidth="3.8"
-              strokeLinecap="round"
-              strokeDasharray="276"
-              strokeDashoffset={276 * (1 - progressRatio)}
-              style={{
-                transition: 'stroke-dashoffset 0.6s ease',
-              }}
-            />
-          </svg>
-
-          {/* Coronal Solar Flare: Soft Atmospheric Aura */}
           <div
-            className="solar-coronal-flare"
-            style={{
-              position: 'absolute',
-              inset: physics.coronaInset,
-              borderRadius: '50%',
-              background: `radial-gradient(circle, ${isMastered ? 'rgba(251, 191, 36, 0.35)' : cluster.coronaGlow} 0%, transparent 70%)`,
-              pointerEvents: 'none',
-              animation: `stellarBreathingGlow ${physics.pulseDuration} ease-in-out infinite`,
+            onClick={handleCoreClick}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => {
+              setIsHovered(false);
+              setHoverSuppressed(false);
             }}
-          />
-
-          {/* Inner Star Body: Volumetric Glowing Celestial Orb */}
-          <div
+            className="cluster-core-sun"
             style={{
+              position: 'relative',
               width: '100%',
               height: '100%',
               borderRadius: '50%',
-              background: isMastered
-                ? 'radial-gradient(circle, #ffffff 0%, #fbbf24 60%, #b45309 100%)'
-                : physics.coreGradient,
-              boxShadow: isMastered
-                ? '0 0 32px rgba(251, 191, 36, 0.7), inset 0 0 16px rgba(255, 255, 255, 0.9)'
-                : `0 0 28px ${cluster.coronaGlow}, inset 0 0 14px rgba(255, 255, 255, 0.75)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: isMastered ? '2px solid rgba(255, 255, 255, 0.95)' : '2px solid rgba(255, 255, 255, 0.6)',
-              position: 'relative',
-              transition: 'box-shadow 0.4s ease, border 0.4s ease',
+              cursor: isExpanded ? unlockCursor : lockCursor,
+              transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              zIndex: 20,
+              userSelect: 'none',
             }}
           >
-            <div
+            {/* SVG Orbital Progress Arc around the Sun */}
+            <svg
               style={{
-                width: physics.pipScale,
-                height: physics.pipScale,
+                position: 'absolute',
+                inset: '-12px',
+                width: 'calc(100% + 24px)',
+                height: 'calc(100% + 24px)',
+                transform: 'rotate(-90deg)',
+                pointerEvents: 'none',
+                overflow: 'visible',
                 borderRadius: '50%',
-                background: '#ffffff',
-                boxShadow: isMastered
-                  ? '0 0 12px #ffffff, 0 0 20px rgba(255, 255, 255, 0.8)'
-                  : `0 0 12px #ffffff, 0 0 20px ${cluster.spectralColor}99`,
+              }}
+              viewBox="0 0 100 100"
+            >
+              <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="3.5" />
+              <circle
+                cx="50"
+                cy="50"
+                r="44"
+                fill="none"
+                stroke={isMastered ? '#fbbf24' : cluster.spectralColor}
+                strokeWidth="3.8"
+                strokeLinecap="round"
+                strokeDasharray="276"
+                strokeDashoffset={276 * (1 - progressRatio)}
+                style={{
+                  transition: 'stroke-dashoffset 0.6s ease',
+                }}
+              />
+            </svg>
+
+            {/* Coronal Solar Flare: Soft Atmospheric Aura */}
+            <div
+              className="solar-coronal-flare"
+              style={{
+                position: 'absolute',
+                inset: physics.coronaInset,
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${isMastered ? 'rgba(251, 191, 36, 0.35)' : cluster.coronaGlow} 0%, transparent 70%)`,
+                pointerEvents: 'none',
+                animation: `stellarBreathingGlow ${physics.pulseDuration} ease-in-out infinite`,
               }}
             />
+
+            {/* Inner Star Body: Volumetric Glowing Celestial Orb */}
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: isMastered
+                  ? 'radial-gradient(circle, #ffffff 0%, #fbbf24 60%, #b45309 100%)'
+                  : physics.coreGradient,
+                boxShadow: isMastered
+                  ? '0 0 32px rgba(251, 191, 36, 0.7), inset 0 0 16px rgba(255, 255, 255, 0.9)'
+                  : `0 0 28px ${cluster.coronaGlow}, inset 0 0 14px rgba(255, 255, 255, 0.75)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: isMastered ? '2px solid rgba(255, 255, 255, 0.95)' : '2px solid rgba(255, 255, 255, 0.6)',
+                position: 'relative',
+                transition: 'box-shadow 0.4s ease, border 0.4s ease',
+              }}
+            >
+              <div
+                style={{
+                  width: physics.pipScale,
+                  height: physics.pipScale,
+                  borderRadius: '50%',
+                  background: '#ffffff',
+                  boxShadow: isMastered
+                    ? '0 0 12px #ffffff, 0 0 20px rgba(255, 255, 255, 0.8)'
+                    : `0 0 12px #ffffff, 0 0 20px ${cluster.spectralColor}99`,
+                }}
+              />
+            </div>
           </div>
-        </div>
+        </Tooltip>
       </div>
 
       {/* Cluster Label & Info: Glides smoothly to the side when blossomed */}

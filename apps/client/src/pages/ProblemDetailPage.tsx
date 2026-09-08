@@ -25,6 +25,7 @@ import {
 } from '@anti-oj/shared';
 import { StatefulButton, ButtonState } from '../components/motion/button/stateful';
 import { Tabs } from '../components/motion/tabs';
+import { Tooltip } from '../components/motion/tooltip';
 import {
   Play,
   Send,
@@ -93,6 +94,15 @@ export const ProblemDetailPage: React.FC = () => {
   const [leftTab, setLeftTab] = useState<'statement' | 'submissions'>('statement');
   const [copiedInputIdx, setCopiedInputIdx] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Blind Mode State (persisted via localStorage, initialized from 'entropy_blind_mode')
+  const [blindMode] = useState<boolean>(() => safeStorage.getItem('entropy_blind_mode') === 'true');
+  const [revealedTags, setRevealedTags] = useState<Set<string>>(new Set());
+
+  // Reset revealed tag hints when navigating between problems
+  useEffect(() => {
+    setRevealedTags(new Set());
+  }, [problemCodeParam]);
 
   // Editor State
   const [language, setLanguage] = useState<SupportedLanguage>(SupportedLanguages.CPP);
@@ -649,15 +659,16 @@ export const ProblemDetailPage: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <Link
-            to="/problems"
-            className="btn btn-outline"
-            style={{ padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-xs)' }}
-            aria-label="Back to problem catalog"
-            title="Back to Problems"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+          <Tooltip content="Back to Problems" side="bottom">
+            <Link
+              to="/problems"
+              className="btn btn-outline"
+              style={{ padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-xs)' }}
+              aria-label="Back to problem catalog"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+          </Tooltip>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
             <h1 style={{ fontSize: '1.0625rem', fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
               {problem.name}
@@ -778,17 +789,64 @@ export const ProblemDetailPage: React.FC = () => {
                   <div>
                     {/* Meta info chips */}
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-                      <span className="badge badge-tag" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <Clock size={12} /> Time Limit: {problem.timeLimitMs}ms
-                      </span>
-                      <span className="badge badge-tag" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <HardDrive size={12} /> Memory Limit: {Math.round(problem.memoryLimitKb / 1024)}MB
-                      </span>
-                      {problem.tags.map((tag) => (
-                        <span key={tag} className="badge badge-tag">
-                          {tag}
+                      <Tooltip content="Maximum CPU execution time allowed per testcase" side="top">
+                        <span className="badge badge-tag" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'default' }}>
+                          <Clock size={12} /> Time Limit: {problem.timeLimitMs}ms
                         </span>
-                      ))}
+                      </Tooltip>
+                      <Tooltip content="Maximum RAM memory allocation inside Docker sandbox" side="top">
+                        <span className="badge badge-tag" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'default' }}>
+                          <HardDrive size={12} /> Memory Limit: {Math.round(problem.memoryLimitKb / 1024)}MB
+                        </span>
+                      </Tooltip>
+                      {/* Problem Tags - Click individual tags to blur/unblur as hints */}
+                      {problem.tags && problem.tags.length > 0 && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          {problem.tags.map((tag) => {
+                            const isBlurred = blindMode && !revealedTags.has(tag);
+                            return (
+                              <Tooltip
+                                key={tag}
+                                content={
+                                  blindMode
+                                    ? isBlurred
+                                      ? 'Click to reveal this tag hint'
+                                      : 'Click to blur this tag'
+                                    : `Topic tag: ${tag}`
+                                }
+                                side="top"
+                              >
+                                <span
+                                  id={`problem-tag-${tag.toLowerCase().replace(/\s+/g, '-')}`}
+                                  onClick={() => {
+                                    if (blindMode) {
+                                      setRevealedTags((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(tag)) {
+                                          next.delete(tag);
+                                        } else {
+                                          next.add(tag);
+                                        }
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  className="badge badge-tag"
+                                  style={{
+                                    cursor: blindMode ? 'pointer' : 'default',
+                                    filter: isBlurred ? 'blur(4.5px)' : 'none',
+                                    userSelect: isBlurred ? 'none' : 'auto',
+                                    transition: 'filter 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color var(--transition-fast), border-color var(--transition-fast)',
+                                    willChange: 'filter',
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* Problem Statement Content rendered via ReactMarkdown, KaTeX & rehype-sanitize (Issue M-1, High 6) */}
@@ -1030,20 +1088,22 @@ export const ProblemDetailPage: React.FC = () => {
                     </div>
 
                     {/* Keyboard accessibility hint (Issue L-3) */}
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        color: 'var(--text-muted)',
-                        marginLeft: 'auto',
-                        marginRight: '0.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                      }}
-                      title="Toggle Tab key trapping inside editor"
-                    >
-                      Tab Trap: <kbd style={{ background: '#111111', padding: '1px 5px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }}>Ctrl+M</kbd>
-                    </span>
+                    <Tooltip content="Toggle Tab key trapping inside editor" shortcut="Ctrl+M" side="top">
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--text-muted)',
+                          marginLeft: 'auto',
+                          marginRight: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: 'default',
+                        }}
+                      >
+                        Tab Trap: <kbd style={{ background: '#111111', padding: '1px 5px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-medium)', color: 'var(--text-muted)' }}>Ctrl+M</kbd>
+                      </span>
+                    </Tooltip>
 
                     {/* Right: Reset Action */}
                     {showResetConfirm ? (
@@ -1065,15 +1125,16 @@ export const ProblemDetailPage: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setShowResetConfirm(true)}
-                        className="btn btn-outline"
-                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderColor: 'transparent' }}
-                        title="Reset code template"
-                      >
-                        <RotateCcw size={13} />
-                        <span>Reset</span>
-                      </button>
+                      <Tooltip content="Reset code template to starter boilerplate" side="top">
+                        <button
+                          onClick={() => setShowResetConfirm(true)}
+                          className="btn btn-outline"
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderColor: 'transparent' }}
+                        >
+                          <RotateCcw size={13} />
+                          <span>Reset</span>
+                        </button>
+                      </Tooltip>
                     )}
                   </div>
 
@@ -1167,34 +1228,35 @@ export const ProblemDetailPage: React.FC = () => {
                     />
 
                     {/* Collapse / Expand Toggle */}
-                    <button
-                      onClick={handleToggleConsole}
-                      aria-label="Toggle console drawer"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        padding: '0.25rem 0.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        fontSize: '0.72rem',
-                      }}
-                      title={isConsoleCollapsed ? 'Expand Console' : 'Collapse Console'}
-                    >
-                      {isConsoleCollapsed ? (
-                        <>
-                          <Maximize2 size={13} />
-                          <span>Expand</span>
-                        </>
-                      ) : (
-                        <>
-                          <Minimize2 size={13} />
-                          <span>Collapse</span>
-                        </>
-                      )}
-                    </button>
+                    <Tooltip content={isConsoleCollapsed ? 'Expand Console' : 'Collapse Console'} side="top">
+                      <button
+                        onClick={handleToggleConsole}
+                        aria-label="Toggle console drawer"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '0.25rem 0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          fontSize: '0.72rem',
+                        }}
+                      >
+                        {isConsoleCollapsed ? (
+                          <>
+                            <Maximize2 size={13} />
+                            <span>Expand</span>
+                          </>
+                        ) : (
+                          <>
+                            <Minimize2 size={13} />
+                            <span>Collapse</span>
+                          </>
+                        )}
+                      </button>
+                    </Tooltip>
                   </div>
 
                   {/* Console Body Content (Visible only when expanded, clean vertical fit) */}
@@ -1321,39 +1383,40 @@ export const ProblemDetailPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
                                   <VerdictBadge verdict={activeSubmission.verdict} />
                                   {activeSubmission.verdict === Verdicts.ACCEPTED && !activeSubmission.classification && (
-                                    <button
-                                      id="btn-classify-approach"
-                                      onClick={() => handleClassifyApproach(activeSubmission.submissionId)}
-                                      disabled={isClassifying}
-                                      className="btn btn-sm"
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.35rem',
-                                        padding: '0.2rem 0.65rem',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        background: 'rgba(56, 189, 248, 0.12)',
-                                        color: 'var(--accent-cyan)',
-                                        border: '1px solid rgba(56, 189, 248, 0.35)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        cursor: isClassifying ? 'not-allowed' : 'pointer',
-                                        transition: 'all 0.15s ease',
-                                      }}
-                                      title="Analyze algorithmic approach & Big-O complexity"
-                                    >
-                                      {isClassifying ? (
-                                        <>
-                                          <Loader2 size={13} className="animate-spin" />
-                                          <span>Analyzing Approach...</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Sparkles size={13} />
-                                          <span>Classify Approach & Complexity</span>
-                                        </>
-                                      )}
-                                    </button>
+                                    <Tooltip content="Analyze algorithmic approach & Big-O complexity via AI" side="top">
+                                      <button
+                                        id="btn-classify-approach"
+                                        onClick={() => handleClassifyApproach(activeSubmission.submissionId)}
+                                        disabled={isClassifying}
+                                        className="btn btn-sm"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.35rem',
+                                          padding: '0.2rem 0.65rem',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          background: 'rgba(56, 189, 248, 0.12)',
+                                          color: 'var(--accent-cyan)',
+                                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                                          borderRadius: 'var(--radius-sm)',
+                                          cursor: isClassifying ? 'not-allowed' : 'pointer',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                      >
+                                        {isClassifying ? (
+                                          <>
+                                            <Loader2 size={13} className="animate-spin" />
+                                            <span>Analyzing Approach...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Sparkles size={13} />
+                                            <span>Classify Approach & Complexity</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </Tooltip>
                                   )}
                                 </div>
 

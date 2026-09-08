@@ -6,6 +6,7 @@ import { IProblemListItem } from '@anti-oj/shared';
 import { Tabs, TabItem } from '../components/motion/tabs';
 import { NumberTicker } from '../components/motion/number-ticker';
 import { TableSkeleton } from '../components/motion/skeleton';
+import { Tooltip } from '../components/motion/tooltip';
 import {
   Search,
   CheckCircle,
@@ -18,6 +19,8 @@ import {
   Filter,
   AlertCircle,
   RotateCcw,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -30,6 +33,23 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [totalCatalogCount, setTotalCatalogCount] = useState<number>(0);
+  const [blindMode, setBlindMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('entropy_blind_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleBlindMode = () => {
+    setBlindMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('entropy_blind_mode', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -223,36 +243,37 @@ export const HomePage: React.FC = () => {
               </div>
 
               {user && stats && (
-                <Link
-                  to="/profile"
-                  id="home-solved-stat-link"
-                  style={{
-                    padding: '0.875rem 1.25rem',
-                    minWidth: '120px',
-                    textAlign: 'center',
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-medium)',
-                    borderRadius: 'var(--radius-xs)',
-                    textDecoration: 'none',
-                    display: 'block',
-                    cursor: 'pointer',
-                    transition: 'border-color var(--transition-fast)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-medium)';
-                  }}
-                  title="View your solved problems in Profile"
-                >
-                  <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--verdict-ac)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                    <NumberTicker value={stats.solvedProblemsCount} />
-                  </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
-                    Solved
-                  </div>
-                </Link>
+                <Tooltip content="View your solved problems in Profile" side="bottom">
+                  <Link
+                    to="/profile"
+                    id="home-solved-stat-link"
+                    style={{
+                      padding: '0.875rem 1.25rem',
+                      minWidth: '120px',
+                      textAlign: 'center',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-medium)',
+                      borderRadius: 'var(--radius-xs)',
+                      textDecoration: 'none',
+                      display: 'block',
+                      cursor: 'pointer',
+                      transition: 'border-color var(--transition-fast)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-medium)';
+                    }}
+                  >
+                    <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--verdict-ac)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                      <NumberTicker value={stats.solvedProblemsCount} />
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
+                      Solved
+                    </div>
+                  </Link>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -311,8 +332,21 @@ export const HomePage: React.FC = () => {
             />
           </div>
 
-          {/* Tags Chips Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', paddingTop: '0.625rem', borderTop: '1px solid var(--border-faint)' }}>
+          {/* Tags Chips Bar - disappears in blind mode with no resize or layout shift */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              flexWrap: 'wrap',
+              paddingTop: '0.625rem',
+              borderTop: '1px solid var(--border-faint)',
+              visibility: blindMode ? 'hidden' : 'visible',
+              opacity: blindMode ? 0 : 1,
+              pointerEvents: blindMode ? 'none' : 'auto',
+              transition: 'opacity 0.2s ease, visibility 0.2s ease',
+            }}
+          >
             <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginRight: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <Filter size={11} /> Tags
             </span>
@@ -338,7 +372,6 @@ export const HomePage: React.FC = () => {
                     alignItems: 'center',
                     gap: '0.25rem',
                   }}
-                  title={tag === 'All' ? 'Clear all tag filters' : isSelected ? `Click to remove ${tag} filter` : `Click to filter by ${tag}`}
                 >
                   <span>{tag}</span>
                   {tag !== 'All' && isSelected && (
@@ -417,7 +450,67 @@ export const HomePage: React.FC = () => {
                     <th style={{ padding: '0.65rem 1rem', width: '54px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
                     <th style={{ padding: '0.65rem 1rem', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Title</th>
                     <th style={{ padding: '0.65rem 1rem', width: '110px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Difficulty</th>
-                    <th style={{ padding: '0.65rem 1rem', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tags</th>
+                    <th style={{ padding: '0.65rem 1rem', width: '230px', minWidth: '230px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <span>Tags</span>
+                        <Tooltip
+                          content={blindMode ? 'Tags are hidden (Blind Mode). Click to Unhide.' : 'Turn on Blind Mode (Hide tags)'}
+                          side="top"
+                        >
+                          <button
+                            type="button"
+                            id="toggle-blind-mode"
+                            onClick={handleToggleBlindMode}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.3rem',
+                              padding: '0.15rem 0.45rem',
+                              width: '68px',
+                              boxSizing: 'border-box',
+                              fontSize: '0.625rem',
+                              fontFamily: 'var(--font-mono)',
+                              borderRadius: '9999px',
+                              background: 'rgba(255, 255, 255, 0.03)',
+                              border: '1px solid var(--border-subtle)',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              outline: 'none',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border-medium)';
+                              e.currentTarget.style.color = 'var(--text-secondary)';
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                              e.currentTarget.style.color = 'var(--text-muted)';
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '13px',
+                                height: '13px',
+                                borderRadius: '50%',
+                                background: 'transparent',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              {blindMode ? <EyeOff size={10} style={{ color: 'var(--text-muted)' }} /> : <Eye size={10} style={{ color: 'var(--text-muted)' }} />}
+                            </span>
+                            <span style={{ fontSize: '0.625rem', letterSpacing: '0.02em', textTransform: 'none', fontWeight: 500, color: 'var(--text-muted)' }}>
+                              {blindMode ? 'Unhide' : 'Hide'}
+                            </span>
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </th>
                     <th style={{ padding: '0.65rem 1rem', width: '150px', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Acceptance</th>
                     <th style={{ padding: '0.65rem 1rem', width: '90px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 500, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Action</th>
                   </tr>
@@ -444,11 +537,21 @@ export const HomePage: React.FC = () => {
                         {/* Status Icon */}
                         <td style={{ padding: '0.75rem 1rem' }}>
                           {prob.userStatus === 'Solved' ? (
-                            <CheckCircle size={15} style={{ color: 'var(--verdict-ac)' }} />
+                            <Tooltip content="Solved (Accepted)" side="right">
+                              <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                                <CheckCircle size={15} style={{ color: 'var(--verdict-ac)' }} />
+                              </span>
+                            </Tooltip>
                           ) : prob.userStatus === 'Attempted' ? (
-                            <Clock size={15} style={{ color: 'var(--verdict-tle)' }} />
+                            <Tooltip content="Attempted (Unsolved)" side="right">
+                              <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                                <Clock size={15} style={{ color: 'var(--verdict-tle)' }} />
+                              </span>
+                            </Tooltip>
                           ) : (
-                            <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>—</span>
+                            <Tooltip content="Not attempted" side="right">
+                              <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem', cursor: 'default' }}>—</span>
+                            </Tooltip>
                           )}
                         </td>
 
@@ -488,8 +591,19 @@ export const HomePage: React.FC = () => {
                         </td>
 
                         {/* Tags */}
-                        <td style={{ padding: '0.75rem 1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        <td style={{ padding: '0.75rem 1rem', width: '230px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: '0.25rem',
+                              flexWrap: 'wrap',
+                              filter: blindMode ? 'blur(4.5px)' : 'none',
+                              userSelect: blindMode ? 'none' : 'auto',
+                              pointerEvents: blindMode ? 'none' : 'auto',
+                              transition: 'filter 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                              willChange: 'filter',
+                            }}
+                          >
                             {prob.tags.map((tag) => (
                               <span key={tag} className="badge badge-tag">
                                 {tag}
@@ -500,29 +614,31 @@ export const HomePage: React.FC = () => {
 
                         {/* Acceptance */}
                         <td style={{ padding: '0.75rem 1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div
-                              style={{
-                                flex: 1,
-                                height: '3px',
-                                background: 'var(--brand-neutral-600)',
-                                borderRadius: '1px',
-                                overflow: 'hidden',
-                              }}
-                            >
+                          <Tooltip content={`Acceptance: ${prob.acceptanceRate}%`} side="top">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'default' }}>
                               <div
                                 style={{
-                                  width: `${prob.acceptanceRate}%`,
-                                  height: '100%',
-                                  background: 'var(--brand-white)',
+                                  flex: 1,
+                                  height: '3px',
+                                  background: 'var(--brand-neutral-600)',
                                   borderRadius: '1px',
+                                  overflow: 'hidden',
                                 }}
-                              />
+                              >
+                                <div
+                                  style={{
+                                    width: `${prob.acceptanceRate}%`,
+                                    height: '100%',
+                                    background: 'var(--brand-white)',
+                                    borderRadius: '1px',
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', minWidth: '34px', fontFamily: 'var(--font-mono)' }}>
+                                {prob.acceptanceRate}%
+                              </span>
                             </div>
-                            <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', minWidth: '34px', fontFamily: 'var(--font-mono)' }}>
-                              {prob.acceptanceRate}%
-                            </span>
-                          </div>
+                          </Tooltip>
                         </td>
 
                         {/* Solve CTA */}
@@ -579,22 +695,23 @@ export const HomePage: React.FC = () => {
                 {/* Center: Page Controls */}
                 {pagination.totalPages > 1 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={pagination.page <= 1}
-                      className="btn btn-outline"
-                      style={{
-                        padding: '0.25rem 0.55rem',
-                        fontSize: '0.75rem',
-                        borderRadius: 'var(--radius-xs)',
-                        opacity: pagination.page <= 1 ? 0.35 : 1,
-                        cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
-                      }}
-                      title="Previous Page"
-                    >
-                      <ChevronLeft size={13} />
-                      <span>Prev</span>
-                    </button>
+                    <Tooltip content="Previous Page" side="top">
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={pagination.page <= 1}
+                        className="btn btn-outline"
+                        style={{
+                          padding: '0.25rem 0.55rem',
+                          fontSize: '0.75rem',
+                          borderRadius: 'var(--radius-xs)',
+                          opacity: pagination.page <= 1 ? 0.35 : 1,
+                          cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <ChevronLeft size={13} />
+                        <span>Prev</span>
+                      </button>
+                    </Tooltip>
 
                     {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
                       <button
@@ -619,22 +736,23 @@ export const HomePage: React.FC = () => {
                       </button>
                     ))}
 
-                    <button
-                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                      disabled={pagination.page >= pagination.totalPages}
-                      className="btn btn-outline"
-                      style={{
-                        padding: '0.25rem 0.55rem',
-                        fontSize: '0.75rem',
-                        borderRadius: 'var(--radius-xs)',
-                        opacity: pagination.page >= pagination.totalPages ? 0.35 : 1,
-                        cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
-                      }}
-                      title="Next Page"
-                    >
-                      <span>Next</span>
-                      <ChevronRight size={13} />
-                    </button>
+                    <Tooltip content="Next Page" side="top">
+                      <button
+                        onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                        disabled={pagination.page >= pagination.totalPages}
+                        className="btn btn-outline"
+                        style={{
+                          padding: '0.25rem 0.55rem',
+                          fontSize: '0.75rem',
+                          borderRadius: 'var(--radius-xs)',
+                          opacity: pagination.page >= pagination.totalPages ? 0.35 : 1,
+                          cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={13} />
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
 
