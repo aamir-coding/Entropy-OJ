@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { IStarCluster, IStarProblem } from '../../data/galaxyData';
 import { StarNode } from './StarNode';
-import { Sparkles } from 'lucide-react';
 
 interface StellarPhysics {
   baseSize: number;
@@ -510,6 +509,8 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               height: 'calc(100% + 24px)',
               transform: 'rotate(-90deg)',
               pointerEvents: 'none',
+              overflow: 'visible',
+              borderRadius: '50%',
             }}
             viewBox="0 0 100 100"
           >
@@ -525,7 +526,6 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               strokeDasharray="276"
               strokeDashoffset={276 * (1 - progressRatio)}
               style={{
-                filter: `drop-shadow(0 0 8px ${cluster.spectralColor})`,
                 transition: 'stroke-dashoffset 0.6s ease',
               }}
             />
@@ -538,8 +538,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               position: 'absolute',
               inset: physics.coronaInset,
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${cluster.coronaGlow} 0%, transparent 70%)`,
-              filter: `blur(${physics.coronaBlur})`,
+              background: `radial-gradient(circle, ${isMastered ? 'rgba(251, 191, 36, 0.35)' : cluster.coronaGlow} 0%, transparent 70%)`,
               pointerEvents: 'none',
               animation: `stellarBreathingGlow ${physics.pulseDuration} ease-in-out infinite`,
             }}
@@ -565,19 +564,17 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               transition: 'box-shadow 0.4s ease, border 0.4s ease',
             }}
           >
-            {isMastered ? (
-              <Sparkles size={24} color="#0f172a" strokeWidth={2.5} />
-            ) : (
-              <div
-                style={{
-                  width: physics.pipScale,
-                  height: physics.pipScale,
-                  borderRadius: '50%',
-                  background: '#ffffff',
-                  boxShadow: `0 0 12px #ffffff, 0 0 20px ${cluster.spectralColor}99`,
-                }}
-              />
-            )}
+            <div
+              style={{
+                width: physics.pipScale,
+                height: physics.pipScale,
+                borderRadius: '50%',
+                background: '#ffffff',
+                boxShadow: isMastered
+                  ? '0 0 12px #ffffff, 0 0 20px rgba(255, 255, 255, 0.8)'
+                  : `0 0 12px #ffffff, 0 0 20px ${cluster.spectralColor}99`,
+              }}
+            />
           </div>
         </div>
       </div>

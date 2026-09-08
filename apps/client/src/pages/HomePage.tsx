@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { api, isCancel } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { IProblemListItem } from '@anti-oj/shared';
+import { Tabs, TabItem } from '../components/motion/tabs';
+import { NumberTicker } from '../components/motion/number-ticker';
+import { TableSkeleton } from '../components/motion/skeleton';
 import {
   Search,
   CheckCircle,
@@ -212,7 +215,7 @@ export const HomePage: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--brand-white)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                  {totalCatalogCount || 150}
+                  <NumberTicker value={totalCatalogCount || 150} />
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
                   Problems
@@ -244,7 +247,7 @@ export const HomePage: React.FC = () => {
                   title="View your solved problems in Profile"
                 >
                   <div style={{ fontSize: '1.5rem', fontWeight: 500, color: 'var(--verdict-ac)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                    {stats.solvedProblemsCount}
+                    <NumberTicker value={stats.solvedProblemsCount} />
                   </div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '0.35rem' }}>
                     Solved
@@ -292,40 +295,20 @@ export const HomePage: React.FC = () => {
             </div>
 
             {/* Difficulty Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              {['All', 'Easy', 'Medium', 'Hard'].map((diff) => {
-                const isActive = selectedDifficulty === diff;
-                let activeStyle: React.CSSProperties = {
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-medium)',
-                };
-                if (isActive) {
-                  if (diff === 'Easy') activeStyle = { background: 'var(--diff-easy-bg)', color: 'var(--diff-easy)', borderColor: 'rgba(5, 223, 114, 0.5)' };
-                  else if (diff === 'Medium') activeStyle = { background: 'var(--diff-medium-bg)', color: 'var(--diff-medium)', borderColor: 'rgba(245, 158, 11, 0.5)' };
-                  else if (diff === 'Hard') activeStyle = { background: 'var(--diff-hard-bg)', color: 'var(--diff-hard)', borderColor: 'rgba(255, 101, 104, 0.5)' };
-                  else activeStyle = { background: 'var(--brand-white)', color: 'var(--brand-black)', borderColor: 'var(--brand-white)' };
-                }
-
-                return (
-                  <button
-                    key={diff}
-                    id={`filter-diff-${diff.toLowerCase()}`}
-                    onClick={() => setSelectedDifficulty(diff)}
-                    className="btn btn-outline"
-                    style={{
-                      padding: '0.25rem 0.65rem',
-                      fontSize: '0.75rem',
-                      borderRadius: 'var(--radius-xs)',
-                      fontWeight: isActive ? 600 : 400,
-                      ...activeStyle,
-                    }}
-                  >
-                    {diff}
-                  </button>
-                );
-              })}
-            </div>
+            <Tabs
+              tabs={[
+                { id: 'All', label: 'All', activeColor: 'var(--brand-black)', activeBg: 'var(--brand-white)', activeBorder: 'var(--brand-white)' },
+                { id: 'Easy', label: 'Easy', activeColor: 'var(--diff-easy)', activeBg: 'var(--diff-easy-bg)', activeBorder: 'rgba(5, 223, 114, 0.5)' },
+                { id: 'Medium', label: 'Medium', activeColor: 'var(--diff-medium)', activeBg: 'var(--diff-medium-bg)', activeBorder: 'rgba(245, 158, 11, 0.5)' },
+                { id: 'Hard', label: 'Hard', activeColor: 'var(--diff-hard)', activeBg: 'var(--diff-hard-bg)', activeBorder: 'rgba(255, 101, 104, 0.5)' },
+              ]}
+              activeId={selectedDifficulty}
+              onChange={(id) => setSelectedDifficulty(id)}
+              layoutId="home-difficulty-tabs-indicator"
+              tabIdPrefix="filter-diff-"
+              variant="pill"
+              size="sm"
+            />
           </div>
 
           {/* Tags Chips Bar */}
@@ -402,12 +385,7 @@ export const HomePage: React.FC = () => {
         {/* Problem List Table */}
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           {loading ? (
-            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <div className="animate-spin" style={{ display: 'inline-block', marginBottom: '1rem' }}>
-                <Clock size={28} style={{ color: 'var(--accent-cyan)' }} />
-              </div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading problem catalog...</p>
-            </div>
+            <TableSkeleton rows={Math.min(limit, 10)} />
           ) : problems.length === 0 ? (
             <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <HelpCircle size={36} style={{ margin: '0 auto 1rem', color: 'var(--text-faint)' }} />

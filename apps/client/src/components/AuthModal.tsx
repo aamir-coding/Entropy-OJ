@@ -1,22 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { X, Lock, Mail, User, AlertCircle, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { LoginForm, type LoginStatus, type LoginValues } from './motion/login-form';
+import { SignUpForm, type SignUpStatus, type SignUpValues } from './motion/signup-form';
 
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, authModalMode, closeAuthModal, openAuthModal, login, register } = useAuth();
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Login form status & error
+  const [loginStatus, setLoginStatus] = useState<LoginStatus>('idle');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Animated Register form status & error
+  const [registerStatus, setRegisterStatus] = useState<SignUpStatus>('idle');
+  const [registerError, setRegisterError] = useState<string | null>(null);
+
   const modalRef = useRef<HTMLDivElement>(null);
 
   const resetFields = () => {
-    setFullName('');
-    setEmail('');
-    setPassword('');
-    setError(null);
+    setLoginError(null);
+    setRegisterError(null);
+    setLoginStatus('idle');
+    setRegisterStatus('idle');
   };
 
   const handleClose = () => {
@@ -71,22 +77,43 @@ export const AuthModal: React.FC = () => {
     openAuthModal(newMode);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
+  const handleLoginSubmit = async (values: LoginValues) => {
+    setLoginError(null);
+    setLoginStatus('loading');
 
     try {
-      if (authModalMode === 'login') {
-        await login({ email, password });
-      } else {
-        await register({ fullName, email, password });
-      }
-      resetFields();
+      await login({ email: values.email, password: values.password });
+      setLoginStatus('success');
+      setTimeout(() => {
+        handleClose();
+      }, 400);
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
-    } finally {
-      setIsSubmitting(false);
+      setLoginStatus('error');
+      const msg = err.response?.data?.error?.message || err.message || 'Authentication failed';
+      setLoginError(msg);
+      throw err;
+    }
+  };
+
+  const handleRegisterSubmit = async (values: SignUpValues) => {
+    setRegisterError(null);
+    setRegisterStatus('loading');
+
+    try {
+      await register({
+        fullName: values.name,
+        email: values.email,
+        password: values.password,
+      });
+      setRegisterStatus('success');
+      setTimeout(() => {
+        handleClose();
+      }, 500);
+    } catch (err: any) {
+      setRegisterStatus('error');
+      const msg = err.response?.data?.error?.message || err.message || 'Registration failed. Please try again.';
+      setRegisterError(msg);
+      throw err;
     }
   };
 
@@ -138,216 +165,63 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div style={{ padding: '1.375rem 1.5rem', background: '#050505' }}>
-          {error && (
-            <div
-              role="alert"
-              style={{
-                background: 'var(--verdict-wa-bg)',
-                border: '1px solid var(--verdict-wa-border)',
-                padding: '0.625rem 0.875rem',
-                borderRadius: 'var(--radius-xs)',
-                color: 'var(--verdict-wa)',
-                fontSize: '0.8125rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '1rem',
-              }}
-            >
-              <AlertCircle size={15} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-            {authModalMode === 'register' && (
-              <div>
-                <label
-                  htmlFor="register-fullname"
-                  style={{
-                    display: 'block',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)',
-                    marginBottom: '0.3rem',
-                    letterSpacing: '0.01em',
-                  }}
-                >
-                  Full Name
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <User
-                    size={16}
-                    style={{
-                      position: 'absolute',
-                      left: '0.75rem',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--text-muted)',
-                    }}
-                  />
-                  <input
-                    id="register-fullname"
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Ada Lovelace"
-                    className="input-control"
-                    style={{ paddingLeft: '2.25rem' }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label
-                htmlFor="auth-email"
-                style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: 'var(--text-secondary)',
-                  marginBottom: '0.3rem',
-                  letterSpacing: '0.01em',
-                }}
+        {/* Modal Body with Animated Mode Transition */}
+        <div className="modal-content-body" style={{ padding: '1.375rem 1.5rem', background: '#050505' }}>
+          <AnimatePresence mode="wait" initial={false}>
+            {authModalMode === 'register' ? (
+              <motion.div
+                key="register-form"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
               >
-                Email
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail
-                  size={16}
-                  style={{
-                    position: 'absolute',
-                    left: '0.75rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-muted)',
-                  }}
+                <SignUpForm
+                  status={registerStatus}
+                  errorMessage={registerError || undefined}
+                  onSubmit={handleRegisterSubmit}
+                  footer={
+                    <p>
+                      Already have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchMode('login')}
+                        className="motion-form-footer-link"
+                      >
+                        Sign In
+                      </button>
+                    </p>
+                  }
                 />
-                <input
-                  id="auth-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="developer@example.com"
-                  className="input-control"
-                  style={{ paddingLeft: '2.25rem' }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="auth-password"
-                style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: 'var(--text-secondary)',
-                  marginBottom: '0.3rem',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock
-                  size={16}
-                  style={{
-                    position: 'absolute',
-                    left: '0.75rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-muted)',
-                  }}
-                />
-                <input
-                  id="auth-password"
-                  type="password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-control"
-                  style={{ paddingLeft: '2.25rem' }}
-                />
-              </div>
-            </div>
-
-            <button
-              id="auth-submit-btn"
-              type="submit"
-              disabled={isSubmitting}
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '0.5rem', padding: '0.625rem', fontSize: '0.875rem' }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <span>{authModalMode === 'login' ? 'Sign In' : 'Create Account'}</span>
-              )}
-            </button>
-          </form>
-
-          {/* Toggle Switch */}
-          <div
-            style={{
-              marginTop: '1.125rem',
-              textAlign: 'center',
-              fontSize: '0.8125rem',
-              color: 'var(--text-muted)',
-              paddingTop: '1rem',
-              borderTop: '1px solid var(--border-subtle)',
-            }}
-          >
-            {authModalMode === 'login' ? (
-              <p>
-                No account?{' '}
-                <button
-                  onClick={() => handleSwitchMode('register')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--brand-white)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontSize: '0.8125rem',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '3px',
-                  }}
-                >
-                  Create one
-                </button>
-              </p>
+              </motion.div>
             ) : (
-              <p>
-                Already have an account?{' '}
-                <button
-                  onClick={() => handleSwitchMode('login')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--brand-white)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontSize: '0.8125rem',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '3px',
-                  }}
-                >
-                  Sign In
-                </button>
-              </p>
+              <motion.div
+                key="login-form"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+              >
+                <LoginForm
+                  status={loginStatus}
+                  errorMessage={loginError || undefined}
+                  onSubmit={handleLoginSubmit}
+                  footer={
+                    <p>
+                      No account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchMode('register')}
+                        className="motion-form-footer-link"
+                      >
+                        Create one
+                      </button>
+                    </p>
+                  }
+                />
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -270,8 +270,7 @@ export const GalaxyPage: React.FC = () => {
               lineHeight: 1.6,
             }}
           >
-            A non-linear cosmic odyssey through 18 algorithmic star systems. Hover over any solar core to preview its
-            orbital constellation, or click to lock orbit.
+            A non-linear cosmic odyssey through 18 algorithmic star systems. Orbit through a curated list of 150 LeetCode problems by NeetCode.
           </p>
 
           {/* Precision Controls Hint Row */}

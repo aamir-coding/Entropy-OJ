@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { IStarProblem } from '../../data/galaxyData';
 import { X, ExternalLink, CheckCircle2, AlertCircle, Orbit, Lock } from 'lucide-react';
 
@@ -68,8 +69,6 @@ export const StarModal: React.FC<StarModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  if (!problem) return null;
-
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
       case 'Easy':
@@ -83,58 +82,66 @@ export const StarModal: React.FC<StarModalProps> = ({
     }
   };
 
-  const diffColor = getDifficultyColor(problem.difficulty);
+  const diffColor = problem ? getDifficultyColor(problem.difficulty) : '#94a3b8';
 
   const handleWarp = () => {
-    if (isAvailable) {
+    if (isAvailable && problem) {
       onClose();
       navigate(`/problems/${problem.code}`);
     }
   };
 
   return (
-    <div
-      className="star-modal-backdrop"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 300,
-        padding: '1.25rem',
-        animation: 'fadeIn 0.2s ease',
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
-    >
-      <div
-        ref={modalRef}
-        className="star-modal-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Star Details"
-        style={{
-          width: '100%',
-          maxWidth: '440px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-overlay)',
-          padding: '1.5rem',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.15rem',
-          animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AnimatePresence>
+      {problem && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="star-modal-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 300,
+            padding: '1.25rem',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        >
+          <motion.div
+            ref={modalRef}
+            className="star-modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Star Details"
+            initial={{ opacity: 0, scale: 0.94, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.94, filter: 'blur(6px)' }}
+            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: 'var(--shadow-overlay)',
+              padding: '1.5rem',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.15rem',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -362,7 +369,9 @@ export const StarModal: React.FC<StarModalProps> = ({
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    )}
+  </AnimatePresence>
   );
 };

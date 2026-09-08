@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { SPRING_LAYOUT } from '../lib/ease';
 import { useAuth } from '../context/AuthContext';
 import {
   User,
@@ -81,19 +83,40 @@ export const Navbar: React.FC = () => {
               to="/"
               className={`navbar-nav-link ${isHome ? 'active' : ''}`}
             >
-              Home
+              <span>Home</span>
+              {isHome && (
+                <motion.div
+                  layoutId="navbar-tab-indicator"
+                  className="navbar-sliding-indicator"
+                  transition={SPRING_LAYOUT}
+                />
+              )}
             </Link>
             <Link
               to="/problems"
               className={`navbar-nav-link ${isProblems ? 'active' : ''}`}
             >
-              Problems
+              <span>Problems</span>
+              {isProblems && (
+                <motion.div
+                  layoutId="navbar-tab-indicator"
+                  className="navbar-sliding-indicator"
+                  transition={SPRING_LAYOUT}
+                />
+              )}
             </Link>
             <Link
               to="/galaxy"
               className={`navbar-nav-link ${isGalaxy ? 'active' : ''}`}
             >
-              Galaxy
+              <span>Galaxy</span>
+              {isGalaxy && (
+                <motion.div
+                  layoutId="navbar-tab-indicator"
+                  className="navbar-sliding-indicator"
+                  transition={SPRING_LAYOUT}
+                />
+              )}
             </Link>
           </nav>
         </div>
@@ -208,49 +231,85 @@ export const Navbar: React.FC = () => {
               </button>
 
               {/* Dropdown Menu */}
-              {dropdownOpen && (
-                <div
-                  role="menu"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 0.5rem)',
-                    right: 0,
-                    width: '228px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-medium)',
-                    borderRadius: 'var(--radius-sm)',
-                    boxShadow: 'var(--shadow-overlay)',
-                    padding: '0.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.2rem',
-                    zIndex: 200,
-                    animation: 'modal-scale-in 150ms var(--ease-smooth)',
-                  }}
-                >
-                  <div style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.2rem' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-                      {user.fullName}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
-                      {user.email}
-                    </div>
-                    {isAdmin && (
-                      <div style={{ marginTop: '0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
-                        <Shield size={10} /> ADMIN
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    role="menu"
+                    initial={{ opacity: 0, scale: 0.95, y: -6, filter: 'blur(4px)' }}
+                    animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.95, y: -6, filter: 'blur(4px)' }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 0.5rem)',
+                      right: 0,
+                      width: '228px',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-medium)',
+                      borderRadius: 'var(--radius-sm)',
+                      boxShadow: 'var(--shadow-overlay)',
+                      padding: '0.5rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.2rem',
+                      zIndex: 200,
+                      transformOrigin: 'top right',
+                    }}
+                  >
+                    <div style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.2rem' }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                        {user.fullName}
                       </div>
-                    )}
-                    {stats && (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <span>🏆</span>
-                        <span>{stats.solvedProblemsCount} problems solved</span>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
+                        {user.email}
                       </div>
-                    )}
-                  </div>
+                      {isAdmin && (
+                        <div style={{ marginTop: '0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+                          <Shield size={10} /> ADMIN
+                        </div>
+                      )}
+                      {stats && (
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <span>🏆</span>
+                          <span>{stats.solvedProblemsCount} problems solved</span>
+                        </div>
+                      )}
+                    </div>
 
-                  {isAdmin && (
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        role="menuitem"
+                        onClick={() => setDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: 'var(--radius-xs)',
+                          fontSize: '0.8125rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          background: 'var(--bg-surface)',
+                          border: '1px solid var(--border-medium)',
+                          transition: 'color var(--transition-fast), background-color var(--transition-fast)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                          e.currentTarget.style.borderColor = 'var(--border-hover)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+                          e.currentTarget.style.borderColor = 'var(--border-medium)';
+                        }}
+                      >
+                        <Shield size={14} style={{ color: 'var(--brand-neutral-200)' }} />
+                        <span>Problem Studio (Admin)</span>
+                      </Link>
+                    )}
+
                     <Link
-                      to="/admin"
+                      to="/profile"
                       role="menuitem"
                       onClick={() => setDropdownOpen(false)}
                       style={{
@@ -260,80 +319,50 @@ export const Navbar: React.FC = () => {
                         padding: '0.5rem 0.75rem',
                         borderRadius: 'var(--radius-xs)',
                         fontSize: '0.8125rem',
-                        color: 'var(--text-primary)',
+                        color: 'var(--text-secondary)',
                         textDecoration: 'none',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-medium)',
                         transition: 'color var(--transition-fast), background-color var(--transition-fast)',
                       }}
                       onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--text-primary)';
                         e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                        e.currentTarget.style.borderColor = 'var(--border-hover)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
-                        e.currentTarget.style.borderColor = 'var(--border-medium)';
+                        e.currentTarget.style.color = 'var(--text-secondary)';
+                        e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <Shield size={14} style={{ color: 'var(--brand-neutral-200)' }} />
-                      <span>Problem Studio (Admin)</span>
+                      <User size={14} style={{ color: 'var(--brand-neutral-200)' }} />
+                      <span>My Profile & History</span>
                     </Link>
-                  )}
 
-                  <Link
-                    to="/profile"
-                    role="menuitem"
-                    onClick={() => setDropdownOpen(false)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: 'var(--radius-xs)',
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-secondary)',
-                      textDecoration: 'none',
-                      transition: 'color var(--transition-fast), background-color var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'var(--text-primary)';
-                      e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--text-secondary)';
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <User size={14} style={{ color: 'var(--brand-neutral-200)' }} />
-                    <span>My Profile & History</span>
-                  </Link>
-
-                  <button
-                    onClick={handleLogout}
-                    role="menuitem"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: 'var(--radius-xs)',
-                      fontSize: '0.8125rem',
-                      color: 'var(--verdict-wa)',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      width: '100%',
-                      textAlign: 'left',
-                      transition: 'background-color var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(251,113,133,0.08)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <LogOut size={14} />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={handleLogout}
+                      role="menuitem"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: 'var(--radius-xs)',
+                        fontSize: '0.8125rem',
+                        color: 'var(--verdict-wa)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        transition: 'background-color var(--transition-fast)',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(251,113,133,0.08)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

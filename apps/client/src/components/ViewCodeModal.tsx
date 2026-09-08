@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Terminal, AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Terminal } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { Verdicts } from '@anti-oj/shared';
 import { ErrorBoundary } from './ErrorBoundary';
 import { defineEntropyTheme } from '../styles/monacoTheme';
+import { CopyButton } from './motion/copy-button';
 
 interface ViewCodeModalProps {
   isOpen: boolean;
@@ -22,12 +24,9 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
   problemName,
   verdict,
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Focus trap & Escape listener (Issue M-5) and timer cleanup (Issue L-2)
+  // Focus trap & Escape listener (Issue M-5)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -58,139 +57,123 @@ export const ViewCodeModal: React.FC<ViewCodeModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const handleCopy = async () => {
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code);
-        setCopied(true);
-        setCopyError(false);
-        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
-      } else {
-        throw new Error('Clipboard API not supported');
-      }
-    } catch {
-      setCopyError(true);
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-      copyTimeoutRef.current = setTimeout(() => setCopyError(false), 3000);
-    }
-  };
 
   const monacoLang = language === 'cpp' ? 'cpp' : 'python';
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="View submitted code">
-      <div
-        ref={modalRef}
-        className="modal-content"
-        style={{ maxWidth: '800px', width: '90%' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#080808',
-          }}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="modal-backdrop"
+          onClick={onClose}
+          role="dialog"
+          aria-modal="true"
+          aria-label="View submitted code"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Terminal size={17} style={{ color: 'var(--text-secondary)' }} />
-            <div>
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--brand-white)' }}>
-                {problemName ? `Submission: ${problemName}` : 'Submitted Code'}
-              </h3>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Language: <span style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>{language}</span>
-                {verdict && (
-                  <span style={{ marginLeft: '0.75rem' }}>
-                    Verdict:{' '}
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: verdict === Verdicts.ACCEPTED ? 'var(--verdict-ac)' : 'var(--verdict-wa)',
-                      }}
-                    >
-                      {verdict}
-                    </span>
-                  </span>
-                )}
+          <motion.div
+            ref={modalRef}
+            initial={{ opacity: 0, scale: 0.96, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.96, filter: 'blur(6px)' }}
+            transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+            className="modal-content"
+            style={{ maxWidth: '800px', width: '90%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '1rem 1.25rem',
+                borderBottom: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#080808',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Terminal size={17} style={{ color: 'var(--text-secondary)' }} />
+                <div>
+                  <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, letterSpacing: '-0.02em', color: 'var(--brand-white)' }}>
+                    {problemName ? `Submission: ${problemName}` : 'Submitted Code'}
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Language: <span style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>{language}</span>
+                    {verdict && (
+                      <span style={{ marginLeft: '0.75rem' }}>
+                        Verdict:{' '}
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color: verdict === Verdicts.ACCEPTED ? 'var(--verdict-ac)' : 'var(--verdict-wa)',
+                          }}
+                        >
+                          {verdict}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CopyButton text={code} label="Copy Code" />
+                <button
+                  onClick={onClose}
+                  aria-label="Close modal"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button
-              onClick={handleCopy}
-              className="btn btn-outline"
-              aria-label="Copy code to clipboard"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: 'var(--radius-xs)' }}
-            >
-              {copied ? (
-                <Check size={14} style={{ color: 'var(--verdict-ac)' }} />
-              ) : copyError ? (
-                <AlertCircle size={14} style={{ color: 'var(--verdict-wa)' }} />
-              ) : (
-                <Copy size={14} />
-              )}
-              <span>{copied ? 'Copied' : copyError ? 'Copy failed' : 'Copy Code'}</span>
-            </button>
-            <button
-              onClick={onClose}
-              aria-label="Close modal"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: '0.25rem',
-                borderRadius: 'var(--radius-xs)',
-              }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Editor Content with ErrorBoundary (Issue M-1) */}
-        <div style={{ height: '450px', background: '#000000' }}>
-          <ErrorBoundary
-            fallback={
-              <div style={{ padding: '2rem', color: 'var(--verdict-wa)', textAlign: 'center' }}>
-                Failed to display Monaco Editor.
-              </div>
-            }
-          >
-            <Editor
-              height="100%"
-              language={monacoLang}
-              theme="entropy-dark"
-              beforeMount={defineEntropyTheme}
-              value={code}
-              options={{
-                readOnly: true,
-                domReadOnly: true,
-                minimap: { enabled: false },
-                fontSize: 13,
-                fontFamily: "'Geist Mono', 'JetBrains Mono', monospace",
-                fontLigatures: true,
-                scrollBeyondLastLine: false,
-                lineNumbers: 'on',
-                padding: { top: 12 },
-              }}
-            />
-          </ErrorBoundary>
-        </div>
-      </div>
-    </div>
+            {/* Editor Content with ErrorBoundary (Issue M-1) */}
+            <div style={{ height: '450px', background: '#000000' }}>
+              <ErrorBoundary
+                fallback={
+                  <div style={{ padding: '2rem', color: 'var(--verdict-wa)', textAlign: 'center' }}>
+                    Failed to display Monaco Editor.
+                  </div>
+                }
+              >
+                <Editor
+                  height="100%"
+                  language={monacoLang}
+                  theme="entropy-dark"
+                  beforeMount={defineEntropyTheme}
+                  value={code}
+                  options={{
+                    readOnly: true,
+                    domReadOnly: true,
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: "'Geist Mono', 'JetBrains Mono', monospace",
+                    fontLigatures: true,
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    padding: { top: 12 },
+                  }}
+                />
+              </ErrorBoundary>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
+

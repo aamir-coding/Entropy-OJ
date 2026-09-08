@@ -4,6 +4,8 @@
    Aesthetic: Pure black (#000), 7-step neutral ramp, Geist typography, light headings, sharp geometry
    ========================================================================== */
 
+@import './motion-form.css';
+
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
   /* xmcp Brand Neutral Ramp Tokens */
@@ -429,9 +431,17 @@ code, pre {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-overlay);
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: modal-scale-in var(--dur-normal) var(--ease-smooth);
+}
+
+.modal-content-body {
+  overflow-y: auto;
+  flex: 1;
 }
 
 @keyframes modal-fade-in {

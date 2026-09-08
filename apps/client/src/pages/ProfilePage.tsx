@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ViewCodeModal } from '../components/ViewCodeModal';
+import { Tabs, TabItem } from '../components/motion/tabs';
+import { NumberTicker } from '../components/motion/number-ticker';
+import { TableSkeleton } from '../components/motion/skeleton';
 import {
   Mail,
   Calendar,
@@ -181,23 +184,23 @@ export const ProfilePage: React.FC = () => {
                 <Trophy size={20} style={{ color: 'var(--accent-cyan)' }} />
               </div>
               <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '1rem' }}>
-                {stats.solvedProblemsCount}
+                <NumberTicker value={stats.solvedProblemsCount} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {/* Easy */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--diff-easy)', fontWeight: 600 }}>Easy</span>
-                  <span style={{ fontWeight: 700 }}>{stats.easySolved}</span>
+                  <span style={{ fontWeight: 700 }}><NumberTicker value={stats.easySolved} /></span>
                 </div>
                 {/* Medium */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--diff-medium)', fontWeight: 600 }}>Medium</span>
-                  <span style={{ fontWeight: 700 }}>{stats.mediumSolved}</span>
+                  <span style={{ fontWeight: 700 }}><NumberTicker value={stats.mediumSolved} /></span>
                 </div>
                 {/* Hard */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--diff-hard)', fontWeight: 600 }}>Hard</span>
-                  <span style={{ fontWeight: 700 }}>{stats.hardSolved}</span>
+                  <span style={{ fontWeight: 700 }}><NumberTicker value={stats.hardSolved} /></span>
                 </div>
               </div>
             </div>
@@ -211,7 +214,7 @@ export const ProfilePage: React.FC = () => {
                 <CheckCircle2 size={20} style={{ color: 'var(--verdict-ac)' }} />
               </div>
               <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--verdict-ac)', marginBottom: '0.25rem' }}>
-                {stats.acceptanceRate}%
+                <NumberTicker value={stats.acceptanceRate} suffix="%" decimalPlaces={1} />
               </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 {stats.acceptedSubmissions} accepted of {stats.totalSubmissions} submissions
@@ -240,35 +243,20 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Filter Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-              {difficultyFilters.map((diff) => {
-                const isSelected = selectedDifficultyFilter === diff;
-                let activeColor = 'var(--accent-cyan)';
-                if (diff === 'Easy') activeColor = 'var(--diff-easy)';
-                if (diff === 'Medium') activeColor = 'var(--diff-medium)';
-                if (diff === 'Hard') activeColor = 'var(--diff-hard)';
-
-                return (
-                  <button
-                    key={diff}
-                    onClick={() => setSelectedDifficultyFilter(diff)}
-                    style={{
-                      background: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                      color: isSelected ? activeColor : 'var(--text-muted)',
-                      border: `1px solid ${isSelected ? activeColor : 'var(--border-subtle)'}`,
-                      borderRadius: 'var(--radius-full)',
-                      padding: '0.25rem 0.75rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)',
-                    }}
-                  >
-                    {diff}
-                  </button>
-                );
-              })}
-            </div>
+            <Tabs
+              tabs={[
+                { id: 'All', label: 'All', activeColor: 'var(--brand-black)', activeBg: 'var(--brand-white)', activeBorder: 'var(--brand-white)' },
+                { id: 'Easy', label: 'Easy', activeColor: 'var(--diff-easy)', activeBg: 'var(--diff-easy-bg)', activeBorder: 'rgba(5, 223, 114, 0.5)' },
+                { id: 'Medium', label: 'Medium', activeColor: 'var(--diff-medium)', activeBg: 'var(--diff-medium-bg)', activeBorder: 'rgba(245, 158, 11, 0.5)' },
+                { id: 'Hard', label: 'Hard', activeColor: 'var(--diff-hard)', activeBg: 'var(--diff-hard-bg)', activeBorder: 'rgba(255, 101, 104, 0.5)' },
+              ]}
+              activeId={selectedDifficultyFilter}
+              onChange={(id) => setSelectedDifficultyFilter(id)}
+              layoutId="profile-difficulty-indicator"
+              tabIdPrefix="profile-filter-diff-"
+              variant="pill"
+              size="sm"
+            />
           </div>
 
           {/* Error Banner */}
@@ -305,12 +293,7 @@ export const ProfilePage: React.FC = () => {
 
           {/* Solved Problems List */}
           {loadingSolved ? (
-            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <div className="animate-spin" style={{ display: 'inline-block', marginBottom: '0.75rem' }}>
-                <Loader2 size={24} style={{ color: 'var(--accent-cyan)' }} />
-              </div>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading solved problems...</p>
-            </div>
+            <TableSkeleton rows={5} />
           ) : filteredSolved.length === 0 ? (
             <div style={{ padding: '3.5rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Trophy size={36} style={{ margin: '0 auto 0.75rem', color: 'var(--text-faint)' }} />

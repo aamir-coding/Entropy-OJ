@@ -23,6 +23,8 @@ import {
   ISampleCaseResult,
   ISampleRunResponse,
 } from '@anti-oj/shared';
+import { StatefulButton, ButtonState } from '../components/motion/button/stateful';
+import { Tabs } from '../components/motion/tabs';
 import {
   Play,
   Send,
@@ -116,6 +118,8 @@ export const ProblemDetailPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [sampleRunning, setSampleRunning] = useState(false);
   const [sampleRunError, setSampleRunError] = useState<string | null>(null);
+  const [runButtonState, setRunButtonState] = useState<ButtonState>('idle');
+  const [submitButtonState, setSubmitButtonState] = useState<ButtonState>('idle');
 
   // Live Submission Result
   const [activeSubmission, setActiveSubmission] = useState<ISubmissionResponse | null>(null);
@@ -370,6 +374,7 @@ export const ProblemDetailPage: React.FC = () => {
     setResultView('sample');
     setActiveSubmission(null);
     setSampleRunning(true);
+    setRunButtonState('loading');
     setSampleRunError(null);
     handleOpenConsoleTab('results');
 
@@ -384,6 +389,10 @@ export const ProblemDetailPage: React.FC = () => {
         const runResponse: ISampleRunResponse = res.data.data;
         setSampleResults(runResponse.sampleResults);
         setActiveCaseIndex(0);
+        setRunButtonState(runResponse.verdict === Verdicts.ACCEPTED ? 'success' : 'error');
+        setTimeout(() => {
+          if (isMountedRef.current) setRunButtonState('idle');
+        }, 2500);
 
         if (runResponse.verdict === Verdicts.COMPILATION_ERROR) {
           setConsoleTab('compiler');
@@ -393,6 +402,10 @@ export const ProblemDetailPage: React.FC = () => {
       console.error('Sample run failed:', err);
       if (isMountedRef.current) {
         setSampleRunError(err.message || 'Sample test run failed.');
+        setRunButtonState('error');
+        setTimeout(() => {
+          if (isMountedRef.current) setRunButtonState('idle');
+        }, 2500);
       }
     } finally {
       if (isMountedRef.current) {
@@ -461,6 +474,10 @@ export const ProblemDetailPage: React.FC = () => {
 
           if (updated.verdict !== Verdicts.PENDING) {
             setSubmitting(false);
+            setSubmitButtonState(updated.verdict === Verdicts.ACCEPTED ? 'success' : 'error');
+            setTimeout(() => {
+              if (isMountedRef.current) setSubmitButtonState('idle');
+            }, 3000);
 
             if (updated.verdict === Verdicts.ACCEPTED) {
               notifyStatsUpdated();
@@ -523,6 +540,7 @@ export const ProblemDetailPage: React.FC = () => {
       setResultView('submission');
       setSampleResults([]);
       setSubmitting(true);
+      setSubmitButtonState('loading');
       handleOpenConsoleTab('results');
       setActiveSubmission(null);
       setSubmissionTimeoutMsg(null);
@@ -545,6 +563,10 @@ export const ProblemDetailPage: React.FC = () => {
       console.error('Submission failed:', err);
       if (isMountedRef.current) {
         setSubmitting(false);
+        setSubmitButtonState('error');
+        setTimeout(() => {
+          if (isMountedRef.current) setSubmitButtonState('idle');
+        }, 2500);
         setSubmissionTimeoutMsg(err.message || 'Failed to submit code.');
       }
     }
@@ -659,38 +681,37 @@ export const ProblemDetailPage: React.FC = () => {
 
         {/* Top Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <button
+          <StatefulButton
             id="run-sample-cases-btn"
             onClick={handleRunSampleCases}
             disabled={submitting || sampleRunning}
+            state={runButtonState}
+            loadingText="Running..."
+            successText="Tested"
+            errorText="Failed"
+            icon={<Play size={13} />}
             aria-label="Run sample test cases"
             className="btn btn-secondary"
             style={{ padding: '0.35rem 0.875rem', fontSize: '0.8125rem' }}
           >
-            {sampleRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />}
-            <span>{sampleRunning ? 'Running Samples...' : 'Run Samples'}</span>
-          </button>
+            Run Samples
+          </StatefulButton>
 
-          <button
+          <StatefulButton
             id="submit-solution-btn"
             onClick={handleSubmitCode}
             disabled={submitting}
+            state={submitButtonState}
+            loadingText="Evaluating..."
+            successText="Accepted"
+            errorText={activeSubmission?.verdict || 'Failed'}
+            icon={<Send size={13} />}
             aria-label="Submit solution for evaluation"
             className="btn btn-primary"
             style={{ padding: '0.35rem 1.125rem', fontSize: '0.8125rem' }}
           >
-            {submitting ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                <span>Evaluating...</span>
-              </>
-            ) : (
-              <>
-                <Send size={13} />
-                <span>Submit Solution</span>
-              </>
-            )}
-          </button>
+            Submit Solution
+          </StatefulButton>
         </div>
       </div>
 
@@ -713,72 +734,42 @@ export const ProblemDetailPage: React.FC = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '0 1rem',
+                  padding: '0.25rem 1rem',
                   background: '#050505',
                   borderBottom: '1px solid var(--border-subtle)',
                   flexShrink: 0,
                 }}
               >
-                <button
-                  id="tab-statement-btn"
-                  onClick={() => setLeftTab('statement')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    padding: '0.75rem 1rem',
-                    background: 'none',
-                    border: 'none',
-                    borderBottom: `1px solid ${leftTab === 'statement' ? 'var(--brand-white)' : 'transparent'}`,
-                    color: leftTab === 'statement' ? 'var(--brand-white)' : 'var(--text-muted)',
-                    fontWeight: 500,
-                    fontSize: '0.8125rem',
-                    letterSpacing: '-0.01em',
-                    cursor: 'pointer',
-                    transition: 'color var(--transition-fast)',
-                  }}
-                >
-                  <FileText size={14} />
-                  <span>Description</span>
-                </button>
-
-                <button
-                  id="tab-submissions-btn"
-                  onClick={() => setLeftTab('submissions')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    padding: '0.75rem 1rem',
-                    background: 'none',
-                    border: 'none',
-                    borderBottom: `1px solid ${leftTab === 'submissions' ? 'var(--brand-white)' : 'transparent'}`,
-                    color: leftTab === 'submissions' ? 'var(--brand-white)' : 'var(--text-muted)',
-                    fontWeight: 500,
-                    fontSize: '0.8125rem',
-                    letterSpacing: '-0.01em',
-                    cursor: 'pointer',
-                    transition: 'color var(--transition-fast)',
-                  }}
-                >
-                  <History size={14} />
-                  <span>Submissions</span>
-                  {pastSubmissions.length > 0 && (
-                    <span
-                      style={{
-                        background: 'var(--brand-neutral-600)',
-                        border: '1px solid var(--border-medium)',
-                        color: 'var(--text-secondary)',
-                        borderRadius: 'var(--radius-xs)',
-                        padding: '0.1rem 0.4rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {pastSubmissions.length}
-                    </span>
-                  )}
-                </button>
+                <Tabs
+                  tabs={[
+                    { id: 'statement', label: 'Description', icon: <FileText size={14} /> },
+                    {
+                      id: 'submissions',
+                      label: 'Submissions',
+                      icon: <History size={14} />,
+                      badge: pastSubmissions.length > 0 ? (
+                        <span
+                          style={{
+                            background: 'var(--brand-neutral-600)',
+                            border: '1px solid var(--border-medium)',
+                            color: 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-xs)',
+                            padding: '0.1rem 0.4rem',
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {pastSubmissions.length}
+                        </span>
+                      ) : null,
+                    },
+                  ]}
+                  activeId={leftTab}
+                  onChange={(id) => setLeftTab(id as 'statement' | 'submissions')}
+                  layoutId="problem-left-tabs-indicator"
+                  variant="underline"
+                  size="sm"
+                />
               </div>
 
               {/* Left Pane Content (Independently scrollable) */}
@@ -1153,75 +1144,27 @@ export const ProblemDetailPage: React.FC = () => {
                     }}
                   >
                     {/* Console Tabs */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <button
-                        id="tab-console-testcases"
-                        onClick={() => handleOpenConsoleTab('testcases')}
-                        style={{
-                          background: consoleTab === 'testcases' && !isConsoleCollapsed ? 'var(--brand-neutral-600)' : 'transparent',
-                          color: consoleTab === 'testcases' && !isConsoleCollapsed ? 'var(--brand-white)' : 'var(--text-muted)',
-                          border: consoleTab === 'testcases' && !isConsoleCollapsed ? '1px solid var(--border-medium)' : '1px solid transparent',
-                          padding: '0.3rem 0.65rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 500,
-                          borderRadius: 'var(--radius-xs)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          transition: 'all var(--transition-fast)',
-                        }}
-                      >
-                        <FileCode size={13} />
-                        <span>Sample Cases</span>
-                      </button>
-
-                      <button
-                        id="tab-console-results"
-                        onClick={() => handleOpenConsoleTab('results')}
-                        style={{
-                          background: consoleTab === 'results' && !isConsoleCollapsed ? 'var(--brand-neutral-600)' : 'transparent',
-                          color: consoleTab === 'results' && !isConsoleCollapsed ? 'var(--brand-white)' : 'var(--text-muted)',
-                          border: consoleTab === 'results' && !isConsoleCollapsed ? '1px solid var(--border-medium)' : '1px solid transparent',
-                          padding: '0.3rem 0.65rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 500,
-                          borderRadius: 'var(--radius-xs)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          transition: 'all var(--transition-fast)',
-                        }}
-                      >
-                        <Terminal size={13} />
-                        <span>Verdict & Results</span>
-                      </button>
-
-                      {activeSubmission?.compileOutput && (
-                        <button
-                          id="tab-console-compiler"
-                          onClick={() => handleOpenConsoleTab('compiler')}
-                          style={{
-                            background: consoleTab === 'compiler' && !isConsoleCollapsed ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                            color: 'var(--verdict-wa)',
-                            border: consoleTab === 'compiler' && !isConsoleCollapsed ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid transparent',
-                            padding: '0.3rem 0.65rem',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            borderRadius: 'var(--radius-xs)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            transition: 'all var(--transition-fast)',
-                          }}
-                        >
-                          <AlertTriangle size={13} />
-                          <span>Compiler Log</span>
-                        </button>
-                      )}
-                    </div>
+                    <Tabs
+                      tabs={[
+                        { id: 'testcases', label: 'Sample Cases', icon: <FileCode size={13} /> },
+                        { id: 'results', label: 'Verdict & Results', icon: <Terminal size={13} /> },
+                        ...(activeSubmission?.compileOutput
+                          ? [
+                              {
+                                id: 'compiler',
+                                label: 'Compiler Log',
+                                icon: <AlertTriangle size={13} />,
+                                activeColor: 'var(--verdict-wa)',
+                              },
+                            ]
+                          : []),
+                      ]}
+                      activeId={isConsoleCollapsed ? '' : consoleTab}
+                      onChange={(id) => handleOpenConsoleTab(id as 'testcases' | 'results' | 'compiler')}
+                      layoutId="problem-console-tabs-indicator"
+                      variant="pill"
+                      size="sm"
+                    />
 
                     {/* Collapse / Expand Toggle */}
                     <button
