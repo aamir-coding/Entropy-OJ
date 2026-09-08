@@ -132,12 +132,14 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
       }
 
       const evalLockKey = `lock:evaluating:${job.data.submissionId}`;
-      // Acquire Redis evaluation lease (300s) to prevent duplicate sandbox runs on stalled jobs
+      // Acquire Redis evaluation lease (300s) to prevent duplicate sandbox runs on stalled jobs (Critical 1)
+      let leaseAcquired = false;
       const acquired = await redisClient.set(evalLockKey, String(job.id), 'EX', 300, 'NX');
       if (!acquired) {
-        console.log(`[Worker] Submission ${job.data.submissionId} is already actively being evaluated. Skipping duplicate run.`);
-        return;
+        console.warn(`[Worker] Submission ${job.data.submissionId} is already actively being evaluated. Rescheduling job.`);
+        throw new Error(`Lock collision: submission ${job.data.submissionId} is actively being evaluated`);
       }
+      leaseAcquired = true;
 
       try {
         // Idempotency Check: Verify Solution exists and is in PENDING state
@@ -199,11 +201,22 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
           );
 
           if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
-            await ProblemModel.findByIdAndUpdate(
-              job.data.problemId,
-              { $inc: { acceptedSubmissions: 1 } },
-              { session }
-            );
+            // High 2: Conditionally increment acceptedSubmissions only if user hasn't previously solved this problem
+            const userId = updatedSolution.user || job.data.userId;
+            const alreadyAccepted = await SolutionModel.exists({
+              user: userId,
+              problem: updatedSolution.problem || job.data.problemId,
+              verdict: Verdicts.ACCEPTED,
+              _id: { $ne: updatedSolution._id },
+            }).session(session);
+
+            if (!alreadyAccepted) {
+              await ProblemModel.findByIdAndUpdate(
+                job.data.problemId,
+                { $inc: { acceptedSubmissions: 1 } },
+                { session }
+              );
+            }
           }
 
           await session.commitTransaction();
@@ -226,10 +239,21 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
             );
 
             if (result.verdict === Verdicts.ACCEPTED && updatedSolution && updatedSolution.verdict === Verdicts.PENDING) {
-              await ProblemModel.findByIdAndUpdate(
-                job.data.problemId,
-                { $inc: { acceptedSubmissions: 1 } }
-              );
+              // High 2: Check for existing accepted solution before incrementing
+              const userId = updatedSolution.user || job.data.userId;
+              const alreadyAccepted = await SolutionModel.exists({
+                user: userId,
+                problem: updatedSolution.problem || job.data.problemId,
+                verdict: Verdicts.ACCEPTED,
+                _id: { $ne: updatedSolution._id },
+              });
+
+              if (!alreadyAccepted) {
+                await ProblemModel.findByIdAndUpdate(
+                  job.data.problemId,
+                  { $inc: { acceptedSubmissions: 1 } }
+                );
+              }
             }
           } else {
             throw txErr;
@@ -250,7 +274,9 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         console.error(`[Worker] ❌ Unhandled worker error for submission ${job.data.submissionId} (Attempt ${job.attemptsMade + 1}):`, error);
         throw error;
       } finally {
-        await redisClient.del(evalLockKey).catch(() => {});
+        if (leaseAcquired) {
+          await redisClient.del(evalLockKey).catch(() => {});
+        }
       }
     },
     {

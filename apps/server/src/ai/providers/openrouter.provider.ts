@@ -1,6 +1,16 @@
 import { AIProvider, ChatCompletionParams, ChatCompletionResult, AIProviderError } from './types';
 import { TokenBucketLimiter, withDynamicBackoff } from '../rateLimiter';
 
+function getSharedRedisClient() {
+  if (process.env.NODE_ENV === 'test') return undefined;
+  try {
+    const { redisClient } = require('../../config/redis');
+    return redisClient;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface OpenRouterProviderConfig {
   apiKey?: string;
   models?: string[];
@@ -30,7 +40,7 @@ export class OpenRouterProvider implements AIProvider {
     ]);
 
     const rpm = config.rpmLimit || (process.env.OPENROUTER_RPM_LIMIT ? parseInt(process.env.OPENROUTER_RPM_LIMIT, 10) : 20);
-    this.rateLimiter = new TokenBucketLimiter(rpm);
+    this.rateLimiter = new TokenBucketLimiter(rpm, getSharedRedisClient(), 'ratelimit:provider:openrouter');
   }
 
   async chatCompletion(params: ChatCompletionParams): Promise<ChatCompletionResult> {
@@ -38,7 +48,7 @@ export class OpenRouterProvider implements AIProvider {
       throw new AIProviderError('OpenRouter API key is not configured', 503, undefined, false, this.name);
     }
 
-    if (!this.rateLimiter.tryConsume()) {
+    if (!(await this.rateLimiter.tryConsumeAsync())) {
       const waitMs = this.rateLimiter.getEstimatedWaitMs();
       throw new AIProviderError(
         `OpenRouter static rate limit exceeded (RPM). Try again in ${Math.ceil(waitMs / 1000)}s`,

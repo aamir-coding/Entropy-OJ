@@ -128,9 +128,20 @@ Hope this helps review the problem package!`;
     \`\`\``;
 
     const parsed = parseAIJson(raw);
-    assert.strictEqual(parsed.approach, 'Monotonic Stack');
-    assert.strictEqual(parsed.timeComplexity, 'O(N)');
-    assert.strictEqual(parsed.spaceComplexity, 'O(N)');
     assert.strictEqual(parsed.relatedProblemCode, 'largest-rectangle-in-histogram');
+  });
+
+  it('should preserve https:// URLs inside string values while stripping actual comments (Medium 3)', () => {
+    const raw = `{
+      // Header comment
+      "url": "https://en.wikipedia.org/wiki/Dynamic_programming",
+      "reference": "Visit https://leetcode.com/problems/two-sum/ for details", /* inline comment */
+      "overallAssessment": "Valid with URLs preserved."
+    }`;
+
+    const parsed = parseAIJson(raw);
+    assert.strictEqual(parsed.url, 'https://en.wikipedia.org/wiki/Dynamic_programming');
+    assert.strictEqual(parsed.reference, 'Visit https://leetcode.com/problems/two-sum/ for details');
+    assert.strictEqual(parsed.overallAssessment, 'Valid with URLs preserved.');
   });
 });

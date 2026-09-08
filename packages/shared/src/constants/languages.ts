@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export const SupportedLanguages = {
   CPP: 'cpp',
   PYTHON: 'python',
@@ -8,6 +10,13 @@ export type SupportedLanguage = (typeof SupportedLanguages)[keyof typeof Support
 export const ALL_SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = Object.freeze(
   Object.values(SupportedLanguages)
 ) as readonly SupportedLanguage[];
+
+export const supportedLanguageSchema = z.enum(
+  ALL_SUPPORTED_LANGUAGES as unknown as [SupportedLanguage, ...SupportedLanguage[]],
+  {
+    errorMap: () => ({ message: `Language must be either ${ALL_SUPPORTED_LANGUAGES.join(' or ')}` }),
+  }
+);
 
 export interface LanguageExecutionConfig {
   id: SupportedLanguage;
@@ -25,7 +34,20 @@ export interface LanguageUIConfig {
 
 export interface LanguageConfig extends LanguageExecutionConfig, LanguageUIConfig {}
 
-export const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
+function deepFreeze<T>(obj: T): Readonly<T> {
+  if (obj && typeof obj === 'object') {
+    Object.freeze(obj);
+    for (const key of Object.keys(obj)) {
+      const val = (obj as any)[key];
+      if (val && typeof val === 'object' && !Object.isFrozen(val)) {
+        deepFreeze(val);
+      }
+    }
+  }
+  return obj;
+}
+
+export const LANGUAGE_CONFIGS: Readonly<Record<SupportedLanguage, Readonly<LanguageConfig>>> = deepFreeze({
   [SupportedLanguages.CPP]: {
     id: SupportedLanguages.CPP,
     name: 'C++ (GCC 12 / C++17)',
@@ -69,4 +91,4 @@ if __name__ == '__main__':
 `,
     compileBudgetMs: 0,
   },
-};
+});

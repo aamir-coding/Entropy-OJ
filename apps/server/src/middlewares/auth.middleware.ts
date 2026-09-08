@@ -17,13 +17,18 @@ interface JwtPayload {
 }
 
 function extractToken(req: AuthRequest): string | undefined {
+  // Low 1: Prioritize explicit Authorization: Bearer header over implicit cookies
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (match && match[1].trim()) {
+      return match[1].trim();
+    }
+  }
   if (req.cookies?.token) {
     return req.cookies.token;
   }
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return undefined;
-  const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : undefined;
+  return undefined;
 }
 
 export async function requireAuth(

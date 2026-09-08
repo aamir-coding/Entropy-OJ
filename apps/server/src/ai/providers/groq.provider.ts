@@ -1,6 +1,16 @@
 import { AIProvider, ChatCompletionParams, ChatCompletionResult, AIProviderError } from './types';
 import { TokenBucketLimiter, withDynamicBackoff } from '../rateLimiter';
 
+function getSharedRedisClient() {
+  if (process.env.NODE_ENV === 'test') return undefined;
+  try {
+    const { redisClient } = require('../../config/redis');
+    return redisClient;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface GroqProviderConfig {
   apiKey?: string;
   defaultModel?: string;
@@ -17,7 +27,7 @@ export class GroqProvider implements AIProvider {
     this.apiKey = config.apiKey || process.env.GROQ_API_KEY;
     this.defaultModel = config.defaultModel || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
     const rpm = config.rpmLimit || (process.env.GROQ_RPM_LIMIT ? parseInt(process.env.GROQ_RPM_LIMIT, 10) : 30);
-    this.rateLimiter = new TokenBucketLimiter(rpm);
+    this.rateLimiter = new TokenBucketLimiter(rpm, getSharedRedisClient(), 'ratelimit:provider:groq');
   }
 
   async chatCompletion(params: ChatCompletionParams): Promise<ChatCompletionResult> {
@@ -25,7 +35,7 @@ export class GroqProvider implements AIProvider {
       throw new AIProviderError('Groq API key is not configured', 503, undefined, false, this.name);
     }
 
-    if (!this.rateLimiter.tryConsume()) {
+    if (!(await this.rateLimiter.tryConsumeAsync())) {
       const waitMs = this.rateLimiter.getEstimatedWaitMs();
       throw new AIProviderError(
         `Groq static rate limit exceeded (RPM). Try again in ${Math.ceil(waitMs / 1000)}s`,

@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "seed": "tsx src/seeds/seedProblems.ts",
+    "seed:superuser": "tsx src/seeds/seedSuperUser.ts",
     "seed:prod": "node dist/seeds/seedProblems.js",
     "test": "node --test dist/**/*.test.js"
   },

@@ -23,32 +23,65 @@ import {
 
 export * from './solutions';
 
-const rawModelSolutions: Record<string, IProblemModelSolutions> = {
-  ...ARRAYS_HASHING_SOLUTIONS,
-  ...TWO_POINTERS_SOLUTIONS,
-  ...SLIDING_WINDOW_SOLUTIONS,
-  ...STACK_SOLUTIONS,
-  ...BINARY_SEARCH_SOLUTIONS,
-  ...LINKED_LIST_SOLUTIONS,
-  ...TREES_SOLUTIONS,
-  ...TRIES_SOLUTIONS,
-  ...HEAP_SOLUTIONS,
-  ...BACKTRACKING_SOLUTIONS,
-  ...GRAPHS_SOLUTIONS,
-  ...ADVANCED_GRAPHS_SOLUTIONS,
-  ...ONE_D_DP_SOLUTIONS,
-  ...TWO_D_DP_SOLUTIONS,
-  ...GREEDY_SOLUTIONS,
-  ...INTERVALS_SOLUTIONS,
-  ...MATH_GEOMETRY_SOLUTIONS,
-  ...BIT_MANIPULATION_SOLUTIONS,
-};
+const topicSolutionMaps: readonly Record<string, IProblemModelSolutions>[] = [
+  ARRAYS_HASHING_SOLUTIONS,
+  TWO_POINTERS_SOLUTIONS,
+  SLIDING_WINDOW_SOLUTIONS,
+  STACK_SOLUTIONS,
+  BINARY_SEARCH_SOLUTIONS,
+  LINKED_LIST_SOLUTIONS,
+  TREES_SOLUTIONS,
+  TRIES_SOLUTIONS,
+  HEAP_SOLUTIONS,
+  BACKTRACKING_SOLUTIONS,
+  GRAPHS_SOLUTIONS,
+  ADVANCED_GRAPHS_SOLUTIONS,
+  ONE_D_DP_SOLUTIONS,
+  TWO_D_DP_SOLUTIONS,
+  GREEDY_SOLUTIONS,
+  INTERVALS_SOLUTIONS,
+  MATH_GEOMETRY_SOLUTIONS,
+  BIT_MANIPULATION_SOLUTIONS,
+];
 
-export const MODEL_SOLUTIONS: Readonly<Record<string, Readonly<IProblemModelSolutions>>> = Object.freeze(
-  Object.fromEntries(
-    Object.entries(rawModelSolutions).map(([k, v]) => [k, Object.freeze(v)])
-  )
-);
+// O(1) index map for direct problem lookups without massive object spreading
+const problemIndex = new Map<string, IProblemModelSolutions>();
+for (const topicMap of topicSolutionMaps) {
+  for (const key of Object.keys(topicMap)) {
+    problemIndex.set(key, topicMap[key]);
+  }
+}
+
+// On-demand freeze cache per problem solution
+const solutionCache = new Map<string, Readonly<IProblemModelSolutions>>();
+
+function getFrozenSolution(key: string): Readonly<IProblemModelSolutions> | undefined {
+  let cached = solutionCache.get(key);
+  if (!cached) {
+    const raw = problemIndex.get(key);
+    if (raw) {
+      cached = Object.freeze({ ...raw });
+      solutionCache.set(key, cached);
+    }
+  }
+  return cached;
+}
+
+export function findProblemModelSolutions(problemCode: string | undefined | null): Readonly<IProblemModelSolutions> | undefined {
+  if (!problemCode) return undefined;
+  return getFrozenSolution(problemCode.toLowerCase().trim());
+}
+
+const solutionsContainer: Record<string, Readonly<IProblemModelSolutions>> = {};
+for (const key of problemIndex.keys()) {
+  Object.defineProperty(solutionsContainer, key, {
+    get: () => getFrozenSolution(key),
+    enumerable: true,
+    configurable: false,
+  });
+}
+
+export const MODEL_SOLUTIONS: Readonly<Record<string, Readonly<IProblemModelSolutions>>> = Object.freeze(solutionsContainer);
 
 /**
  * Retrieve reference model solution for a given problem code and language.
@@ -58,12 +91,9 @@ export function getModelSolution(
   problemCode: string | undefined | null,
   language: SupportedLanguage = SupportedLanguages.PYTHON
 ): string {
-  if (problemCode) {
-    const normalized = problemCode.toLowerCase().trim();
-    const solutions = MODEL_SOLUTIONS[normalized];
-    if (solutions && solutions[language]) {
-      return solutions[language];
-    }
+  const solutions = findProblemModelSolutions(problemCode);
+  if (solutions && solutions[language]) {
+    return solutions[language];
   }
 
   // Graceful fallback to default starter code
@@ -77,9 +107,7 @@ export function hasModelSolution(
   problemCode: string | undefined | null,
   language?: SupportedLanguage
 ): boolean {
-  if (!problemCode) return false;
-  const normalized = problemCode.toLowerCase().trim();
-  const solutions = MODEL_SOLUTIONS[normalized];
+  const solutions = findProblemModelSolutions(problemCode);
   if (!solutions) return false;
   if (language) {
     return Boolean(solutions[language]);

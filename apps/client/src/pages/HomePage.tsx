@@ -156,7 +156,7 @@ export const HomePage: React.FC = () => {
     return () => {
       controller.abort();
     };
-  }, [filterKey, selectedDifficulty, selectedTags, debouncedSearchQuery, user?._id, retryTrigger, page, limit]);
+  }, [filterKey, user?._id, page, limit, retryTrigger]);
 
   const handleTagClick = (tag: string) => {
     if (tag === 'All') {

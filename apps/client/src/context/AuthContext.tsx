@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res.data.success) {
       if (activeSessionIdRef.current === currentSessionId) {
         setUser(res.data.data.user);
-        setIsAuthModalOpen(false);
+        // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
       }
       try {
         const meRes = await api.get('/auth/me');
@@ -147,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res.data.success) {
       if (activeSessionIdRef.current === currentSessionId) {
         setUser(res.data.data.user);
-        setIsAuthModalOpen(false);
+        // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
       }
       try {
         const meRes = await api.get('/auth/me');

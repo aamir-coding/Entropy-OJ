@@ -54,4 +54,26 @@ describe('diffOutput & normalizeOutput Tests', () => {
     assert.strictEqual(diffOutput('   \n\n  ', '').isMatch, true);
     assert.strictEqual(diffOutput('', 'expected').isMatch, false);
   });
+
+  it('should not award false-positive Accepted when outputs diverge beyond 1MB (Critical 1)', () => {
+    // Prefix matches for 1,048,576 chars, but tail diverges
+    const prefix = 'a'.repeat(1024 * 1024);
+    const expected = prefix + '\ntrue';
+    const actual = prefix + '\nfalse';
+
+    const result = diffOutput(actual, expected);
+    assert.strictEqual(result.isMatch, false);
+    assert.strictEqual(result.truncated, true);
+  });
+
+  it('should properly handle literal <EOF> string without losing line diagnostics (High 2)', () => {
+    const actual = 'line1\n<EOF>';
+    const expected = 'line1';
+    const result = diffOutput(actual, expected);
+
+    assert.strictEqual(result.isMatch, false);
+    assert.strictEqual(result.diffLineIndex, 2);
+    assert.strictEqual(result.actualLine, '<EOF>');
+    assert.strictEqual(result.expectedLine, undefined);
+  });
 });

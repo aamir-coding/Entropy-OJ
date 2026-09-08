@@ -5,7 +5,7 @@ import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { enqueueSubmission } from '../queues/submission.queue';
-import { DockerSandbox } from '../sandbox/dockerRunner';
+import { DockerSandbox, sandboxSemaphore } from '../sandbox/dockerRunner';
 import { env } from '../config/env';
 import {
   CreateSubmissionInput,
@@ -154,6 +154,15 @@ export const runSampleCases = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    // Critical 1: Fast capacity fail if sandbox runner is saturated to protect API event loop
+    if (sandboxSemaphore.activeCount >= sandboxSemaphore.max && sandboxSemaphore.queueLength >= 2) {
+      res.status(503).json({
+        success: false,
+        error: 'Sandbox execution engine is currently at maximum capacity. Please try again shortly.',
+      });
+      return;
+    }
+
     // Create ephemeral Docker sandbox
     sandbox = await DockerSandbox.create();
     await sandbox.prepareSourceFile(code, language);
@@ -180,8 +189,19 @@ export const runSampleCases = async (req: AuthRequest, res: Response): Promise<v
     let passedCount = 0;
     let overallVerdict: Verdict = Verdicts.ACCEPTED;
 
-    for (let i = 0; i < sampleCases.length; i++) {
-      const sc = sampleCases[i];
+    // Critical 1: Enforce wall-clock budget (25s) and cap sample execution to prevent server starvation
+    const MAX_SAMPLE_CASES = 5;
+    const casesToRun = sampleCases.slice(0, MAX_SAMPLE_CASES);
+    const MAX_SAMPLE_WALL_TIME_MS = 25000;
+    const startTime = Date.now();
+
+    for (let i = 0; i < casesToRun.length; i++) {
+      if (Date.now() - startTime > MAX_SAMPLE_WALL_TIME_MS) {
+        if (overallVerdict === Verdicts.ACCEPTED) overallVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+        break;
+      }
+
+      const sc = casesToRun[i];
       const caseIndex = i + 1;
 
       const runRes = await sandbox.runTestCase(
@@ -281,7 +301,7 @@ export const getSubmissionById = async (
     }
 
     // BOLA Protection: Enforce that only the owner or an admin can view submission details (Issue H-4)
-    const isOwner = solution.user._id.toString() === req.userId;
+    const isOwner = solution.user?._id ? solution.user._id.toString() === req.userId : false;
     const isAdmin = req.user?.role === 'admin';
     if (!isOwner && !isAdmin) {
       res.status(403).json({
@@ -295,9 +315,9 @@ export const getSubmissionById = async (
       success: true,
       data: {
         submissionId: solution._id.toString(),
-        problemId: solution.problem._id.toString(),
-        problemCode: solution.problem.problemCode,
-        problemName: solution.problem.name,
+        problemId: solution.problem?._id ? solution.problem._id.toString() : '',
+        problemCode: solution.problem?.problemCode || 'unknown',
+        problemName: solution.problem?.name || 'Unknown Problem',
         language: solution.language,
         verdict: solution.verdict,
         status: solution.verdict,
@@ -356,24 +376,26 @@ export async function getUserSubmissions(
       Solution.countDocuments({ user: targetUserId }),
     ]);
 
-    const items: ISubmissionHistoryItem[] = submissions.map((sub) => ({
-      _id: sub._id.toString(),
-      problem: {
-        _id: sub.problem._id.toString(),
-        problemCode: sub.problem.problemCode,
-        name: sub.problem.name,
-        difficulty: sub.problem.difficulty,
-      },
-      language: sub.language,
-      verdict: sub.verdict,
-      executionTime: sub.executionTime,
-      memoryUsed: sub.memoryUsed,
-      passedTestCases: sub.passedTestCases,
-      totalTestCases: sub.totalTestCases,
-      classification: sub.classification,
-      submittedAt: sub.submittedAt,
-      code: sub.code,
-    }));
+    const items: ISubmissionHistoryItem[] = submissions
+      .filter((sub) => Boolean(sub && sub.problem))
+      .map((sub) => ({
+        _id: sub._id.toString(),
+        problem: {
+          _id: sub.problem?._id ? sub.problem._id.toString() : '',
+          problemCode: sub.problem?.problemCode || 'unknown',
+          name: sub.problem?.name || 'Unknown Problem',
+          difficulty: sub.problem?.difficulty || 'Medium',
+        },
+        language: sub.language,
+        verdict: sub.verdict,
+        executionTime: sub.executionTime,
+        memoryUsed: sub.memoryUsed,
+        passedTestCases: sub.passedTestCases,
+        totalTestCases: sub.totalTestCases,
+        classification: sub.classification,
+        submittedAt: sub.submittedAt,
+        code: sub.code,
+      }));
 
     res.status(200).json({
       success: true,

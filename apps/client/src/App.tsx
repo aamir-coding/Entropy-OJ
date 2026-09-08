@@ -6,6 +6,7 @@ import { AuthModal } from './components/AuthModal';
 import { AdminRoute } from './components/AdminRoute';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
 // Route-level Code Splitting (Issue H-1)
@@ -46,18 +47,55 @@ const AppShell: React.FC = () => {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/problems" element={<HomePage />} />
-            <Route path="/galaxy" element={<GalaxyPage />} />
-            <Route path="/problems/:code" element={<ProblemDetailPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route
+              path="/"
+              element={
+                <ErrorBoundary>
+                  <LandingPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/problems"
+              element={
+                <ErrorBoundary>
+                  <HomePage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/galaxy"
+              element={
+                <ErrorBoundary>
+                  <GalaxyPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/problems/:code"
+              element={
+                <ErrorBoundary>
+                  <ProblemDetailPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ErrorBoundary>
+                  <ProfilePage />
+                </ErrorBoundary>
+              }
+            />
 
             {/* Protected Admin Routes */}
             <Route
               path="/admin"
               element={
                 <AdminRoute>
-                  <AdminDashboardPage />
+                  <ErrorBoundary>
+                    <AdminDashboardPage />
+                  </ErrorBoundary>
                 </AdminRoute>
               }
             />
@@ -65,7 +103,9 @@ const AppShell: React.FC = () => {
               path="/admin/problems/new"
               element={
                 <AdminRoute>
-                  <AdminProblemEditorPage />
+                  <ErrorBoundary>
+                    <AdminProblemEditorPage />
+                  </ErrorBoundary>
                 </AdminRoute>
               }
             />
@@ -73,7 +113,9 @@ const AppShell: React.FC = () => {
               path="/admin/problems/:id/edit"
               element={
                 <AdminRoute>
-                  <AdminProblemEditorPage />
+                  <ErrorBoundary>
+                    <AdminProblemEditorPage />
+                  </ErrorBoundary>
                 </AdminRoute>
               }
             />

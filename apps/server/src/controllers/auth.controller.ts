@@ -120,13 +120,15 @@ export async function login(
 
 export async function logout(req: Request, res: Response): Promise<void> {
   try {
-    const rawCookie = (req as any).cookies?.token;
     const authHeader = req.headers.authorization;
-    const token = rawCookie || (authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim());
+    const bearerToken = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    const rawCookie = (req as any).cookies?.token;
+    const token = bearerToken || rawCookie;
 
     if (token) {
       try {
-        const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+        // High 1: Cryptographically verify JWT signature before trusting jti for revocation blacklist
+        const decoded = jwt.verify(token, env.JWT_SECRET) as { jti?: string; exp?: number } | null;
         if (decoded?.jti && decoded?.exp) {
           const remainingSeconds = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
           if (remainingSeconds > 0) {
@@ -134,7 +136,8 @@ export async function logout(req: Request, res: Response): Promise<void> {
           }
         }
       } catch (err) {
-        console.warn('[Auth] Failed to blacklist token on logout:', err);
+        // Unverified, tampered, or expired tokens are not trusted to blacklist arbitrary jtis
+        console.warn('[Auth] Token signature verification failed during logout blacklist check:', (err as any)?.message);
       }
     }
   } finally {

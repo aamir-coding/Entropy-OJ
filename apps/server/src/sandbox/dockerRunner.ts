@@ -134,7 +134,20 @@ export class DockerSandbox {
   async cleanup(): Promise<void> {
     try {
       await fs.rm(this.workspaceDir, { recursive: true, force: true });
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.code === 'EACCES' || err?.code === 'EPERM') {
+        try {
+          const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
+          await execFileAsync('docker', [
+            'run', '--rm', '-v', `${dockerMountPath}:/workspace`,
+            '--entrypoint', 'sh',
+            this.image,
+            '-c', 'rm -rf /workspace/* /workspace/.* 2>/dev/null || true',
+          ], { windowsHide: true, timeout: 5000 });
+          await fs.rm(this.workspaceDir, { recursive: true, force: true });
+          return;
+        } catch {}
+      }
       console.error(`[Sandbox] Failed to clean workspace ${this.workspaceDir}:`, err);
     }
   }
@@ -224,6 +237,7 @@ export class DockerSandbox {
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
+    const safeMemLimitMb = Math.max(32, Math.ceil(memoryLimitKb / 1024));
 
     const args = [
       'run',
@@ -233,7 +247,7 @@ export class DockerSandbox {
       '--network',
       'none',
       '--memory',
-      `${Math.ceil(memoryLimitKb / 1024)}m`,
+      `${safeMemLimitMb}m`,
       '--cpus',
       '0.5',
       '--pids-limit',

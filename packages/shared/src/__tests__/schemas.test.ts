@@ -66,6 +66,16 @@ describe('Validation Schemas Unit Tests', () => {
       });
       assert.strictEqual(result.success, false);
     });
+
+    it('should transform comma-delimited string tags into trimmed array', () => {
+      const result = problemFilterSchema.safeParse({
+        tags: 'arrays, hash-table, two-pointers ',
+      });
+      assert.ok(result.success);
+      if (result.success) {
+        assert.deepStrictEqual(result.data.tags, ['arrays', 'hash-table', 'two-pointers']);
+      }
+    });
   });
 
   describe('TestCase Schemas (Empty Output Enforcement)', () => {

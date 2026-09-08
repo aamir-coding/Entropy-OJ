@@ -1,13 +1,26 @@
 import { z } from 'zod';
 import { ALL_PROBLEM_DIFFICULTIES } from '../types';
 import { ExecutionLimits } from '../constants/limits';
-import { SupportedLanguages } from '../constants/languages';
+import { supportedLanguageSchema } from '../constants/languages';
+
+const tagTransformSchema = z.union([
+  z
+    .string()
+    .max(200)
+    .transform((val) =>
+      val
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+    ),
+  z.array(z.string().max(50)).max(20),
+]);
 
 export const problemFilterSchema = z.object({
   difficulty: z.enum(ALL_PROBLEM_DIFFICULTIES).optional(),
   /** @deprecated Use `tags` instead */
-  tag: z.union([z.string().max(200), z.array(z.string().max(50)).max(20)]).optional(),
-  tags: z.union([z.string().max(200), z.array(z.string().max(50)).max(20)]).optional(),
+  tag: tagTransformSchema.optional(),
+  tags: tagTransformSchema.optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -62,7 +75,7 @@ export const createProblemSchema = z.object({
 export const updateProblemSchema = createProblemSchema.partial();
 
 export const validateSolutionSchema = z.object({
-  language: z.enum([SupportedLanguages.CPP, SupportedLanguages.PYTHON]),
+  language: supportedLanguageSchema,
   code: z.string().min(1, 'Code cannot be empty'),
 });
 

@@ -127,16 +127,17 @@ export const Tooltip: React.FC<TooltipProps> = ({
     setIsOpen(false);
   };
 
-  // Close immediately on window scroll or resize to prevent detached floating tooltips
+  // Close immediately on scroll or resize to prevent detached floating tooltips (High 4)
   useEffect(() => {
     if (!isOpen) return;
     const handleScrollOrResize = () => {
       setIsOpen(false);
     };
-    window.addEventListener('scroll', handleScrollOrResize, { passive: true });
+    // High 4: capture: true is required because scroll events on overflow containers do not bubble
+    window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true });
     window.addEventListener('resize', handleScrollOrResize, { passive: true });
     return () => {
-      window.removeEventListener('scroll', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, { capture: true } as any);
       window.removeEventListener('resize', handleScrollOrResize);
     };
   }, [isOpen]);
@@ -181,7 +182,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const clonedChild = React.cloneElement(children, {
     ref: (node: HTMLElement | null) => {
       triggerRef.current = node;
-      const childRef = (children as any).ref;
+      // Low 1: In React 19, ref was relocated from element.ref to element.props.ref
+      const childRef = (children.props as any)?.ref || (children as any).ref;
       if (typeof childRef === 'function') {
         childRef(node);
       } else if (childRef && 'current' in childRef) {

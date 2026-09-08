@@ -45,25 +45,58 @@ export async function getProblems(
     }
 
     if (search && typeof search === 'string' && search.trim().length > 0) {
-      const sanitized = escapeRegex(search.trim().slice(0, 100));
-      const searchRegex = new RegExp(sanitized, 'i');
-      filter.$or = [{ name: searchRegex }, { problemCode: searchRegex }, { tags: searchRegex }];
+      const trimmed = search.trim().slice(0, 100);
+      // High 3: Refactor query to use MongoDB compound $text search index on name, statement, tags
+      filter.$text = { $search: trimmed };
     }
 
     const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
     const safePage = Math.max(Number(page) || 1, 1);
     const skip = (safePage - 1) * safeLimit;
 
-    const [problems, totalCount, totalCatalogProblems] = await Promise.all([
-      Problem.find(filter)
-        .select('problemCode name difficulty tags totalSubmissions acceptedSubmissions createdAt')
-        .sort({ createdAt: 1 })
-        .skip(skip)
-        .limit(safeLimit)
-        .lean(),
-      Problem.countDocuments(filter),
-      Problem.countDocuments({}),
-    ]);
+    let sortOption: Record<string, any> = { createdAt: 1 };
+    if (filter.$text) {
+      sortOption = { score: { $meta: 'textScore' }, createdAt: 1 };
+    }
+
+    let problems: any[] = [];
+    let totalCount = 0;
+    let totalCatalogProblems = 0;
+
+    try {
+      [problems, totalCount, totalCatalogProblems] = await Promise.all([
+        Problem.find(filter)
+          .select('problemCode name difficulty tags totalSubmissions acceptedSubmissions createdAt')
+          .sort(sortOption)
+          .skip(skip)
+          .limit(safeLimit)
+          .lean(),
+        Problem.countDocuments(filter),
+        Problem.countDocuments({}),
+      ]);
+    } catch (queryErr: any) {
+      // Fallback for environments where text index is still building or unsupported
+      if (filter.$text) {
+        delete filter.$text;
+        const sanitized = escapeRegex(String(search).trim().slice(0, 100));
+        // Use anchored prefix index scan to prevent unindexed full collection scan
+        const searchRegex = new RegExp(`^${sanitized}`, 'i');
+        filter.$or = [{ problemCode: searchRegex }, { name: searchRegex }];
+
+        [problems, totalCount, totalCatalogProblems] = await Promise.all([
+          Problem.find(filter)
+            .select('problemCode name difficulty tags totalSubmissions acceptedSubmissions createdAt')
+            .sort({ createdAt: 1 })
+            .skip(skip)
+            .limit(safeLimit)
+            .lean(),
+          Problem.countDocuments(filter),
+          Problem.countDocuments({}),
+        ]);
+      } else {
+        throw queryErr;
+      }
+    }
 
     // If user is authenticated, determine their status per problem (Solved / Attempted / Unsolved) (Issue M-2: Scoped to current page)
     let userSolvedProblemIds = new Set<string>();

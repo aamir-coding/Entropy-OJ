@@ -9,6 +9,72 @@ import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
 
+export class Semaphore {
+  private current = 0;
+  private queue: Array<() => void> = [];
+
+  constructor(public readonly max: number = env.WORKER_CONCURRENCY || 4) {}
+
+  async acquire(timeoutMs = 60000): Promise<() => void> {
+    if (this.current < this.max) {
+      this.current++;
+      let released = false;
+      return () => {
+        if (!released) {
+          released = true;
+          this.release();
+        }
+      };
+    }
+
+    return new Promise<() => void>((resolve, reject) => {
+      let timer: NodeJS.Timeout | null = null;
+      let released = false;
+
+      const onAcquire = () => {
+        if (timer) clearTimeout(timer);
+        resolve(() => {
+          if (!released) {
+            released = true;
+            this.release();
+          }
+        });
+      };
+
+      if (timeoutMs > 0) {
+        timer = setTimeout(() => {
+          const idx = this.queue.indexOf(onAcquire);
+          if (idx !== -1) {
+            this.queue.splice(idx, 1);
+            reject(new Error('Timed out waiting for Docker sandbox execution slot'));
+          }
+        }, timeoutMs);
+      }
+
+      this.queue.push(onAcquire);
+    });
+  }
+
+  private release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      if (next) next();
+    } else {
+      this.current = Math.max(0, this.current - 1);
+    }
+  }
+
+  get activeCount(): number {
+    return this.current;
+  }
+
+  get queueLength(): number {
+    return this.queue.length;
+  }
+}
+
+export const containerSemaphore = new Semaphore(env.WORKER_CONCURRENCY || 4);
+
 export const activeContainers = new Set<string>();
 
 export interface CompileResult {
@@ -163,26 +229,32 @@ export async function killActiveContainers(): Promise<void> {
   );
 }
 
+export const BASE_WORKSPACES_DIR = env.WORKSPACES_DIR || path.join(os.tmpdir(), 'entropy-workspaces');
+export const LEGACY_WORKSPACES_DIR = path.join(os.tmpdir(), 'anti-oj-workspaces');
+
 export async function sweepStaleWorkspaces(maxAgeMs = 60 * 60 * 1000): Promise<void> {
-  const tmpBase = path.join(os.tmpdir(), 'anti-oj-workspaces');
-  try {
-    const entries = await fs.readdir(tmpBase, { withFileTypes: true });
-    const now = Date.now();
-    for (const entry of entries) {
-      if (entry.isDirectory() && entry.name.startsWith('job-')) {
-        const fullPath = path.join(tmpBase, entry.name);
-        try {
-          const stats = await fs.stat(fullPath);
-          if (now - stats.mtimeMs > maxAgeMs) {
-            await fs.rm(fullPath, { recursive: true, force: true });
-            console.log(`[SandboxReaper] Purged stale workspace: ${entry.name}`);
-          }
-        } catch {}
+  const dirsToSweep = [BASE_WORKSPACES_DIR, LEGACY_WORKSPACES_DIR];
+
+  for (const tmpBase of dirsToSweep) {
+    try {
+      const entries = await fs.readdir(tmpBase, { withFileTypes: true });
+      const now = Date.now();
+      for (const entry of entries) {
+        if (entry.isDirectory() && (entry.name.startsWith('job-') || entry.name.startsWith('sample-'))) {
+          const fullPath = path.join(tmpBase, entry.name);
+          try {
+            const stats = await fs.stat(fullPath);
+            if (now - stats.mtimeMs > maxAgeMs) {
+              await fs.rm(fullPath, { recursive: true, force: true });
+              console.log(`[SandboxReaper] Purged stale workspace: ${entry.name}`);
+            }
+          } catch {}
+        }
       }
-    }
-  } catch (err: any) {
-    if (err.code !== 'ENOENT' && env.NODE_ENV !== 'test') {
-      console.warn('[SandboxReaper] Failed to sweep stale workspaces:', err.message);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT' && env.NODE_ENV !== 'test') {
+        console.warn(`[SandboxReaper] Failed to sweep directory ${tmpBase}:`, err.message);
+      }
     }
   }
 }
@@ -199,7 +271,7 @@ export class DockerSandbox {
   }
 
   static async create(): Promise<DockerSandbox> {
-    const tmpBase = env.WORKSPACES_DIR || path.join(os.tmpdir(), 'entropy-workspaces');
+    const tmpBase = BASE_WORKSPACES_DIR;
     await fs.mkdir(tmpBase, { recursive: true });
     const workspaceDir = await fs.mkdtemp(path.join(tmpBase, 'job-'));
     const folderName = path.basename(workspaceDir);
@@ -212,7 +284,24 @@ export class DockerSandbox {
   async cleanup(): Promise<void> {
     try {
       await fs.rm(this.workspaceDir, { recursive: true, force: true });
-    } catch (err) {
+    } catch (err: any) {
+      // Medium 2: If Linux root-owned files in volume mount cause EACCES/EPERM,
+      // wipe contents via an ephemeral container before removing directory
+      if (err?.code === 'EACCES' || err?.code === 'EPERM') {
+        try {
+          const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
+          await execFileAsync('docker', [
+            'run', '--rm', '-v', `${dockerMountPath}:/workspace`,
+            '--entrypoint', 'sh',
+            this.image,
+            '-c', 'rm -rf /workspace/* /workspace/.* 2>/dev/null || true',
+          ], { windowsHide: true, timeout: 5000 });
+          await fs.rm(this.workspaceDir, { recursive: true, force: true });
+          return;
+        } catch (fallbackErr: any) {
+          console.error(`[Sandbox] Container cleanup fallback failed for ${this.workspaceDir}:`, fallbackErr.message);
+        }
+      }
       console.error(`[Sandbox] Failed to clean workspace ${this.workspaceDir}:`, err);
     }
   }
@@ -231,6 +320,7 @@ export class DockerSandbox {
     language: SupportedLanguage,
     timeoutMs = (env.DOCKER_TIMEOUT_SEC || 15) * 1000
   ): Promise<CompileResult> {
+    const releaseSemaphore = await containerSemaphore.acquire(timeoutMs + 15000);
     const containerName = `entropy-cmp-${crypto.randomUUID()}`;
     const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
 
@@ -302,6 +392,7 @@ export class DockerSandbox {
       };
     } finally {
       activeContainers.delete(containerName);
+      releaseSemaphore();
     }
   }
 
@@ -311,12 +402,15 @@ export class DockerSandbox {
     timeLimitMs = 1000,
     memoryLimitKb = 256 * 1024
   ): Promise<RunExecutionResult> {
+    const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
+    const releaseSemaphore = await containerSemaphore.acquire(wallTimeoutMs + 10000);
     const containerName = `entropy-run-${crypto.randomUUID()}`;
     await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
 
     const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
-    const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
-    const memLimit = `${Math.ceil(memoryLimitKb / 1024)}m`;
+    // Low 2: Clamp container memory limits to a safe minimum execution floor (32MB)
+    const safeMemLimitMb = Math.max(32, Math.ceil(memoryLimitKb / 1024));
+    const memLimit = `${safeMemLimitMb}m`;
 
     const args = [
       'run',
@@ -367,6 +461,7 @@ export class DockerSandbox {
       } catch {}
     } finally {
       activeContainers.delete(containerName);
+      releaseSemaphore();
     }
 
     // Read outputs

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -12,6 +12,7 @@ import { StarfieldBackground } from '../components/galaxy/StarfieldBackground';
 import { StarCluster } from '../components/galaxy/StarCluster';
 import { GalaxyHUD } from '../components/galaxy/GalaxyHUD';
 import { StarModal } from '../components/galaxy/StarModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Loader2, Sparkles, Orbit, Compass, Radio, ShieldAlert } from 'lucide-react';
 
 export const GalaxyPage: React.FC = () => {
@@ -28,14 +29,35 @@ export const GalaxyPage: React.FC = () => {
   // Currently inspected Star problem for modal
   const [selectedProblem, setSelectedProblem] = useState<IStarProblem | null>(null);
 
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const teleportTimerRef = useRef<NodeJS.Timeout | number | null>(null);
+
   useEffect(() => {
     document.title = 'Galaxy Node Map | Entropy';
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (teleportTimerRef.current) {
+        clearTimeout(teleportTimerRef.current);
+      }
+    };
   }, []);
 
   const fetchProgress = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setLoading(true);
-      const res = await api.get('/problems/galaxy/progress');
+      const res = await api.get('/problems/galaxy/progress', { signal: controller.signal });
+      if (!isMountedRef.current || controller.signal.aborted) return;
       if (res.data?.success && res.data?.data) {
         const data: IGalaxyProgressResponse = res.data.data;
         setAvailableCodes(new Set(data.availableCodes || []));
@@ -43,9 +65,14 @@ export const GalaxyPage: React.FC = () => {
         setAttemptedCodes(new Set(data.attemptedCodes || []));
       }
     } catch (err: any) {
+      if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED' || !isMountedRef.current) {
+        return;
+      }
       console.warn('Could not fetch live galaxy progress, fallback to local display:', err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && !controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -88,7 +115,11 @@ export const GalaxyPage: React.FC = () => {
 
   const handleTeleportToCluster = (clusterId: string) => {
     setExpandedClusterId(clusterId);
-    setTimeout(() => {
+    if (teleportTimerRef.current) {
+      clearTimeout(teleportTimerRef.current);
+    }
+    teleportTimerRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return;
       const elem = document.getElementById(`cluster-${clusterId}`);
       if (elem) {
         elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -150,7 +181,9 @@ export const GalaxyPage: React.FC = () => {
       }}
     >
       {/* Background Canvas Starfield */}
-      <StarfieldBackground />
+      <ErrorBoundary fallback={<div style={{ position: 'absolute', inset: 0, backgroundColor: '#000000', pointerEvents: 'none' }} />}>
+        <StarfieldBackground />
+      </ErrorBoundary>
 
       {/* Precision Astrometric Coordinate Grid */}
       <div

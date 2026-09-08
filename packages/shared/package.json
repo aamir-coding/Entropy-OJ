@@ -17,16 +17,26 @@
       "import": "./dist/esm/constants/modelSolutions.js",
       "require": "./dist/cjs/constants/modelSolutions.js",
       "default": "./dist/esm/constants/modelSolutions.js"
+    },
+    "./queues": {
+      "types": "./dist/esm/constants/queues.d.ts",
+      "import": "./dist/esm/constants/queues.js",
+      "require": "./dist/cjs/constants/queues.js",
+      "default": "./dist/esm/constants/queues.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "solutions.js",
+    "solutions.d.ts",
+    "queues.js",
+    "queues.d.ts"
   ],
   "sideEffects": false,
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "build:cjs": "tsc -p tsconfig.json",
-    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:esm": "tsc -p tsconfig.esm.json && node scripts/postbuild-esm.js",
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
     "watch": "tsc -p tsconfig.esm.json -w",
     "test": "node -e \"fs.rmSync('dist/test', { recursive: true, force: true })\" && tsc -p tsconfig.test.json --outDir ./dist/test && node --test dist/test/**/*.test.js"

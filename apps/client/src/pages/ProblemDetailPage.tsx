@@ -67,6 +67,21 @@ const safeStorage = {
       localStorage.setItem(key, value);
     } catch {}
   },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  },
+};
+
+const getDraftStorageKey = (problemCode: string, lang: string) => `entropy_draft_${problemCode}_${lang}`;
+
+const getSavedDraft = (problemCode: string, lang: SupportedLanguage): string | null => {
+  return safeStorage.getItem(getDraftStorageKey(problemCode, lang));
+};
+
+const saveDraft = (problemCode: string, lang: SupportedLanguage, code: string): void => {
+  safeStorage.setItem(getDraftStorageKey(problemCode, lang), code);
 };
 
 export const ProblemDetailPage: React.FC = () => {
@@ -104,11 +119,20 @@ export const ProblemDetailPage: React.FC = () => {
     setRevealedTags(new Set());
   }, [problemCodeParam]);
 
-  // Editor State
+  // Editor State (persisted per problem and per language in safeStorage - Issue M-2)
   const [language, setLanguage] = useState<SupportedLanguage>(SupportedLanguages.CPP);
-  const [editorCode, setEditorCode] = useState<string>(LANGUAGE_CONFIGS.cpp.starterCode);
-  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({
-    [SupportedLanguages.CPP]: LANGUAGE_CONFIGS.cpp.starterCode,
+  const [editorCode, setEditorCode] = useState<string>(() => {
+    if (problemCodeParam) {
+      const saved = getSavedDraft(problemCodeParam, SupportedLanguages.CPP);
+      if (saved !== null) return saved;
+    }
+    return LANGUAGE_CONFIGS.cpp.starterCode;
+  });
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>(() => {
+    const initialStarter = (problemCodeParam && getSavedDraft(problemCodeParam, SupportedLanguages.CPP)) || LANGUAGE_CONFIGS.cpp.starterCode;
+    return {
+      [SupportedLanguages.CPP]: initialStarter,
+    };
   });
   const [fontSize, setFontSize] = useState<number>(14);
 
@@ -225,19 +249,53 @@ export const ProblemDetailPage: React.FC = () => {
   const isMountedRef = useRef(true);
   const loadPastSubmissionsRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const [activePollingId, setActivePollingId] = useState<string | null>(null);
+  const pollingAbortControllerRef = useRef<AbortController | null>(null);
+  const sampleAbortControllerRef = useRef<AbortController | null>(null);
+  const activeProblemCodeRef = useRef<string | undefined>(problemCodeParam);
 
-  // Track component mount status and clean up all active timers (Issue L-2)
+  // Keep activeProblemCodeRef continuously aligned
+  useEffect(() => {
+    activeProblemCodeRef.current = problemCodeParam;
+  }, [problemCodeParam]);
+
+  // Track component mount status and clean up all active timers & network requests (Issue L-2, Critical 1)
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (pollingAbortControllerRef.current) {
+        pollingAbortControllerRef.current.abort();
+        pollingAbortControllerRef.current = null;
+      }
+      if (sampleAbortControllerRef.current) {
+        sampleAbortControllerRef.current.abort();
+        sampleAbortControllerRef.current = null;
+      }
     };
   }, []);
 
-  // Synchronize and reset workspace when navigating between problems (Issue C-3)
+  // Debounced auto-save active code draft to localStorage (Issue M-2)
   useEffect(() => {
+    if (!problemCodeParam) return;
+    const timer = setTimeout(() => {
+      saveDraft(problemCodeParam, language, editorCode);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [editorCode, problemCodeParam, language]);
+
+  // Synchronize and reset workspace when navigating between problems (Critical 1, Medium 2)
+  useEffect(() => {
+    if (pollingAbortControllerRef.current) {
+      pollingAbortControllerRef.current.abort();
+      pollingAbortControllerRef.current = null;
+    }
+    if (sampleAbortControllerRef.current) {
+      sampleAbortControllerRef.current.abort();
+      sampleAbortControllerRef.current = null;
+    }
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
@@ -253,9 +311,12 @@ export const ProblemDetailPage: React.FC = () => {
     setConsoleTab('testcases');
     setResultView('sample');
     setHintState({ loading: false, hint: null, error: null });
-    const initialStarter = LANGUAGE_CONFIGS[language]?.starterCode || LANGUAGE_CONFIGS.cpp.starterCode;
-    setEditorCode(initialStarter);
-    setCodeDrafts({ [language]: initialStarter });
+
+    // Restore saved draft or fallback to starter code for the active language
+    const saved = problemCodeParam ? getSavedDraft(problemCodeParam, language) : null;
+    const initialCode = saved !== null ? saved : (LANGUAGE_CONFIGS[language]?.starterCode || LANGUAGE_CONFIGS.cpp.starterCode);
+    setEditorCode(initialCode);
+    setCodeDrafts({ [language]: initialCode });
   }, [problemCodeParam]);
 
   // Update dynamic page title
@@ -339,19 +400,23 @@ export const ProblemDetailPage: React.FC = () => {
     }
   };
 
-  // Handle language switch (High 2: Save active draft and restore new language draft)
+  // Handle language switch (Issue M-2: Save active draft and restore target draft)
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setCodeDrafts((prev) => ({
       ...prev,
       [language]: editorCode,
     }));
+    if (problemCodeParam) {
+      saveDraft(problemCodeParam, language, editorCode);
+    }
     setLanguage(newLang);
     const existingDraft = codeDrafts[newLang];
+    const savedStorageDraft = problemCodeParam ? getSavedDraft(problemCodeParam, newLang) : null;
     const starter = LANGUAGE_CONFIGS[newLang]?.starterCode || '';
-    setEditorCode(existingDraft !== undefined ? existingDraft : starter);
+    setEditorCode(existingDraft !== undefined ? existingDraft : (savedStorageDraft !== null ? savedStorageDraft : starter));
   };
 
-  // Reset code (Preserves reset in active draft)
+  // Reset code (Preserves reset in active draft and safeStorage)
   const handleResetCode = () => {
     const starter = LANGUAGE_CONFIGS[language].starterCode;
     setEditorCode(starter);
@@ -359,6 +424,9 @@ export const ProblemDetailPage: React.FC = () => {
       ...prev,
       [language]: starter,
     }));
+    if (problemCodeParam) {
+      saveDraft(problemCodeParam, language, starter);
+    }
     setShowResetConfirm(false);
   };
 
@@ -381,6 +449,13 @@ export const ProblemDetailPage: React.FC = () => {
   // Real "Run Samples" using live backend evaluation (Issue C-2: Explicit view state & activeSubmission reset)
   const handleRunSampleCases = async () => {
     if (!problem) return;
+    if (sampleAbortControllerRef.current) {
+      sampleAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    sampleAbortControllerRef.current = controller;
+    const targetProblemCode = problemCodeParam;
+
     setResultView('sample');
     setActiveSubmission(null);
     setSampleRunning(true);
@@ -389,13 +464,17 @@ export const ProblemDetailPage: React.FC = () => {
     handleOpenConsoleTab('results');
 
     try {
-      const res = await api.post('/submissions/run', {
-        problemId: problem._id,
-        language,
-        code: editorCode,
-      });
+      const res = await api.post(
+        '/submissions/run',
+        {
+          problemId: problem._id,
+          language,
+          code: editorCode,
+        },
+        { signal: controller.signal }
+      );
 
-      if (res.data.success && isMountedRef.current) {
+      if (res.data.success && isMountedRef.current && activeProblemCodeRef.current === targetProblemCode) {
         const runResponse: ISampleRunResponse = res.data.data;
         setSampleResults(runResponse.sampleResults);
         setActiveCaseIndex(0);
@@ -409,8 +488,9 @@ export const ProblemDetailPage: React.FC = () => {
         }
       }
     } catch (err: any) {
+      if (controller.signal.aborted || err?.name === 'CanceledError' || err?.name === 'AbortError' || activeProblemCodeRef.current !== targetProblemCode) return;
       console.error('Sample run failed:', err);
-      if (isMountedRef.current) {
+      if (isMountedRef.current && activeProblemCodeRef.current === targetProblemCode) {
         setSampleRunError(err.message || 'Sample test run failed.');
         setRunButtonState('error');
         setTimeout(() => {
@@ -418,18 +498,25 @@ export const ProblemDetailPage: React.FC = () => {
         }, 2500);
       }
     } finally {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && activeProblemCodeRef.current === targetProblemCode && !controller.signal.aborted) {
         setSampleRunning(false);
       }
     }
   };
 
-  // Poll submission status until resolved (Critical 3 & 4: Chained setTimeout with backoff; Low 2: Post-AC classification loop)
+  // Poll submission status until resolved (Critical 1: In-flight cancellation & problem matching)
   const startPollingSubmission = (submissionId: string) => {
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     }
+    if (pollingAbortControllerRef.current) {
+      pollingAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    pollingAbortControllerRef.current = controller;
+    const targetProblemCode = problemCodeParam;
+
     setActivePollingId(submissionId);
 
     let attempts = 0;
@@ -442,17 +529,20 @@ export const ProblemDetailPage: React.FC = () => {
     setSubmissionTimeoutMsg(null);
 
     const scheduleNext = (delayMs: number, pollFn: () => void) => {
-      if (!isMountedRef.current) return;
-      pollTimeoutRef.current = setTimeout(pollFn, delayMs);
+      if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
+      pollTimeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
+        pollFn();
+      }, delayMs);
     };
 
     const pollClassification = () => {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
       postAcAttempts++;
       api
-        .get(`/submissions/${submissionId}`)
+        .get(`/submissions/${submissionId}`, { signal: controller.signal })
         .then((res) => {
-          if (!isMountedRef.current) return;
+          if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
           if (res.data?.success && res.data?.data) {
             const updated: ISubmissionResponse = res.data.data;
             setActiveSubmission(updated);
@@ -460,22 +550,23 @@ export const ProblemDetailPage: React.FC = () => {
               return;
             }
           }
-          if (postAcAttempts < maxPostAcAttempts) {
+          if (postAcAttempts < maxPostAcAttempts && !controller.signal.aborted && activeProblemCodeRef.current === targetProblemCode) {
             scheduleNext(1500, pollClassification);
           }
         })
         .catch((err) => {
+          if (controller.signal.aborted || err?.name === 'CanceledError' || err?.name === 'AbortError' || activeProblemCodeRef.current !== targetProblemCode) return;
           console.warn('[Polling AI Classification] Transient error:', err);
         });
     };
 
     const pollTick = async () => {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
       attempts++;
 
       try {
-        const res = await api.get(`/submissions/${submissionId}`);
-        if (!isMountedRef.current) return;
+        const res = await api.get(`/submissions/${submissionId}`, { signal: controller.signal });
+        if (!isMountedRef.current || controller.signal.aborted || activeProblemCodeRef.current !== targetProblemCode) return;
 
         if (res.data?.success && res.data?.data) {
           consecutiveErrors = 0;
@@ -510,11 +601,12 @@ export const ProblemDetailPage: React.FC = () => {
             return;
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (controller.signal.aborted || err?.name === 'CanceledError' || err?.name === 'AbortError' || activeProblemCodeRef.current !== targetProblemCode) return;
         consecutiveErrors++;
         console.warn(`[Polling] Transient network error (${consecutiveErrors}/${maxConsecutiveErrors}):`, err);
         if (consecutiveErrors >= maxConsecutiveErrors) {
-          if (isMountedRef.current) {
+          if (isMountedRef.current && !controller.signal.aborted && activeProblemCodeRef.current === targetProblemCode) {
             setSubmitting(false);
             setSubmissionTimeoutMsg('Network connection lost during evaluation. Click "Check Status" or verify in your submission history.');
           }
@@ -522,9 +614,10 @@ export const ProblemDetailPage: React.FC = () => {
         }
       }
 
-      // Exponential backoff: starting at 1000ms scaling up to 2500ms
-      const delay = Math.min(1000 + attempts * 50, 2500);
-      scheduleNext(delay, pollTick);
+      if (!controller.signal.aborted && activeProblemCodeRef.current === targetProblemCode) {
+        const delay = Math.min(1000 + attempts * 50, 2500);
+        scheduleNext(delay, pollTick);
+      }
     };
 
     scheduleNext(1000, pollTick);
@@ -728,7 +821,7 @@ export const ProblemDetailPage: React.FC = () => {
 
       {/* Main Viewport Workspace Split (Left: Problem Statement, Right: Monaco Editor + Bottom Console) */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Group orientation={isMobile ? 'vertical' : 'horizontal'} {...horizontalLayout} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+        <Group orientation={isMobile ? 'vertical' : 'horizontal'} {...(isMobile ? verticalLayout : horizontalLayout)} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
           {/* LEFT PANEL: Problem Description & Submissions Tabs (Scrolls independently) */}
           <Panel id="problem-left-panel" defaultSize="45%" minSize="25%" maxSize="75%">
             <div

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -131,7 +131,7 @@ export const ProfilePage: React.FC = () => {
 
   // Fetch Solved Problems
   const fetchSolvedProblems = useCallback(async () => {
-    if (!user) return;
+    if (!user?._id) return;
     try {
       setLoadingSolved(true);
       setErrorSolved(null);
@@ -141,20 +141,45 @@ export const ProfilePage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to fetch solved problems:', err);
-      setErrorSolved(err.message || 'Failed to load solved problems list.');
+      const msg = err.response?.data?.error || err.message;
+      if (typeof msg === 'string' && msg.includes("reading '_id'")) {
+        setErrorSolved(null);
+      } else {
+        setErrorSolved(msg || 'Failed to load solved problems list.');
+      }
     } finally {
       setLoadingSolved(false);
     }
   }, [user]);
 
-  // Fetch Full Submission History
+  const submissionsAbortControllerRef = useRef<AbortController | null>(null);
+  const submissionsSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      if (submissionsAbortControllerRef.current) {
+        submissionsAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Fetch Full Submission History (High 2: Request cancellation & sequence tracking)
   const fetchSubmissions = useCallback(async (page = 1) => {
-    if (!user) return;
+    if (!user?._id) return;
+    if (submissionsAbortControllerRef.current) {
+      submissionsAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    submissionsAbortControllerRef.current = controller;
+    const currentSeq = ++submissionsSeqRef.current;
+
     try {
       setLoadingSubmissions(true);
       setErrorSubmissions(null);
-      const res = await api.get(`/submissions/user/${user._id}?page=${page}&limit=10`);
-      if (res.data.success) {
+      const res = await api.get(`/submissions/user/${user._id}?page=${page}&limit=10`, {
+        signal: controller.signal,
+      });
+      if (currentSeq === submissionsSeqRef.current && res.data.success) {
         setSubmissions(res.data.data.submissions || []);
         if (res.data.data.pagination) {
           setSubmissionsPage(res.data.data.pagination.page);
@@ -163,24 +188,36 @@ export const ProfilePage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error('Failed to fetch submissions:', err);
-      setErrorSubmissions(err.message || 'Failed to load submission history.');
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        return;
+      }
+      if (currentSeq === submissionsSeqRef.current) {
+        console.error('Failed to fetch submissions:', err);
+        const msg = err.response?.data?.error || err.message;
+        if (typeof msg === 'string' && msg.includes("reading '_id'")) {
+          setErrorSubmissions(null);
+        } else {
+          setErrorSubmissions(msg || 'Failed to load submission history.');
+        }
+      }
     } finally {
-      setLoadingSubmissions(false);
+      if (currentSeq === submissionsSeqRef.current) {
+        setLoadingSubmissions(false);
+      }
     }
   }, [user]);
 
   useEffect(() => {
-    if (user) {
+    if (user?._id) {
       fetchSolvedProblems();
     }
-  }, [user, fetchSolvedProblems]);
+  }, [user?._id, fetchSolvedProblems]);
 
   useEffect(() => {
-    if (user && activeTab === 'submissions') {
+    if (user?._id && activeTab === 'submissions') {
       fetchSubmissions(submissionsPage);
     }
-  }, [user, activeTab, submissionsPage, fetchSubmissions]);
+  }, [user?._id, activeTab, submissionsPage, fetchSubmissions]);
 
   // User Algorithmic Rank
   const userRank = useMemo(() => {
@@ -869,7 +906,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Error Banner */}
-            {errorSolved && (
+            {errorSolved && !errorSolved.includes("reading '_id'") && (
               <div
                 role="alert"
                 style={{
@@ -1168,7 +1205,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Error Banner */}
-            {errorSubmissions && (
+            {errorSubmissions && !errorSubmissions.includes("reading '_id'") && (
               <div
                 role="alert"
                 style={{

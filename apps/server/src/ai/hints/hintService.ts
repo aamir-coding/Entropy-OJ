@@ -67,19 +67,7 @@ export class HintService {
       };
     }
 
-    // 3. Per-User Quota Check
-    const quotaStatus = await this.userQuota.check(options.userId);
-    if (!quotaStatus.allowed) {
-      return {
-        hint: `You have reached your hint limit (${env.AI_HINT_USER_DAILY_LIMIT} per day / ${env.AI_HINT_USER_HOURLY_LIMIT} per hour). Please take a moment to review your logic before asking again!`,
-        cached: false,
-        provider: 'none',
-        remainingDaily: quotaStatus.remainingDaily,
-        remainingHourly: quotaStatus.remainingHourly,
-      };
-    }
-
-    // 4. Cache Check (Identical problem + code + verdict)
+    // 3. Cache Check (Identical problem + code + verdict)
     const cacheKey = this.getCacheKey(options.problemId, options.code, options.verdict);
     try {
       const cachedHint = await redisClient.get(cacheKey);
@@ -88,12 +76,22 @@ export class HintService {
           hint: cachedHint,
           cached: true,
           provider: 'cache',
-          remainingDaily: quotaStatus.remainingDaily,
-          remainingHourly: quotaStatus.remainingHourly,
         };
       }
     } catch (err) {
       console.warn('[HintService] Cache read failed:', err);
+    }
+
+    // 4. Atomic Per-User Quota Check & Consume (Medium 1: prevents parallel race bypass)
+    const quotaStatus = await this.userQuota.checkAndConsume(options.userId);
+    if (!quotaStatus.allowed) {
+      return {
+        hint: `You have reached your hint limit (${env.AI_HINT_USER_DAILY_LIMIT} per day / ${env.AI_HINT_USER_HOURLY_LIMIT} per hour). Please take a moment to review your logic before asking again!`,
+        cached: false,
+        provider: 'none',
+        remainingDaily: quotaStatus.remainingDaily,
+        remainingHourly: quotaStatus.remainingHourly,
+      };
     }
 
     // 5. Build Socratic Prompt (Strictly no hidden test case data)
@@ -151,6 +149,8 @@ Please give me a Socratic hint to help me fix this. Remember: DO NOT write any c
       usedProvider = completion.provider;
     } catch (err: any) {
       console.error('[HintService] All providers failed:', err.message);
+      // Refund quota on failure so student is not penalized for infrastructure issues (Medium 1)
+      await this.userQuota.refund(options.userId);
       return {
         hint: 'Our AI tutor is experiencing high demand right now. Please try again in a few minutes or review your logic against the sample test cases.',
         cached: false,
@@ -163,10 +163,7 @@ Please give me a Socratic hint to help me fix this. Remember: DO NOT write any c
     // 7. Strip Code Blocks & Code Patterns (Hard Security Guarantee)
     const sanitizedHint = stripCodeBlocks(rawHint);
 
-    // 8. Consume Quota
-    await this.userQuota.consume(options.userId);
-
-    // 9. Cache in Redis (1 hour TTL)
+    // 8. Cache in Redis (1 hour TTL)
     try {
       await redisClient.set(cacheKey, sanitizedHint, 'EX', 3600);
     } catch (err) {
@@ -177,8 +174,8 @@ Please give me a Socratic hint to help me fix this. Remember: DO NOT write any c
       hint: sanitizedHint,
       cached: false,
       provider: usedProvider,
-      remainingDaily: Math.max(0, quotaStatus.remainingDaily - 1),
-      remainingHourly: Math.max(0, quotaStatus.remainingHourly - 1),
+      remainingDaily: quotaStatus.remainingDaily,
+      remainingHourly: quotaStatus.remainingHourly,
     };
   }
 }

@@ -75,15 +75,64 @@ export function evaluateJsObject(code: string): any {
 }
 
 /**
+ * Strips single-line and multi-line comments from JSON string while preserving
+ * // and /* inside quoted string literals (Medium 3).
+ */
+export function stripJsonComments(input: string): string {
+  let output = '';
+  let inString = false;
+  let isEscaped = false;
+  let i = 0;
+  const len = input.length;
+
+  while (i < len) {
+    const char = input[i];
+
+    if (inString) {
+      output += char;
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (char === '\\') {
+        isEscaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      i++;
+    } else {
+      if (char === '"') {
+        inString = true;
+        isEscaped = false;
+        output += char;
+        i++;
+      } else if (char === '/' && i + 1 < len && input[i + 1] === '/') {
+        // Line comment: skip until newline or end of string
+        i += 2;
+        while (i < len && input[i] !== '\n' && input[i] !== '\r') {
+          i++;
+        }
+      } else if (char === '/' && i + 1 < len && input[i + 1] === '*') {
+        // Block comment: skip until */ or end of string
+        i += 2;
+        while (i + 1 < len && !(input[i] === '*' && input[i + 1] === '/')) {
+          i++;
+        }
+        i += 2; // skip past */
+      } else {
+        output += char;
+        i++;
+      }
+    }
+  }
+
+  return output;
+}
+
+/**
  * Applies regex-based repairs to convert invalid JSON into valid JSON.
  */
 export function repairJsonString(raw: string): string {
-  let s = raw;
-
-  // 1. Remove comments: // ... (line comments) and /* ... */ (block comments)
-  s = s.replace(/\/\*[\s\S]*?\*\//g, '');
-  // Line comments not inside quotes
-  s = s.replace(/(^|[^\\])\/\/.*$/gm, '$1');
+  // 1. Remove comments using stateful scanner that preserves URLs inside quotes (Medium 3)
+  let s = stripJsonComments(raw);
 
   // 2. Resolve string .repeat(N) into safe expanded literals (capped to prevent DoS)
   s = s.replace(

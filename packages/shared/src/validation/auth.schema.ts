@@ -11,8 +11,8 @@ export const registerSchema = z.object({
     .string({ required_error: 'Email is required' })
     .trim()
     .toLowerCase()
-    .email('Invalid email address')
-    .max(100, 'Email cannot exceed 100 characters'),
+    .max(100, 'Email cannot exceed 100 characters')
+    .email('Invalid email address'),
   password: z
     .string({ required_error: 'Password is required' })
     .min(8, 'Password must be at least 8 characters')
@@ -25,10 +25,12 @@ export const loginSchema = z.object({
     .string({ required_error: 'Email is required' })
     .trim()
     .toLowerCase()
+    .max(100, 'Email cannot exceed 100 characters')
     .email('Invalid email address'),
   password: z
     .string({ required_error: 'Password is required' })
-    .min(1, 'Password is required'),
+    .min(1, 'Password is required')
+    .max(100, 'Password cannot exceed 100 characters'),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -17,6 +17,7 @@ export const AuthModal: React.FC = () => {
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
+  const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetFields = () => {
     setLoginError(null);
@@ -26,9 +27,16 @@ export const AuthModal: React.FC = () => {
   };
 
   const handleClose = () => {
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     resetFields();
     closeAuthModal();
   };
+
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    };
+  }, []);
 
   // Keyboard accessibility and focus trap (Issue M-5)
   useEffect(() => {
@@ -70,6 +78,20 @@ export const AuthModal: React.FC = () => {
     };
   }, [isAuthModalOpen, authModalMode]);
 
+  // Click outside backdrop to close
+  useEffect(() => {
+    if (!isAuthModalOpen) return;
+
+    const handleBackdropClick = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        handleClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleBackdropClick);
+    return () => document.removeEventListener('mousedown', handleBackdropClick);
+  }, [isAuthModalOpen]);
+
   if (!isAuthModalOpen) return null;
 
   const handleSwitchMode = (newMode: 'login' | 'register') => {
@@ -84,12 +106,18 @@ export const AuthModal: React.FC = () => {
     try {
       await login({ email: values.email, password: values.password });
       setLoginStatus('success');
-      setTimeout(() => {
+      // High 1: Delay modal dismissal so the success animation can render
+      dismissTimerRef.current = setTimeout(() => {
         handleClose();
       }, 400);
     } catch (err: any) {
       setLoginStatus('error');
-      const msg = err.response?.data?.error?.message || err.message || 'Authentication failed';
+      // High 3: Handle string backend error directly
+      const backendError = err.response?.data?.error;
+      const msg =
+        (typeof backendError === 'string' ? backendError : backendError?.message) ||
+        err.message ||
+        'Authentication failed';
       setLoginError(msg);
       throw err;
     }
@@ -106,12 +134,18 @@ export const AuthModal: React.FC = () => {
         password: values.password,
       });
       setRegisterStatus('success');
-      setTimeout(() => {
+      // High 1: Delay modal dismissal so the success animation can render
+      dismissTimerRef.current = setTimeout(() => {
         handleClose();
       }, 500);
     } catch (err: any) {
       setRegisterStatus('error');
-      const msg = err.response?.data?.error?.message || err.message || 'Registration failed. Please try again.';
+      // High 3: Handle string backend error directly
+      const backendError = err.response?.data?.error;
+      const msg =
+        (typeof backendError === 'string' ? backendError : backendError?.message) ||
+        err.message ||
+        'Registration failed. Please try again.';
       setRegisterError(msg);
       throw err;
     }

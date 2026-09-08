@@ -60,4 +60,30 @@ describe('Universal Date Utilities Tests', () => {
     assert.ok(compareDates(later, earlier) > 0);
     assert.strictEqual(compareDates(earlier, earlier), 0);
   });
+
+  it('should accept valid numeric millisecond timestamps (Low 3)', () => {
+    const timestamp = 1757200000000;
+    const date = toDate(timestamp);
+    assert.strictEqual(date.getTime(), timestamp);
+    assert.strictEqual(toISODateString(timestamp), new Date(timestamp).toISOString());
+  });
+
+  it('should throw for non-finite or invalid numeric timestamps (Low 3)', () => {
+    assert.throws(() => toDate(NaN), {
+      name: 'TypeError',
+      message: /Invalid date input/,
+    });
+    assert.throws(() => toDate(Infinity), {
+      name: 'TypeError',
+      message: /Invalid date input/,
+    });
+  });
+
+  it('should accept date-like objects with getTime method (cross-realm simulation) (Low 3)', () => {
+    const mockCrossRealmDate = {
+      getTime: () => 1757200000000,
+    };
+    const date = toDate(mockCrossRealmDate as any);
+    assert.strictEqual((date as any).getTime(), 1757200000000);
+  });
 });

@@ -46,6 +46,27 @@ async function bootstrap() {
 
   // Health probe HTTP server for container orchestrators (Issue M-3)
   const healthPort = env.WORKER_HEALTH_PORT;
+
+  // Docker availability status cache (Low 1: prevent child process spawn overhead on frequent probes)
+  let lastDockerCheckTime = 0;
+  let cachedDockerStatus = false;
+  const DOCKER_STATUS_CACHE_TTL_MS = 20000; // 20s TTL
+
+  async function checkDockerConnected(): Promise<boolean> {
+    const now = Date.now();
+    if (now - lastDockerCheckTime < DOCKER_STATUS_CACHE_TTL_MS) {
+      return cachedDockerStatus;
+    }
+    try {
+      await execFileAsync('docker', ['info', '--format', '{{.ServerVersion}}'], { timeout: 3000, windowsHide: true });
+      cachedDockerStatus = true;
+    } catch {
+      cachedDockerStatus = false;
+    }
+    lastDockerCheckTime = now;
+    return cachedDockerStatus;
+  }
+
   const healthServer = http.createServer(async (req, res) => {
     if (req.url === '/health' || req.url === '/live') {
       const isDbConnected = mongoose.connection.readyState === 1;
@@ -57,11 +78,7 @@ async function bootstrap() {
         isRedisConnected = pong === 'PONG';
       } catch {}
 
-      let isDockerConnected = false;
-      try {
-        await execFileAsync('docker', ['info', '--format', '{{.ServerVersion}}'], { timeout: 3000, windowsHide: true });
-        isDockerConnected = true;
-      } catch {}
+      const isDockerConnected = await checkDockerConnected();
 
       const isHealthy =
         isDbConnected &&
@@ -91,15 +108,15 @@ async function bootstrap() {
   });
 
   let isShuttingDown = false;
-  const gracefulShutdown = async (signal: string) => {
+  const gracefulShutdown = async (signal: string, exitCode = 0) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    console.log(`\n[Worker] Received ${signal}. Shutting down gracefully...`);
+    console.log(`\n[Worker] Received ${signal}. Shutting down gracefully (exitCode: ${exitCode})...`);
 
     // Hard 30-second kill switch to prevent hanging shutdowns (Issue C-3)
     const forceExitTimer = setTimeout(() => {
       console.error('[Worker] ⚠️ Shutdown timeout of 30s exceeded. Forcing exit.');
-      process.exit(1);
+      process.exit(exitCode || 1);
     }, 30000);
     forceExitTimer.unref();
 
@@ -144,23 +161,20 @@ async function bootstrap() {
     }
 
     clearTimeout(forceExitTimer);
-    process.exit(0);
+    process.exit(exitCode);
   };
 
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
 
   process.on('unhandledRejection', (reason) => {
     console.error('[Worker] 💥 Unhandled Promise Rejection:', reason);
-    gracefulShutdown('unhandledRejection');
+    gracefulShutdown('unhandledRejection', 1);
   });
 
-  process.on('uncaughtException', async (error) => {
+  process.on('uncaughtException', (error) => {
     console.error('[Worker] 💥 Uncaught Exception:', error);
-    try {
-      await killActiveContainers();
-    } catch {}
-    process.exit(1);
+    gracefulShutdown('uncaughtException', 1);
   });
 }
 

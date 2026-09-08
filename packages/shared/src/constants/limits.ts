@@ -8,18 +8,6 @@ export const ExecutionLimits = {
   MAX_CODE_SIZE_BYTES: 64 * 1024, // 64 KB
 } as const;
 
-export const QueueConfig = {
-  SUBMISSION_QUEUE_NAME: 'submission-queue',
-  DEFAULT_JOB_ATTEMPTS: 2,
-  BACKOFF_DELAY_MS: 3000,
-} as const;
-
-export const AIQueueConfig = {
-  AI_QUEUE_NAME: 'ai-queue',
-  HINT_JOB_PREFIX: 'hint',
-  REVIEW_JOB_PREFIX: 'review',
-  CLASSIFY_JOB_PREFIX: 'classify',
-  DEFAULT_JOB_ATTEMPTS: 2,
-  BACKOFF_DELAY_MS: 5000,
-} as const;
+/** @deprecated Import from `@anti-oj/shared/queues` or `packages/shared/src/constants/queues` to avoid bundling backend queue topology in frontend bundles. */
+export { QueueConfig, AIQueueConfig } from './queues';
 

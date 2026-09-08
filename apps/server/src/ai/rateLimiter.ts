@@ -2,19 +2,23 @@ import Redis from 'ioredis';
 import { AIProviderError } from './providers/types';
 
 /**
- * In-memory Token Bucket rate limiter for static RPM/RPS enforcement.
+ * Token Bucket rate limiter supporting local memory and shared Redis sliding window (Medium 2).
  */
 export class TokenBucketLimiter {
   private tokens: number;
   private lastRefill: number;
   private readonly capacity: number;
   private readonly refillRatePerMs: number;
+  private readonly redisClient?: Redis;
+  private readonly redisKey?: string;
 
-  constructor(maxRequestsPerMinute: number) {
+  constructor(maxRequestsPerMinute: number, redisClient?: Redis, redisKey?: string) {
     this.capacity = Math.max(1, maxRequestsPerMinute);
     this.tokens = this.capacity;
     this.lastRefill = Date.now();
     this.refillRatePerMs = this.capacity / (60 * 1000);
+    this.redisClient = redisClient;
+    this.redisKey = redisKey;
   }
 
   private refill(): void {
@@ -34,6 +38,36 @@ export class TokenBucketLimiter {
       return true;
     }
     return false;
+  }
+
+  async tryConsumeAsync(tokens = 1): Promise<boolean> {
+    // Medium 2: Coordinated sliding window rate limiting across server replicas using Redis
+    if (this.redisClient && this.redisKey) {
+      try {
+        const now = Date.now();
+        const windowMs = 60000;
+        const clearBefore = now - windowMs;
+        const pipeline = this.redisClient.pipeline();
+        pipeline.zremrangebyscore(this.redisKey, 0, clearBefore);
+        pipeline.zcard(this.redisKey);
+        const results = await pipeline.exec();
+        const currentCount = (results?.[1]?.[1] as number) || 0;
+        if (currentCount + tokens <= this.capacity) {
+          const addPipeline = this.redisClient.pipeline();
+          for (let i = 0; i < tokens; i++) {
+            addPipeline.zadd(this.redisKey, now, `${now}-${Math.random()}`);
+          }
+          addPipeline.pexpire(this.redisKey, windowMs * 2);
+          await addPipeline.exec();
+          this.tryConsume(tokens);
+          return true;
+        }
+        return false;
+      } catch {
+        return this.tryConsume(tokens);
+      }
+    }
+    return this.tryConsume(tokens);
   }
 
   getEstimatedWaitMs(tokens = 1): number {
@@ -118,6 +152,105 @@ export class PerUserQuota {
         resetDailySec: 86400,
         resetHourlySec: 3600,
       };
+    }
+  }
+
+  /**
+   * Atomic check-and-consume using Redis Lua script to prevent race conditions on parallel requests (Medium 1).
+   */
+  async checkAndConsume(userId: string): Promise<UserQuotaStatus> {
+    try {
+      const dailyKey = this.getDailyKey(userId);
+      const hourlyKey = this.getHourlyKey(userId);
+
+      const luaScript = `
+        local dailyKey = KEYS[1]
+        local hourlyKey = KEYS[2]
+        local dailyLimit = tonumber(ARGV[1])
+        local hourlyLimit = tonumber(ARGV[2])
+        local dailyTtl = tonumber(ARGV[3])
+        local hourlyTtl = tonumber(ARGV[4])
+
+        local dailyCount = tonumber(redis.call('get', dailyKey) or '0')
+        local hourlyCount = tonumber(redis.call('get', hourlyKey) or '0')
+
+        if dailyCount >= dailyLimit or hourlyCount >= hourlyLimit then
+          local dt = redis.call('ttl', dailyKey)
+          local ht = redis.call('ttl', hourlyKey)
+          return { 0, math.max(0, dailyLimit - dailyCount), math.max(0, hourlyLimit - hourlyCount), dt > 0 and dt or dailyTtl, ht > 0 and ht or hourlyTtl }
+        end
+
+        local newDaily = redis.call('incr', dailyKey)
+        if newDaily == 1 then
+          redis.call('expire', dailyKey, dailyTtl)
+        end
+
+        local newHourly = redis.call('incr', hourlyKey)
+        if newHourly == 1 then
+          redis.call('expire', hourlyKey, hourlyTtl)
+        end
+
+        local dt = redis.call('ttl', dailyKey)
+        local ht = redis.call('ttl', hourlyKey)
+
+        return { 1, math.max(0, dailyLimit - newDaily), math.max(0, hourlyLimit - newHourly), dt > 0 and dt or dailyTtl, ht > 0 and ht or hourlyTtl }
+      `;
+
+      const res = (await this.redisClient.eval(
+        luaScript,
+        2,
+        dailyKey,
+        hourlyKey,
+        this.dailyLimit,
+        this.hourlyLimit,
+        86400 * 2,
+        3600 * 2
+      )) as [number, number, number, number, number];
+
+      const allowed = res[0] === 1;
+      const remainingDaily = res[1];
+      const remainingHourly = res[2];
+      const resetDailySec = res[3];
+      const resetHourlySec = res[4];
+
+      return {
+        allowed,
+        remainingDaily,
+        remainingHourly,
+        resetDailySec,
+        resetHourlySec,
+      };
+    } catch (err) {
+      if (process.env.NODE_ENV === 'test') {
+        return {
+          allowed: true,
+          remainingDaily: this.dailyLimit,
+          remainingHourly: this.hourlyLimit,
+          resetDailySec: 86400,
+          resetHourlySec: 3600,
+        };
+      }
+      console.error('[PerUserQuota] Redis checkAndConsume error, failing closed:', err);
+      return {
+        allowed: false,
+        remainingDaily: 0,
+        remainingHourly: 0,
+        resetDailySec: 86400,
+        resetHourlySec: 3600,
+      };
+    }
+  }
+
+  async refund(userId: string): Promise<void> {
+    try {
+      const dailyKey = this.getDailyKey(userId);
+      const hourlyKey = this.getHourlyKey(userId);
+      const pipeline = this.redisClient.pipeline();
+      pipeline.decr(dailyKey);
+      pipeline.decr(hourlyKey);
+      await pipeline.exec();
+    } catch (err) {
+      console.warn('[PerUserQuota] Redis refund error:', err);
     }
   }
 

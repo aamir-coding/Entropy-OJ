@@ -18,11 +18,11 @@ export const ProblemDifficulties = {
   HARD: 'Hard',
 } as const;
 
-export const ALL_PROBLEM_DIFFICULTIES = [
+export const ALL_PROBLEM_DIFFICULTIES = Object.freeze([
   ProblemDifficulties.EASY,
   ProblemDifficulties.MEDIUM,
   ProblemDifficulties.HARD,
-] as const;
+]) as readonly ['Easy', 'Medium', 'Hard'];
 
 export type ProblemDifficulty = (typeof ALL_PROBLEM_DIFFICULTIES)[number];
 
@@ -89,14 +89,21 @@ export interface IAdminProblemListItem extends IProblemListItem {
   createdAt: string | Date;
 }
 
-export interface IAdminValidateTestCaseResult {
+/** Base interface uniting test case evaluation and validation outputs (Low 1) */
+export interface IBaseTestCaseResult {
+  passed: boolean;
+  verdict: Verdict;
+  actualOutput?: string;
+  expectedOutput?: string;
+  error?: string;
+}
+
+export interface IAdminValidateTestCaseResult extends IBaseTestCaseResult {
   testCaseIndex: number;
   isSample: boolean;
   input: string;
   expectedOutput: string;
   actualOutput: string;
-  passed: boolean;
-  verdict: Verdict;
   executionTimeMs: number;
   memoryUsedKb: number;
   error?: string;
@@ -125,10 +132,11 @@ export interface ISolutionProblemPopulated {
   difficulty: ProblemDifficulty;
 }
 
-export interface ISolution {
+/** Unpopulated storage entity directly reflecting Mongoose schema (Medium 5) */
+export interface ISolutionRaw {
   _id: string;
-  user: string | ISolutionUserPopulated;
-  problem: string | ISolutionProblemPopulated;
+  user: string;
+  problem: string;
   code: string;
   language: SupportedLanguage;
   verdict: Verdict;
@@ -142,10 +150,14 @@ export interface ISolution {
   submittedAt: string | Date;
 }
 
-export interface ISolutionPopulated extends Omit<ISolution, 'user' | 'problem'> {
+/** Strictly populated presentation contract for API responses (Medium 5) */
+export interface ISolutionPopulated extends Omit<ISolutionRaw, 'user' | 'problem'> {
   user: ISolutionUserPopulated;
   problem: ISolutionProblemPopulated;
 }
+
+/** Flexible solution type supporting raw database or populated presentation */
+export type ISolution = ISolutionRaw | ISolutionPopulated;
 
 export interface ISubmissionResponse {
   submissionId: string;
@@ -195,11 +207,9 @@ export interface JudgeJobPayload {
   memoryLimitKb: number;
 }
 
-export interface TestCaseExecutionResult {
+export interface TestCaseExecutionResult extends IBaseTestCaseResult {
   testCaseNumber: number;
   isSample: boolean;
-  passed: boolean;
-  verdict: Verdict;
   timeMs: number;
   memoryKb: number;
   actualOutput?: string;
@@ -219,13 +229,11 @@ export interface JudgeExecutionResult {
 }
 
 // Sample run contracts for live sample execution endpoint
-export interface ISampleCaseResult {
+export interface ISampleCaseResult extends IBaseTestCaseResult {
   caseIndex: number;
   input: string;
   expectedOutput: string;
   actualOutput: string;
-  passed: boolean;
-  verdict: Verdict;
   executionTimeMs: number;
   memoryUsedKb: number;
   error?: string;
@@ -239,13 +247,24 @@ export interface ISampleRunResponse {
   sampleResults: ISampleCaseResult[];
 }
 
-export interface ApiResponse<T = unknown> {
-  success: boolean;
+export interface ApiSuccessResponse<T = unknown> {
+  success: true;
   message?: string;
-  data?: T;
-  error?: string;
+  data: T;
+  error?: never;
+  errors?: never;
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  message?: string;
+  data?: never;
+  error: string;
   errors?: Record<string, string[]>;
 }
+
+/** Discriminated union between API success and error envelopes (Low 2) */
+export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 export interface UserStats {
   totalSubmissions: number;

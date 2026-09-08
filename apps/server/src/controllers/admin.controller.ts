@@ -4,7 +4,7 @@ import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { DockerSandbox } from '../sandbox/dockerRunner';
+import { DockerSandbox, sandboxSemaphore } from '../sandbox/dockerRunner';
 import {
   CreateProblemInput,
   UpdateProblemInput,
@@ -166,34 +166,86 @@ export async function createAdminProblem(
       return;
     }
 
-    const problem = await Problem.create({
-      problemCode: input.problemCode.toLowerCase().trim(),
-      name: input.name.trim(),
-      statement: input.statement.trim(),
-      difficulty: input.difficulty,
-      tags: input.tags,
-      timeLimitMs: input.timeLimitMs,
-      memoryLimitKb: input.memoryLimitKb,
-      sampleCases: input.sampleCases,
-    });
+    let createdProblem: any;
 
-    const testCaseDocs = input.testCases.map((tc, idx) => ({
-      problem: problem._id,
-      input: tc.input,
-      output: tc.output,
-      isSample: tc.isSample || false,
-      order: tc.order ?? idx + 1,
-    }));
+    // High 2: Enclose problem creation and test cases insertion in atomic transaction with rollback
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const [problem] = await Problem.create(
+          [
+            {
+              problemCode: input.problemCode.toLowerCase().trim(),
+              name: input.name.trim(),
+              statement: input.statement.trim(),
+              difficulty: input.difficulty,
+              tags: input.tags,
+              timeLimitMs: input.timeLimitMs,
+              memoryLimitKb: input.memoryLimitKb,
+              sampleCases: input.sampleCases,
+            },
+          ],
+          { session }
+        );
 
-    await TestCase.insertMany(testCaseDocs);
+        createdProblem = problem;
+
+        const testCaseDocs = input.testCases.map((tc, idx) => ({
+          problem: problem._id,
+          input: tc.input,
+          output: tc.output,
+          isSample: tc.isSample || false,
+          order: tc.order ?? idx + 1,
+        }));
+
+        await TestCase.insertMany(testCaseDocs, { session });
+      });
+    } catch (txnError: any) {
+      if (
+        txnError.message?.includes('replica set') ||
+        txnError.message?.includes('Transactions are not supported')
+      ) {
+        // Standalone MongoDB fallback with explicit rollback
+        const problem = await Problem.create({
+          problemCode: input.problemCode.toLowerCase().trim(),
+          name: input.name.trim(),
+          statement: input.statement.trim(),
+          difficulty: input.difficulty,
+          tags: input.tags,
+          timeLimitMs: input.timeLimitMs,
+          memoryLimitKb: input.memoryLimitKb,
+          sampleCases: input.sampleCases,
+        });
+        createdProblem = problem;
+
+        try {
+          const testCaseDocs = input.testCases.map((tc, idx) => ({
+            problem: problem._id,
+            input: tc.input,
+            output: tc.output,
+            isSample: tc.isSample || false,
+            order: tc.order ?? idx + 1,
+          }));
+
+          await TestCase.insertMany(testCaseDocs);
+        } catch (insertErr) {
+          await Problem.findByIdAndDelete(problem._id).catch(() => {});
+          throw insertErr;
+        }
+      } else {
+        throw txnError;
+      }
+    } finally {
+      await session.endSession();
+    }
 
     res.status(201).json({
       success: true,
       message: 'Problem created successfully',
       data: {
-        _id: problem._id.toString(),
-        problemCode: problem.problemCode,
-        name: problem.name,
+        _id: createdProblem._id.toString(),
+        problemCode: createdProblem.problemCode,
+        name: createdProblem.name,
       },
     });
   } catch (error) {
@@ -421,6 +473,14 @@ export async function validateModelSolution(
       return;
     }
 
+    if (sandboxSemaphore.activeCount >= sandboxSemaphore.max && sandboxSemaphore.queueLength >= 2) {
+      res.status(503).json({
+        success: false,
+        error: 'Sandbox evaluation engine is currently at maximum capacity. Please try again shortly.',
+      });
+      return;
+    }
+
     // Prepare live Docker sandbox
     const sandbox = await DockerSandbox.create();
 
@@ -450,7 +510,17 @@ export async function validateModelSolution(
       let overallVerdict: Verdict = Verdicts.ACCEPTED;
       const testResults: IAdminValidateTestCaseResult[] = [];
 
+      // Critical 1: Enforce wall-clock budget (25s) to prevent event loop exhaustion and gateway timeouts
+      const MAX_VALIDATE_WALL_TIME_MS = 25000;
+      const startTime = Date.now();
+
       for (let i = 0; i < testCases.length; i++) {
+        if (Date.now() - startTime > MAX_VALIDATE_WALL_TIME_MS) {
+          allPassed = false;
+          if (overallVerdict === Verdicts.ACCEPTED) overallVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+          break;
+        }
+
         const tc = testCases[i];
         const runRes = await sandbox.runTestCase(tc.input, language, problem.timeLimitMs, problem.memoryLimitKb);
 
