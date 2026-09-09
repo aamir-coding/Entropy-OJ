@@ -7,8 +7,13 @@ import { env } from '../config/env';
 import { Verdicts, SupportedLanguages } from '@anti-oj/shared';
 import { getModelSolution } from '@anti-oj/shared/solutions';
 
+import { ensureProblemsSeeded } from './seedProblems';
+
 export async function resetAndOrganicallySeedSuperUser(): Promise<void> {
   console.log('[SuperUser Provisioner] Connecting to MongoDB at:', env.MONGO_URI);
+
+  // Guarantee problems and test cases are seeded before provisioning solutions
+  await ensureProblemsSeeded();
 
   // 1. Find existing superuser and delete all associated records
   const existingSuperUser = await User.findOne({ email: 'superuser@entropy.dev' });
@@ -45,20 +50,30 @@ export async function resetAndOrganicallySeedSuperUser(): Promise<void> {
   });
   console.log(`[SuperUser Provisioner] Created fresh Super User: ${superUser.email} (ID: ${superUser._id})`);
 
-  // 4. Select active problems to organically solve
+  // 4. Select active problems to organically solve (All 9 problems in Arrays & Hashing + cross-system coverage)
   const solvedProblemCodes = [
-    { code: 'two-sum', lang: SupportedLanguages.PYTHON, approach: 'Hash Map Frequency Counting', timeC: 'O(N)', spaceC: 'O(N)' },
+    // ── Arrays & Hashing Star System (All 9 Problems Solved) ─────────────────
     { code: 'contains-duplicate', lang: SupportedLanguages.PYTHON, approach: 'Hash Set Lookup', timeC: 'O(N)', spaceC: 'O(N)' },
     { code: 'valid-anagram', lang: SupportedLanguages.PYTHON, approach: 'Character Frequency Counting', timeC: 'O(N)', spaceC: 'O(1)' },
+    { code: 'two-sum', lang: SupportedLanguages.PYTHON, approach: 'Hash Map Frequency Counting', timeC: 'O(N)', spaceC: 'O(N)' },
+    { code: 'group-anagrams', lang: SupportedLanguages.PYTHON, approach: 'Sorted String Hash Map Grouping', timeC: 'O(N * K log K)', spaceC: 'O(N * K)' },
+    { code: 'top-k-frequent-elements', lang: SupportedLanguages.PYTHON, approach: 'Hash Map Frequency Bucket Sort', timeC: 'O(N)', spaceC: 'O(N)' },
+    { code: 'product-of-array-except-self', lang: SupportedLanguages.CPP, approach: 'Prefix & Suffix Product Array Accumulation', timeC: 'O(N)', spaceC: 'O(1)' },
+    { code: 'valid-sudoku', lang: SupportedLanguages.PYTHON, approach: 'Row, Column & Box Hash Sets', timeC: 'O(1)', spaceC: 'O(1)' },
+    { code: 'encode-and-decode-strings', lang: SupportedLanguages.PYTHON, approach: 'Length-Prefixed Chunk Delimiting', timeC: 'O(N)', spaceC: 'O(1)' },
+    { code: 'longest-consecutive-sequence', lang: SupportedLanguages.CPP, approach: 'Hash Set Sequence Exploration', timeC: 'O(N)', spaceC: 'O(N)' },
+
+    // ── Additional Solved Problems Across Other Star Systems ────────────────
     { code: 'valid-palindrome', lang: SupportedLanguages.CPP, approach: 'Two Pointers In-Place', timeC: 'O(N)', spaceC: 'O(1)' },
     { code: 'best-time-to-buy-and-sell-stock', lang: SupportedLanguages.CPP, approach: 'Single Pass Min Tracking', timeC: 'O(N)', spaceC: 'O(1)' },
     { code: 'valid-parentheses', lang: SupportedLanguages.PYTHON, approach: 'Stack-based Matching', timeC: 'O(N)', spaceC: 'O(N)' },
   ];
 
   const now = Date.now();
-  let dayOffset = 5;
+  const totalCount = solvedProblemCodes.length;
 
-  for (const item of solvedProblemCodes) {
+  for (let i = 0; i < totalCount; i++) {
+    const item = solvedProblemCodes[i];
     const problemDoc = await Problem.findOne({ problemCode: item.code });
     if (!problemDoc) {
       console.warn(`[SuperUser Provisioner] Warning: Problem ${item.code} not found in database!`);
@@ -68,8 +83,9 @@ export async function resetAndOrganicallySeedSuperUser(): Promise<void> {
     const testCaseCount = await TestCase.countDocuments({ problem: problemDoc._id });
     const modelCode = getModelSolution(item.code, item.lang) || '# Valid Model Solution';
 
-    const submittedAt = new Date(now - dayOffset * 24 * 60 * 60 * 1000 + Math.random() * 3600000);
-    dayOffset--;
+    // Distribute submissions realistically across the past 6 days
+    const hoursAgo = 3 + (totalCount - 1 - i) * (140 / totalCount) + (Math.random() * 2 - 1);
+    const submittedAt = new Date(now - hoursAgo * 3600 * 1000);
 
     await Solution.create({
       user: superUser._id,
@@ -90,11 +106,13 @@ export async function resetAndOrganicallySeedSuperUser(): Promise<void> {
       submittedAt,
     });
 
-    await Problem.updateOne({ _id: problemDoc._id }, { $inc: { acceptedSubmissions: 1 } });
+    const totalSubs = await Solution.countDocuments({ problem: problemDoc._id });
+    const acceptedSubs = await Solution.countDocuments({ problem: problemDoc._id, verdict: Verdicts.ACCEPTED });
+    await Problem.updateOne({ _id: problemDoc._id }, { totalSubmissions: totalSubs, acceptedSubmissions: acceptedSubs });
     console.log(`  ✔ Organically solved: ${item.code} (${item.lang}) -> Accepted (${testCaseCount}/${testCaseCount} tests)`);
   }
 
-  // 5. Add 1 genuine Wrong Answer submission on an unsolved problem to organically produce "6 accepted of 7 submissions"
+  // 5. Add 1 genuine Wrong Answer submission on an unsolved problem to organically produce realistic accuracy
   const waProblemDoc = await Problem.findOne({ problemCode: 'maximum-subarray' });
   if (waProblemDoc) {
     const waTestCases = await TestCase.countDocuments({ problem: waProblemDoc._id });
@@ -111,8 +129,11 @@ export async function resetAndOrganicallySeedSuperUser(): Promise<void> {
       totalTestCases: waTestCases,
       passedTestCases: Math.max(1, Math.floor(waTestCases * 0.3)),
       failedTestCaseNumber: Math.max(2, Math.floor(waTestCases * 0.3) + 1),
-      submittedAt: new Date(now - 12 * 3600 * 1000), // 12 hours ago
+      submittedAt: new Date(now - 1.5 * 3600 * 1000), // 1.5 hours ago
     });
+    const totalSubs = await Solution.countDocuments({ problem: waProblemDoc._id });
+    const acceptedSubs = await Solution.countDocuments({ problem: waProblemDoc._id, verdict: Verdicts.ACCEPTED });
+    await Problem.updateOne({ _id: waProblemDoc._id }, { totalSubmissions: totalSubs, acceptedSubmissions: acceptedSubs });
     console.log(`  ✔ Organically attempted: maximum-subarray -> Wrong Answer (partial tests passed)`);
   }
 

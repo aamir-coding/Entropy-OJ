@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { AuthModal } from './components/AuthModal';
 import { AdminRoute } from './components/AdminRoute';
@@ -35,15 +35,11 @@ const RouteLoadingFallback = () => (
   </div>
 );
 
-/* Shell that conditionally renders Navbar (hidden on landing page for guest visitors, visible for logged-in users) */
+/* Shell that renders the global Navbar across all pages */
 const AppShell: React.FC = () => {
-  const location = useLocation();
-  const { user } = useAuth();
-  const isLanding = location.pathname === '/';
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {(!isLanding || Boolean(user)) && <Navbar />}
+      <Navbar />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>

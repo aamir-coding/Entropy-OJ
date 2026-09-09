@@ -860,3 +860,54 @@ code, pre {
     transform: scale(1.08);
   }
 }
+
+/* ── Minimal Floating Navigation Sidebar ────────────────────────────────── */
+.entropy-bounce-sidebar-container {
+  position: fixed;
+  left: max(1.5rem, calc((100vw - 1200px) / 2 - 140px));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.entropy-bounce-sidebar-container ul,
+.entropy-bounce-sidebar-container li {
+  list-style: none !important;
+  list-style-type: none !important;
+  margin: 0 !important;
+}
+
+.entropy-bounce-sidebar-container li::marker {
+  display: none !important;
+  content: '' !important;
+}
+
+.entropy-bounce-sidebar-container button,
+.entropy-bounce-sidebar-container a {
+  color: rgba(255, 255, 255, 0.45) !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+  padding-left: 22px !important;
+}
+
+.entropy-bounce-sidebar-container button[data-active="true"],
+.entropy-bounce-sidebar-container a[data-active="true"] {
+  color: #ffffff !important;
+}
+
+.entropy-bounce-sidebar-container button:hover,
+.entropy-bounce-sidebar-container a:hover {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+@media (max-width: 1180px) {
+  .entropy-bounce-sidebar-container {
+    display: none !important;
+  }
+}
+
+
