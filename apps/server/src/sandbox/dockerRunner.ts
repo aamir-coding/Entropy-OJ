@@ -127,7 +127,9 @@ export class DockerSandbox {
   static async create(): Promise<DockerSandbox> {
     const tmpBase = path.join(os.tmpdir(), 'entropy-server-workspaces');
     await fs.mkdir(tmpBase, { recursive: true });
+    await fs.chmod(tmpBase, 0o777).catch(() => {});
     const workspaceDir = await fs.mkdtemp(path.join(tmpBase, 'sample-'));
+    await fs.chmod(workspaceDir, 0o777).catch(() => {});
     return new DockerSandbox(workspaceDir);
   }
 
@@ -154,7 +156,9 @@ export class DockerSandbox {
 
   async prepareSourceFile(code: string, language: SupportedLanguage): Promise<void> {
     const filename = language === 'cpp' ? 'solution.cpp' : 'solution.py';
-    await fs.writeFile(path.join(this.workspaceDir, filename), code, 'utf-8');
+    const filePath = path.join(this.workspaceDir, filename);
+    await fs.writeFile(filePath, code, 'utf-8');
+    await fs.chmod(filePath, 0o666).catch(() => {});
   }
 
   private normalizeDockerMountPath(dirPath: string): string {
@@ -239,7 +243,9 @@ export class DockerSandbox {
     const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
     const releaseSemaphore = await sandboxSemaphore.acquire(wallTimeoutMs + 15000);
     const containerName = `entropy-run-sample-${crypto.randomUUID()}`;
-    await fs.writeFile(path.join(this.workspaceDir, 'input.txt'), input, 'utf-8');
+    const inputPath = path.join(this.workspaceDir, 'input.txt');
+    await fs.writeFile(inputPath, input, 'utf-8');
+    await fs.chmod(inputPath, 0o666).catch(() => {});
 
     const dockerMountPath = this.normalizeDockerMountPath(this.workspaceDir);
     const safeMemLimitMb = Math.max(32, Math.ceil(memoryLimitKb / 1024));
