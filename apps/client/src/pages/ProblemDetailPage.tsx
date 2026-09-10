@@ -53,6 +53,7 @@ import {
 
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { defineEntropyTheme } from '../styles/monacoTheme';
+import { ProblemTimer } from '../components/ProblemTimer';
 
 const safeStorage = {
   getItem: (key: string): string | null => {
@@ -109,6 +110,12 @@ export const ProblemDetailPage: React.FC = () => {
   const [leftTab, setLeftTab] = useState<'statement' | 'submissions'>('statement');
   const [copiedInputIdx, setCopiedInputIdx] = useState<number | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Timer & Keystroke Tracking State
+  const [isProblemSolved, setIsProblemSolved] = useState<boolean>(false);
+  const [isTimerCompleted, setIsTimerCompleted] = useState<boolean>(false);
+  const [timerResetTrigger, setTimerResetTrigger] = useState<number>(0);
+  const [editorKeystrokes, setEditorKeystrokes] = useState<number>(0);
 
   // Blind Mode State (persisted via localStorage, initialized from 'entropy_blind_mode')
   const [blindMode] = useState<boolean>(() => safeStorage.getItem('entropy_blind_mode') === 'true');
@@ -311,6 +318,9 @@ export const ProblemDetailPage: React.FC = () => {
     setConsoleTab('testcases');
     setResultView('sample');
     setHintState({ loading: false, hint: null, error: null });
+    setIsProblemSolved(false);
+    setIsTimerCompleted(false);
+    setEditorKeystrokes(0);
 
     // Restore saved draft or fallback to starter code for the active language
     const saved = problemCodeParam ? getSavedDraft(problemCodeParam, language) : null;
@@ -416,7 +426,7 @@ export const ProblemDetailPage: React.FC = () => {
     setEditorCode(existingDraft !== undefined ? existingDraft : (savedStorageDraft !== null ? savedStorageDraft : starter));
   };
 
-  // Reset code (Preserves reset in active draft and safeStorage)
+  // Reset code (Preserves reset in active draft and safeStorage, and synchronizes timer)
   const handleResetCode = () => {
     const starter = LANGUAGE_CONFIGS[language].starterCode;
     setEditorCode(starter);
@@ -427,6 +437,8 @@ export const ProblemDetailPage: React.FC = () => {
     if (problemCodeParam) {
       saveDraft(problemCodeParam, language, starter);
     }
+    setTimerResetTrigger((prev) => prev + 1);
+    setIsProblemSolved(false);
     setShowResetConfirm(false);
   };
 
@@ -582,6 +594,7 @@ export const ProblemDetailPage: React.FC = () => {
 
             if (updated.verdict === Verdicts.ACCEPTED) {
               notifyStatsUpdated();
+              setIsProblemSolved(true);
               if (!updated.classification) {
                 scheduleNext(1500, pollClassification);
               }
@@ -785,6 +798,17 @@ export const ProblemDetailPage: React.FC = () => {
 
         {/* Top Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <ProblemTimer
+            difficulty={problem.difficulty}
+            problemCode={problem.problemCode}
+            userId={user?._id}
+            isAccepted={isProblemSolved}
+            editorKeystrokeTrigger={editorKeystrokes}
+            resetTrigger={timerResetTrigger}
+            onReset={() => setIsProblemSolved(false)}
+            onCompletedChange={setIsTimerCompleted}
+          />
+
           <StatefulButton
             id="run-sample-cases-btn"
             onClick={handleRunSampleCases}
@@ -1201,7 +1225,9 @@ export const ProblemDetailPage: React.FC = () => {
                     {/* Right: Reset Action */}
                     {showResetConfirm ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Reset code?</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {isTimerCompleted || isProblemSolved ? 'Reset code & timer?' : 'Reset code?'}
+                        </span>
                         <button
                           onClick={handleResetCode}
                           className="btn btn-outline"
@@ -1218,7 +1244,10 @@ export const ProblemDetailPage: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <Tooltip content="Reset code template to starter boilerplate" side="top">
+                      <Tooltip
+                        content={isTimerCompleted || isProblemSolved ? 'Reset code template and practice timer' : 'Reset code template to starter boilerplate'}
+                        side="top"
+                      >
                         <button
                           onClick={() => setShowResetConfirm(true)}
                           className="btn btn-outline"
@@ -1246,7 +1275,10 @@ export const ProblemDetailPage: React.FC = () => {
                         theme="entropy-dark"
                         beforeMount={defineEntropyTheme}
                         value={editorCode}
-                        onChange={(value) => setEditorCode(value || '')}
+                        onChange={(value) => {
+                          setEditorCode(value || '');
+                          setEditorKeystrokes((prev) => prev + 1);
+                        }}
                         options={{
                           minimap: { enabled: false },
                           fontSize,

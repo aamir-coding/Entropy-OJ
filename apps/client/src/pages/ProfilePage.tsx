@@ -34,6 +34,7 @@ import {
   History,
   XCircle,
   AlertTriangle,
+  Timer,
 } from 'lucide-react';
 
 interface ISolvedProblemItem {
@@ -111,6 +112,31 @@ export const ProfilePage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'runtime_asc' | 'memory_asc' | 'name_asc'>('date_desc');
   const [solvedPage, setSolvedPage] = useState(1);
   const solvedPageSize = 10;
+
+  // Practice & Workspace Preferences (user-scoped)
+  const autostartStorageKey = user?._id ? `entropy_timer_autostart_${user._id}` : 'entropy_timer_autostart';
+
+  const [autoStartTimer, setAutoStartTimer] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(autostartStorageKey) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Synchronize preference state when user logs in, loads, or switches accounts
+  useEffect(() => {
+    try {
+      setAutoStartTimer(localStorage.getItem(autostartStorageKey) === 'true');
+    } catch {}
+  }, [autostartStorageKey]);
+
+  const handleToggleAutoStartTimer = (checked: boolean) => {
+    setAutoStartTimer(checked);
+    try {
+      localStorage.setItem(autostartStorageKey, String(checked));
+    } catch {}
+  };
 
   // Code Viewer Modal state
   const [viewCodeModal, setViewCodeModal] = useState<{
@@ -765,6 +791,79 @@ export const ProfilePage: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Practice Preferences */}
+        <div
+          className="glass-panel"
+          style={{
+            padding: '1rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <Timer size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Auto-Start Practice Timer
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Automatically start the problem timer on first keystroke in the code editor (Default: Off)
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoStartTimer}
+            aria-label="Toggle auto-start practice timer"
+            onClick={() => handleToggleAutoStartTimer(!autoStartTimer)}
+            style={{
+              width: '42px',
+              height: '24px',
+              borderRadius: '9999px',
+              background: autoStartTimer ? 'var(--brand-white)' : 'var(--border-medium)',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background-color 0.2s ease',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <span
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: autoStartTimer ? 'var(--brand-black)' : 'var(--text-muted)',
+                transform: autoStartTimer ? 'translateX(18px)' : 'translateX(0px)',
+                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease',
+                display: 'block',
+              }}
+            />
+          </button>
         </div>
 
         {/* Primary View Tabs: Solved Problems vs Recent Submissions */}
