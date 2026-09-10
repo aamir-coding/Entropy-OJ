@@ -20,7 +20,7 @@ function setTokenCookie(res: Response, token: string): void {
   res.cookie('token', token, {
     httpOnly: true,
     secure: env.isProduction,
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge,
   });
 }
@@ -56,6 +56,7 @@ export async function register(
       success: true,
       message: 'Account created successfully',
       data: {
+        token,
         user: {
           _id: newUser._id,
           fullName: newUser.fullName,
@@ -104,6 +105,7 @@ export async function login(
       success: true,
       message: 'Logged in successfully',
       data: {
+        token,
         user: {
           _id: user._id,
           fullName: user.fullName,

@@ -66,6 +66,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Hook 401 unauthorized responses to clear stale auth and open login modal (Issue H-3)
   useEffect(() => {
     setOnUnauthorizedCallback(() => {
+      try {
+        localStorage.removeItem('entropy-token');
+      } catch {}
       setUser(null);
       setStats(null);
       setAuthModalMode('login');
@@ -128,6 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentSessionId = ++activeSessionIdRef.current;
     const res = await api.post('/auth/login', input);
     if (res.data.success) {
+      if (res.data.data?.token) {
+        try {
+          localStorage.setItem('entropy-token', res.data.data.token);
+        } catch {}
+      }
       if (activeSessionIdRef.current === currentSessionId) {
         setUser(res.data.data.user);
         // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
@@ -145,6 +153,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const currentSessionId = ++activeSessionIdRef.current;
     const res = await api.post('/auth/register', input);
     if (res.data.success) {
+      if (res.data.data?.token) {
+        try {
+          localStorage.setItem('entropy-token', res.data.data.token);
+        } catch {}
+      }
       if (activeSessionIdRef.current === currentSessionId) {
         setUser(res.data.data.user);
         // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
@@ -160,6 +173,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     activeSessionIdRef.current++;
+    try {
+      localStorage.removeItem('entropy-token');
+    } catch {}
     try {
       await api.post('/auth/logout');
     } finally {

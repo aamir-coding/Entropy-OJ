@@ -17,6 +17,17 @@ export const setOnUnauthorizedCallback = (cb: UnauthorizedCallback | null) => {
   onUnauthorizedCallback = cb;
 };
 
+// Request interceptor: attach Authorization header if token exists in localStorage
+api.interceptors.request.use((config) => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('entropy-token') : null;
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {}
+  return config;
+});
+
 // Response interceptor for unified error extraction & session expiry detection (Issue H-3)
 api.interceptors.response.use(
   (response) => response,

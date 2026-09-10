@@ -1,4 +1,11 @@
 import mongoose from 'mongoose';
+import dns from 'node:dns';
+
+// Ensure SRV records can resolve even if local ISP/router DNS blocks querySrv
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {}
+
 import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { User } from '../models/User';
