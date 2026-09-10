@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { SupportedLanguage } from '@anti-oj/shared';
+import { SupportedLanguage } from '@entropy-oj/shared';
 import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);

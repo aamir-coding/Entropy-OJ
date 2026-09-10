@@ -1,0 +1,80 @@
+# ============================================================
+#  Entropy Online Judge — Render Blueprint (Infrastructure-as-Code)
+#  Docs: https://docs.render.com/blueprint-spec
+# ============================================================
+
+services:
+  - type: web
+    name: entropy-server
+    runtime: docker
+    dockerfilePath: apps/server/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    branch: main
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false                  # Set manually in Render dashboard
+      - key: REDIS_HOST
+        sync: false                  # Oracle VM public IP
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false                  # Set manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true          # Render auto-generates a random secret
+      - key: JWT_EXPIRES_DAYS
+        value: 7
+      - key: CLIENT_URL
+        sync: false                  # Vercel production URL
+      - key: RUNNER_IMAGE
+        value: entropy-runner:latest
+      - key: ADMIN_SEED_PASSWORD
+        sync: false                  # Set manually for initial seed
+
+      # AI Feature Flags
+      - key: FEATURE_AI_HINTS
+        value: true
+      - key: FEATURE_AI_REVIEW
+        value: true
+      - key: FEATURE_AI_CLASSIFY
+        value: true
+
+      # Groq (Debug Copilot)
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_RPM_LIMIT
+        value: 30
+
+      # Gemini (Problem-Setting Co-Pilot)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_RPM_LIMIT
+        value: 10
+      - key: GEMINI_RPD_LIMIT
+        value: 1500
+
+      # OpenRouter (Approach Classifier & Hint Fallback)
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODELS
+        value: "openrouter/free,meta-llama/llama-3.3-70b-instruct:free,deepseek/deepseek-r1:free,qwen/qwen-2.5-coder-32b-instruct:free"
+      - key: OPENROUTER_RPM_LIMIT
+        value: 20
+      - key: OPENROUTER_RPD_LIMIT
+        value: 50
+
+      # Per-User Hint Quotas
+      - key: AI_HINT_USER_DAILY_LIMIT
+        value: 20
+      - key: AI_HINT_USER_HOURLY_LIMIT
+        value: 5

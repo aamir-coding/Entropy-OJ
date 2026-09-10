@@ -6,7 +6,7 @@ import { redisClient } from '../config/redis';
 import { User } from '../models/User';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { RegisterInput, LoginInput, Verdicts } from '@anti-oj/shared';
+import { RegisterInput, LoginInput, Verdicts } from '@entropy-oj/shared';
 
 function generateToken(userId: string, email: string): string {
   const jti = crypto.randomUUID();

@@ -12,7 +12,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Tooltip } from './motion/tooltip';
-import { ProblemDifficulty } from '@anti-oj/shared';
+import { ProblemDifficulty } from '@entropy-oj/shared';
 
 const safeStorage = {
   getItem: (key: string): string | null => {

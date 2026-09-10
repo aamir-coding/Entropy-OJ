@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { IClassifyJobPayload, AIQueueConfig } from '@anti-oj/shared';
+import { IClassifyJobPayload, AIQueueConfig } from '@entropy-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 
 export const aiQueue = new Queue<IClassifyJobPayload>(AIQueueConfig.AI_QUEUE_NAME, {

@@ -1,16 +1,67 @@
+# ============================================================
+#  Entropy Online Judge — Production .gitignore
+# ============================================================
+
+# ---- Dependencies ----
 node_modules/
+.pnp
+.pnp.js
+
+# ---- Build Outputs ----
 dist/
 build/
+*.tsbuildinfo
+
+# ---- Environment & Secrets ----
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+# Note: .env.example files are intentionally committed
+
+# ---- Logs ----
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ---- OS Generated ----
 .DS_Store
-*.log
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+._*
+
+# ---- Editor / IDE ----
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# ---- Test & Coverage ----
 coverage/
-.turbo
+.nyc_output/
+
+# ---- Docker Runtime Artifacts ----
+/tmp/workspaces/
+
+# ---- Turbo / Monorepo Cache ----
+.turbo/
+
+# ---- Scratch / Temp ----
 scratch/
 tmp/
+
+# ---- Documentation Artifacts (design docs, not deployable) ----
 docs/

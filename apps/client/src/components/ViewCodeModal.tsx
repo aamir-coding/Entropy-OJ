@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Terminal } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import { Verdicts } from '@anti-oj/shared';
+import { Verdicts } from '@entropy-oj/shared';
 import { ErrorBoundary } from './ErrorBoundary';
 import { defineEntropyTheme } from '../styles/monacoTheme';
 import { CopyButton } from './motion/copy-button';

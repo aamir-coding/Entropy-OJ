@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
-import { IAdminProblemListItem, ProblemDifficulty, ALL_PROBLEM_DIFFICULTIES } from '@anti-oj/shared';
+import { IAdminProblemListItem, ProblemDifficulty, ALL_PROBLEM_DIFFICULTIES } from '@entropy-oj/shared';
 import { Tooltip } from '../../components/motion/tooltip';
 import {
   Shield,

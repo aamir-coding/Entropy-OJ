@@ -3,7 +3,7 @@ import { User } from '../models/User';
 import { Solution } from '../models/Solution';
 import { Problem } from '../models/Problem';
 import { env } from '../config/env';
-import { Verdicts } from '@anti-oj/shared';
+import { Verdicts } from '@entropy-oj/shared';
 
 const ARRAYS_HASHING = [
   'contains-duplicate',

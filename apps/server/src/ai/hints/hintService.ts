@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { IHintResponse, Verdict, Verdicts } from '@anti-oj/shared';
+import { IHintResponse, Verdict, Verdicts } from '@entropy-oj/shared';
 import { env } from '../../config/env';
 import { redisClient } from '../../config/redis';
 import { PerUserQuota } from '../rateLimiter';

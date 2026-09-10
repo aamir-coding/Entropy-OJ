@@ -313,7 +313,7 @@ describe('Server REST API Integration Tests', () => {
     }
 
     // Create an admin user & get admin cookie
-    const adminEmail = `admin-${Date.now()}@anti-oj.com`;
+    const adminEmail = `admin-${Date.now()}@entropy-oj.com`;
     const adminUser = await User.create({
       fullName: 'Test Admin',
       email: adminEmail,

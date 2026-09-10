@@ -3,7 +3,7 @@ import {
   SupportedLanguage,
   ITestCase,
   ISampleTestCase,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 import { env } from '../../config/env';
 import { getProvider, AIProvider, ChatMessage, AIProviderError } from '../providers';
 import { parseAIJson } from '../jsonRepair';

@@ -1,0 +1,74 @@
+# ============================================================
+#  Entropy Online Judge — Production Docker Compose (Oracle Cloud VM)
+#
+#  This runs ONLY on the Oracle Cloud Always Free VM.
+#  It orchestrates: Redis 7 + apps/worker (BullMQ consumer + Docker sandbox)
+#
+#  Usage:
+#    1. Copy .env.production to the VM and rename to .env
+#    2. Pre-build the runner image: docker build -t entropy-runner:latest -f apps/worker/docker/Dockerfile.runner apps/worker/docker
+#    3. Start: docker compose -f docker-compose.prod.yml up -d
+#    4. Logs:  docker compose -f docker-compose.prod.yml logs -f
+# ============================================================
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: entropy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - entropy-prod
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: entropy-worker
+    restart: unless-stopped
+    volumes:
+      # Docker-outside-of-Docker (DooD): mount host Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared workspace directory for sandbox I/O
+      - /tmp/workspaces:/tmp/workspaces
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - RUNNER_IMAGE=entropy-runner:latest
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-2}
+      - DOCKER_TIMEOUT_SEC=${DOCKER_TIMEOUT_SEC:-15}
+      - WORKER_HEALTH_PORT=5001
+      - HOST_WORKSPACES_DIR=/tmp/workspaces
+      - WORKSPACES_DIR=/tmp/workspaces
+    ports:
+      - "5001:5001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - entropy-prod
+
+volumes:
+  redis_data:
+
+networks:
+  entropy-prod:
+    driver: bridge

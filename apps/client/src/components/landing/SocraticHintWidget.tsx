@@ -205,7 +205,7 @@ export const SocraticHintWidget: React.FC = () => {
             }}
           >
             <Loader2 size={18} className="animate-spin" />
-            <span>Consulting Socratic Tutor (gemini-2.5-flash)...</span>
+            <span>Consulting Socratic Tutor...</span>
           </div>
         )}
 
@@ -254,7 +254,7 @@ export const SocraticHintWidget: React.FC = () => {
                       fontWeight: 600,
                     }}
                   >
-                    gemini-2.5-flash
+                    Powered by Groq
                   </span>
                 </div>
               </div>

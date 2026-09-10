@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getProblems, getProblemByIdOrCode, getGalaxyProgress } from '../controllers/problem.controller';
 import { optionalAuth } from '../middlewares/auth.middleware';
 import { validateQuery } from '../middlewares/validate.middleware';
-import { problemFilterSchema } from '@anti-oj/shared';
+import { problemFilterSchema } from '@entropy-oj/shared';
 
 const router = Router();
 

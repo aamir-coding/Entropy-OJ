@@ -7,7 +7,7 @@ import {
   TOTAL_GALAXY_PROBLEMS,
   IStarProblem,
 } from '../data/galaxyData';
-import { IGalaxyProgressResponse } from '@anti-oj/shared';
+import { IGalaxyProgressResponse } from '@entropy-oj/shared';
 import { StarfieldBackground } from '../components/galaxy/StarfieldBackground';
 import { StarCluster } from '../components/galaxy/StarCluster';
 import { GalaxyHUD } from '../components/galaxy/GalaxyHUD';

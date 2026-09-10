@@ -16,8 +16,8 @@ import {
   IAdminValidateSolutionResponse,
   IProblemReviewResponse,
   SupportedLanguage,
-} from '@anti-oj/shared';
-import { getModelSolution } from '@anti-oj/shared/solutions';
+} from '@entropy-oj/shared';
+import { getModelSolution } from '@entropy-oj/shared/solutions';
 import { Tooltip } from '../../components/motion/tooltip';
 import {
   ArrowLeft,

@@ -1,8 +1,8 @@
 process.env.NODE_ENV = 'test';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { MODEL_SOLUTIONS, getModelSolution } from '@anti-oj/shared/solutions';
-import { SupportedLanguages, diffOutput } from '@anti-oj/shared';
+import { MODEL_SOLUTIONS, getModelSolution } from '@entropy-oj/shared/solutions';
+import { SupportedLanguages, diffOutput } from '@entropy-oj/shared';
 import { DockerSandbox } from '../sandbox/dockerRunner';
 
 describe('Model Solutions Verification Tests', () => {

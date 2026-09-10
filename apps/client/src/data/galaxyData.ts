@@ -1,4 +1,4 @@
-import { ProblemDifficulty } from '@anti-oj/shared';
+import { ProblemDifficulty } from '@entropy-oj/shared';
 
 export interface IStarProblem {
   id: string;

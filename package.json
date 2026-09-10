@@ -1,5 +1,5 @@
 {
-  "name": "anti-online-judge",
+  "name": "entropy-online-judge",
   "version": "1.0.0",
   "private": true,
   "description": "Entropy — Production-Grade Sandboxed MERN Algorithmic Evaluation Platform",

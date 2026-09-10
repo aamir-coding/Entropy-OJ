@@ -1,5 +1,5 @@
 {
-  "name": "@anti-oj/server",
+  "name": "@entropy-oj/server",
   "version": "1.0.0",
   "description": "REST API Backend for Entropy",
   "main": "dist/server.js",
@@ -14,7 +14,7 @@
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {
-    "@anti-oj/shared": "*",
+    "@entropy-oj/shared": "*",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.41.6",
     "cookie-parser": "^1.4.7",

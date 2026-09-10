@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { register, login, logout, getMe } from '../controllers/auth.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
-import { registerSchema, loginSchema } from '@anti-oj/shared';
+import { registerSchema, loginSchema } from '@entropy-oj/shared';
 import { env } from '../config/env';
 
 const router = Router();

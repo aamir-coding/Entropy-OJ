@@ -1,5 +1,5 @@
 import React from 'react';
-import { Verdict, Verdicts } from '@anti-oj/shared';
+import { Verdict, Verdicts } from '@entropy-oj/shared';
 import {
   CheckCircle2,
   XCircle,

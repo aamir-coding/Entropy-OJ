@@ -13,7 +13,7 @@ import {
   createProblemSchema,
   updateProblemSchema,
   validateSolutionSchema,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 
 const router = Router();
 

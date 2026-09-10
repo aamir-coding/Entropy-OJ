@@ -12,6 +12,10 @@ import {
   HardDrive,
   Loader2,
   RotateCcw,
+  Timer,
+  Minus,
+  Plus,
+  Eye,
 } from 'lucide-react';
 import { defineEntropyTheme } from '../../styles/monacoTheme';
 
@@ -211,6 +215,129 @@ export const MonacoWorkspaceWidget: React.FC = () => {
 
         {/* Right: Simulation Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {/* Static Practice Timer Snapshot (20:00 Easy Default) */}
+          <div
+            title="Integrated Practice Timer & Stopwatch (Default: 20:00 for Easy problems)"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.025)',
+              border: '1px solid rgba(255, 255, 255, 0.09)',
+              borderRadius: '4px',
+              padding: '0.12rem 0.35rem',
+              gap: '0.18rem',
+              userSelect: 'none',
+              height: '1.65rem',
+              boxSizing: 'border-box',
+            }}
+          >
+            {/* Mode Icon */}
+            <span
+              style={{
+                color: 'rgba(255, 255, 255, 0.4)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.1rem',
+              }}
+              title="Countdown / Stopwatch mode"
+            >
+              <Timer size={11} />
+            </span>
+
+            {/* Minus Button */}
+            <span
+              style={{
+                color: 'rgba(255, 255, 255, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.1rem',
+              }}
+            >
+              <Minus size={10} />
+            </span>
+
+            {/* Digits: 20:00 */}
+            <span
+              style={{
+                fontFamily: 'var(--font-mono, monospace)',
+                fontVariantNumeric: 'tabular-nums',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: '#ededed',
+                padding: '0 0.15rem',
+                letterSpacing: '-0.02em',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '2.5rem',
+              }}
+            >
+              20:00
+            </span>
+
+            {/* Plus Button */}
+            <span
+              style={{
+                color: 'rgba(255, 255, 255, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.1rem',
+              }}
+            >
+              <Plus size={10} />
+            </span>
+
+            {/* Start Button */}
+            <span
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: 'rgba(255, 255, 255, 0.8)',
+                width: '1.25rem',
+                height: '1.15rem',
+                borderRadius: '3px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: '0.1rem',
+              }}
+              title="Start Timer"
+            >
+              <Play size={9} style={{ marginLeft: '1px' }} />
+            </span>
+
+            {/* Reset Button */}
+            <span
+              style={{
+                color: 'rgba(255, 255, 255, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.1rem',
+              }}
+              title="Reset Timer"
+            >
+              <RotateCcw size={10} />
+            </span>
+
+            {/* Hide/Show Button */}
+            <span
+              style={{
+                color: 'rgba(255, 255, 255, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.1rem',
+              }}
+              title="Hide/Show Digits"
+            >
+              <Eye size={10} />
+            </span>
+          </div>
+
           {status !== 'idle' && (
             <button
               onClick={handleReset}

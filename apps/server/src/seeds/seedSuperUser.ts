@@ -4,8 +4,8 @@ import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { Solution } from '../models/Solution';
 import { env } from '../config/env';
-import { Verdicts, SupportedLanguages } from '@anti-oj/shared';
-import { getModelSolution } from '@anti-oj/shared/solutions';
+import { Verdicts, SupportedLanguages } from '@entropy-oj/shared';
+import { getModelSolution } from '@entropy-oj/shared/solutions';
 
 import { ensureProblemsSeeded } from './seedProblems';
 

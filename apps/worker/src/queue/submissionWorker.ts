@@ -7,7 +7,7 @@ import {
   ALL_VERDICTS,
   ALL_SUPPORTED_LANGUAGES,
   Verdict,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 import { redisConnectionOptions, redisClient } from '../config/redis';
 import { evaluateSubmission } from '../sandbox/evaluator';
 import { env } from '../config/env';

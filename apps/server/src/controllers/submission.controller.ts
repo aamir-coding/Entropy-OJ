@@ -17,7 +17,7 @@ import {
   ISampleRunResponse,
   ISampleCaseResult,
   diffOutput,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 
 export async function createSubmission(
   req: AuthRequest,

@@ -1,8 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { ALL_SEED_PROBLEMS } from '../seeds/data';
-import { MODEL_SOLUTIONS, getModelSolution } from '@anti-oj/shared/solutions';
-import { SupportedLanguages } from '@anti-oj/shared';
+import { MODEL_SOLUTIONS, getModelSolution } from '@entropy-oj/shared/solutions';
+import { SupportedLanguages } from '@entropy-oj/shared';
 
 describe('NeetCode 150 Problem Suite Verification', () => {
   test('Suite contains exactly 150 problems', () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@anti-oj/shared",
+  "name": "@entropy-oj/shared",
   "version": "1.0.0",
   "description": "Shared types, constants, schemas, and utilities for Entropy",
   "main": "./dist/cjs/index.js",

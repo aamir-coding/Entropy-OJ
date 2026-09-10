@@ -102,7 +102,7 @@ A **subsequence** of a string is a new string generated from the original string
       { input: 'ezupkr ubkpk', output: '2', isSample: false },
       { input: 'bsbininm jmjkbkjkv', output: '1', isSample: false },
       { input: 'pmjghexybyrgzrcrmbt xbyrgzrcrmbt', output: '12', isSample: false },
-      { input: 'antionlinejudge onlinejudge', output: '11', isSample: false },
+      { input: 'entropyonlinejudge onlinejudge', output: '11', isSample: false },
       // Stress test: 500 characters
       { input: 'a'.repeat(500) + ' ' + 'a'.repeat(500), output: '500', isSample: false },
       { input: 'ab'.repeat(250) + ' ' + 'ba'.repeat(250), output: '499', isSample: false },

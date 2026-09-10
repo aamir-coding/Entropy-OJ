@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { Problem } from '../models/Problem';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { ProblemFilterInput, Verdicts, IProblemListItem, IGalaxyProgressResponse } from '@anti-oj/shared';
+import { ProblemFilterInput, Verdicts, IProblemListItem, IGalaxyProgressResponse } from '@entropy-oj/shared';
 
 function escapeRegex(text: string): string {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');

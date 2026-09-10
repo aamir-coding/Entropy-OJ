@@ -10,7 +10,7 @@ import {
 } from '../controllers/submission.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { validateBody } from '../middlewares/validate.middleware';
-import { createSubmissionSchema, runSampleSchema } from '@anti-oj/shared';
+import { createSubmissionSchema, runSampleSchema } from '@entropy-oj/shared';
 
 const router = Router();
 

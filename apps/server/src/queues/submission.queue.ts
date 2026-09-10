@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { JudgeJobPayload, QueueConfig } from '@anti-oj/shared';
+import { JudgeJobPayload, QueueConfig } from '@entropy-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 
 export const submissionQueue = new Queue<JudgeJobPayload>(QueueConfig.SUBMISSION_QUEUE_NAME, {

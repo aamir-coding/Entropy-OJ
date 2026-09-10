@@ -148,7 +148,7 @@ Untrusted user code is executed in isolated, disposable Docker containers built 
 ## 📂 Monorepo Structure
 
 ```
-anti-online-judge/
+entropy-online-judge/
 ├── packages/
 │   └── shared/                 # Shared TypeScript types, schemas, constants & model solutions
 │       ├── src/constants/      # Supported languages, limits, verdicts & model solutions
@@ -203,7 +203,7 @@ Create `.env` files in `apps/server`, `apps/worker`, and `apps/client` (or use `
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
-MONGO_URI=mongodb://localhost:27017/anti_oj
+MONGO_URI=mongodb://localhost:27017/entropy_oj
 REDIS_URL=redis://localhost:6379
 JWT_SECRET=super_secret_jwt_key_change_in_production
 JWT_EXPIRES_IN=7d
@@ -231,7 +231,7 @@ npm --workspace=apps/worker run build:image
 ```bash
 npm run seed:server
 ```
-*Seeds standard problems (**Two Sum**, **Valid Parentheses**, **Reverse Array**, **Longest Unique Substring**, **Maximum Subarray**, **Trapping Rain Water**) along with sample cases, hidden test cases, and default admin account (`admin@anti-oj.com` / `Admin123456!`).*
+*Seeds standard problems (**Two Sum**, **Valid Parentheses**, **Reverse Array**, **Longest Unique Substring**, **Maximum Subarray**, **Trapping Rain Water**) along with sample cases, hidden test cases, and default admin account (`admin@entropy-oj.com` / `Admin123456!`).*
 
 ---
 

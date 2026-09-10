@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 import { ALL_SEED_PROBLEMS } from '../seeds/data';
 import { SeedTestCase } from '../seeds/types';
-import { getModelSolution } from '@anti-oj/shared/solutions';
-import { SupportedLanguages, diffOutput } from '@anti-oj/shared';
+import { getModelSolution } from '@entropy-oj/shared/solutions';
+import { SupportedLanguages, diffOutput } from '@entropy-oj/shared';
 
 describe('Model Solutions OJ Execution Verification', () => {
   // Test representative problems across all 18 clusters

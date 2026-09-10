@@ -3,7 +3,7 @@ import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import { HintService } from '../ai/hints/hintService';
 import { AIProvider, ChatCompletionParams, ChatCompletionResult } from '../ai/providers';
-import { Verdicts } from '@anti-oj/shared';
+import { Verdicts } from '@entropy-oj/shared';
 import { redisClient } from '../config/redis';
 
 class CapturePromptMockProvider implements AIProvider {

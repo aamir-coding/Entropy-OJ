@@ -328,6 +328,7 @@ export const LandingPage: React.FC = () => {
             { label: 'Supported Runtimes', value: 'C++17 (GCC 12) & Python 3.11' },
             { label: 'Execution Modes', value: 'Sample Runner & Ephemeral Judge' },
             { label: 'Post-AC Intelligence', value: 'AI Approach & Complexity (O(N))' },
+            { label: 'Interview Simulation', value: 'Precision Timer & Blurred Tags' },
           ]}
           widget={<MonacoWorkspaceWidget />}
           reversed={true}

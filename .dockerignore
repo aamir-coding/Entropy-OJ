@@ -1,11 +1,71 @@
-node_modules
-dist
-build
+# ============================================================
+#  Entropy Online Judge — Production .dockerignore
+# ============================================================
+
+# ---- Dependencies (reinstalled during build) ----
+**/node_modules
+**/.turbo
+
+# ---- Build Artifacts (rebuilt during build) ----
+**/dist
+**/build
+**/*.tsbuildinfo
+
+# ---- Version Control ----
 .git
 .gitignore
-.env
-.env.*
+.gitattributes
+
+# ---- Environment & Secrets ----
 **/.env
-**/.env.*
-*.log
-coverage
+**/.env.local
+**/.env.*.local
+**/.env.development
+**/.env.production
+**/.env.staging
+**/.env.test
+!**/.env.example
+
+# ---- Documentation & Design ----
+docs/
+README.md
+LICENSE
+CHANGELOG.md
+
+# ---- Tests & Coverage ----
+**/coverage
+**/.nyc_output
+**/__tests__
+**/tests
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+
+# ---- Editor / IDE ----
+.vscode
+.idea
+**/*.swp
+.history
+
+# ---- OS Artifacts ----
+.DS_Store
+Thumbs.db
+
+# ---- Docker Compose (not needed inside images) ----
+docker-compose.yml
+docker-compose*.yml
+
+# ---- Scratch / Temp ----
+scratch/
+tmp/
+/tmp/workspaces/
+
+# ---- Deployment Configs (not needed inside images) ----
+vercel.json
+render.yaml
+scripts/
+
+# ---- Package Manager Lockfiles of sub-apps (root lockfile IS needed) ----
+apps/*/package-lock.json
+packages/*/package-lock.json

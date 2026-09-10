@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
-import { ProblemDifficulty, ISampleTestCase, ALL_PROBLEM_DIFFICULTIES } from '@anti-oj/shared';
+import { ProblemDifficulty, ISampleTestCase, ALL_PROBLEM_DIFFICULTIES } from '@entropy-oj/shared';
 
 export interface IProblemDocument extends Document {
   problemCode: string;

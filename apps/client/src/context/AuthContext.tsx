@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api, setOnUnauthorizedCallback } from '../api/client';
-import { IUser, UserStats, RegisterInput, LoginInput } from '@anti-oj/shared';
+import { IUser, UserStats, RegisterInput, LoginInput } from '@entropy-oj/shared';
 
 const TAB_ID = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -55,11 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser();
     try {
       if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('anti-oj-sync');
+        const bc = new BroadcastChannel('entropy-oj-sync');
         bc.postMessage({ type: 'STATS_UPDATED', senderId: TAB_ID, timestamp: Date.now() });
         bc.close();
       }
-      localStorage.setItem('anti-oj-last-ac-time', String(Date.now()));
+      localStorage.setItem('entropy-oj-last-ac-time', String(Date.now()));
     } catch {}
   }, [refreshUser]);
 
@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let channel: BroadcastChannel | null = null;
     try {
       if (typeof BroadcastChannel !== 'undefined') {
-        channel = new BroadcastChannel('anti-oj-sync');
+        channel = new BroadcastChannel('entropy-oj-sync');
         channel.onmessage = (event) => {
           // High 5: Avoid self-messaging in the origin tab
           if (event.data?.type === 'STATS_UPDATED' && event.data?.senderId !== TAB_ID) {
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'anti-oj-last-ac-time') {
+      if (e.key === 'entropy-oj-last-ac-time') {
         refreshUser();
       }
     };

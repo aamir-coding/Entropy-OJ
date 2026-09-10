@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { SupportedLanguage } from '@anti-oj/shared';
+import { SupportedLanguage } from '@entropy-oj/shared';
 import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
@@ -230,10 +230,9 @@ export async function killActiveContainers(): Promise<void> {
 }
 
 export const BASE_WORKSPACES_DIR = env.WORKSPACES_DIR || path.join(os.tmpdir(), 'entropy-workspaces');
-export const LEGACY_WORKSPACES_DIR = path.join(os.tmpdir(), 'anti-oj-workspaces');
 
 export async function sweepStaleWorkspaces(maxAgeMs = 60 * 60 * 1000): Promise<void> {
-  const dirsToSweep = [BASE_WORKSPACES_DIR, LEGACY_WORKSPACES_DIR];
+  const dirsToSweep = [BASE_WORKSPACES_DIR];
 
   for (const tmpBase of dirsToSweep) {
     try {

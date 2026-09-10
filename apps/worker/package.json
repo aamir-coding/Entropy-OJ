@@ -1,5 +1,5 @@
 {
-  "name": "@anti-oj/worker",
+  "name": "@entropy-oj/worker",
   "version": "1.0.0",
   "description": "Dockerized Sandboxed Evaluation Worker for Entropy",
   "main": "dist/worker.js",
@@ -13,7 +13,7 @@
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {
-    "@anti-oj/shared": "*",
+    "@entropy-oj/shared": "*",
     "bullmq": "^5.41.6",
     "dotenv": "^16.4.7",
     "ioredis": "^5.5.0",

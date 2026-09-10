@@ -22,7 +22,7 @@ import {
   ISubmissionHistoryItem,
   ISampleCaseResult,
   ISampleRunResponse,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 import { StatefulButton, ButtonState } from '../components/motion/button/stateful';
 import { Tabs } from '../components/motion/tabs';
 import { Tooltip } from '../components/motion/tooltip';
@@ -91,12 +91,12 @@ export const ProblemDetailPage: React.FC = () => {
 
   // Layout persistence with react-resizable-panels (Issue M-2: Safe Storage Adapter)
   const horizontalLayout = useDefaultLayout({
-    id: 'anti-oj-workspace-layout-h-v3',
+    id: 'entropy-oj-workspace-layout-h-v3',
     storage: safeStorage,
   });
 
   const verticalLayout = useDefaultLayout({
-    id: 'anti-oj-workspace-layout-v-v3',
+    id: 'entropy-oj-workspace-layout-v-v3',
     storage: safeStorage,
   });
 

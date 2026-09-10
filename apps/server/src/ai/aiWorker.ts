@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { IClassifyJobPayload, AIQueueConfig } from '@anti-oj/shared';
+import { IClassifyJobPayload, AIQueueConfig } from '@entropy-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 import { classifyService } from './classify/classifyService';
 

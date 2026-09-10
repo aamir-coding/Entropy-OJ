@@ -8,6 +8,6 @@ export const ExecutionLimits = {
   MAX_CODE_SIZE_BYTES: 64 * 1024, // 64 KB
 } as const;
 
-/** @deprecated Import from `@anti-oj/shared/queues` or `packages/shared/src/constants/queues` to avoid bundling backend queue topology in frontend bundles. */
+/** @deprecated Import from `@entropy-oj/shared/queues` or `packages/shared/src/constants/queues` to avoid bundling backend queue topology in frontend bundles. */
 export { QueueConfig, AIQueueConfig } from './queues';
 

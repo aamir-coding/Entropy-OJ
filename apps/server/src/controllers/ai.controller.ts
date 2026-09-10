@@ -17,7 +17,7 @@ import {
   SupportedLanguage,
   ProblemDifficulty,
   ALL_SUPPORTED_LANGUAGES,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 
 export const aiHintRequestSchema = z.object({
   submissionId: z.string().min(1, 'Submission identifier is required').max(100),

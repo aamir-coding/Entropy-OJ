@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api, isCancel } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { IProblemListItem } from '@anti-oj/shared';
+import { IProblemListItem } from '@entropy-oj/shared';
 import { Tabs, TabItem } from '../components/motion/tabs';
 import { NumberTicker } from '../components/motion/number-ticker';
 import { TableSkeleton } from '../components/motion/skeleton';

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { IApproachClassification, IClassifyJobPayload } from '@anti-oj/shared';
+import { IApproachClassification, IClassifyJobPayload } from '@entropy-oj/shared';
 import { env } from '../../config/env';
 import { Solution } from '../../models/Solution';
 import { getProvider, callWithFallback, AIProvider, ChatMessage } from '../providers';

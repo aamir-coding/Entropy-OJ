@@ -10,7 +10,7 @@ const envPath = fs.existsSync(cwdEnv) ? cwdEnv : localEnv;
 dotenv.config({ path: envPath });
 
 const WEAK_DEFAULT_SECRETS = [
-  'super_secret_jwt_key_anti_online_judge_2026_production_grade',
+  'super_secret_jwt_key_entropy_online_judge_2026_production_grade',
   'CHANGE_ME_TO_A_SECURE_RANDOM_SECRET_KEY_MINIMUM_32_BYTES',
   'default_jwt_secret',
 ];

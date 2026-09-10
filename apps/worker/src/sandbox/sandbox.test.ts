@@ -4,7 +4,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { DockerSandbox, parseMetrics } from './dockerRunner';
 import { evaluateSubmission } from './evaluator';
-import { Verdicts, SupportedLanguages } from '@anti-oj/shared';
+import { Verdicts, SupportedLanguages } from '@entropy-oj/shared';
 import mongoose from 'mongoose';
 
 const execFileAsync = promisify(execFile);

@@ -1,5 +1,5 @@
 import mongoose, { Document, Model, Schema, Types } from 'mongoose';
-import { Verdict, Verdicts, SupportedLanguage, ALL_VERDICTS, IApproachClassification } from '@anti-oj/shared';
+import { Verdict, Verdicts, SupportedLanguage, ALL_VERDICTS, IApproachClassification } from '@entropy-oj/shared';
 
 export interface ISolutionDocument extends Document {
   user: Types.ObjectId;

@@ -8,6 +8,7 @@ import {
   LogOut,
   ChevronDown,
   Shield,
+  Trophy,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -269,9 +270,26 @@ export const Navbar: React.FC = () => {
                         </div>
                       )}
                       {stats && (
-                        <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <span>🏆</span>
-                          <span>{stats.solvedProblemsCount} problems solved</span>
+                        <div
+                          style={{
+                            marginTop: '0.45rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '4px',
+                            background: 'rgba(234, 179, 8, 0.08)',
+                            border: '1px solid rgba(234, 179, 8, 0.22)',
+                            color: '#eab308',
+                          }}
+                        >
+                          <Trophy size={11} style={{ color: '#eab308', flexShrink: 0 }} />
+                          <span>
+                            <strong style={{ color: '#fef08a', fontWeight: 700 }}>{stats.solvedProblemsCount}</strong>{' '}
+                            <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}>problems solved</span>
+                          </span>
                         </div>
                       )}
                     </div>

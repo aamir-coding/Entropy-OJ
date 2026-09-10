@@ -17,7 +17,7 @@ import {
   IAdminValidateSolutionResponse,
   IAdminValidateTestCaseResult,
   diffOutput,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 
 /**
  * GET /api/admin/problems

@@ -5,7 +5,7 @@ import {
   JudgeExecutionResult,
   Verdicts,
   diffOutput,
-} from '@anti-oj/shared';
+} from '@entropy-oj/shared';
 
 export interface ITestCaseModel {
   _id?: any;
