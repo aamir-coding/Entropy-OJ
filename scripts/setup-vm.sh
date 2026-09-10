@@ -1,26 +1,31 @@
 #!/bin/bash
 # ============================================================
-#  Entropy Online Judge — Oracle Cloud Always Free VM Setup
+#  Entropy Online Judge — Azure / Cloud VM Setup
 #
-#  Target: Ubuntu 22.04 on ARM64 Ampere A1 (2 OCPU, 12GB RAM)
-#  Provisions: Docker Engine, Node.js 22, Redis 7, Git, Firewall
+#  Target: Ubuntu 22.04 / 24.04 on any x86_64 or ARM64 VM
+#  Tested on: Azure B1s (1 vCPU, 1GB RAM), Oracle A1.Flex
+#  Provisions: Docker Engine, Node.js 22, Git, UFW Firewall
 #
-#  Usage: ssh into your Oracle VM, then:
-#    chmod +x setup-oracle-vm.sh
-#    sudo ./setup-oracle-vm.sh
+#  Usage: ssh into your VM, then:
+#    chmod +x setup-vm.sh
+#    sudo ./setup-vm.sh
 #
 #  After running this script, you still need to:
 #    1. Clone the repo
 #    2. Create the .env file for docker-compose.prod.yml
 #    3. Build the entropy-runner image
 #    4. Start docker-compose.prod.yml
-#    5. Configure Oracle Cloud Security List (firewall)
+#    5. Configure cloud firewall / NSG rules
 # ============================================================
 
 set -euo pipefail
 
+# Detect the default non-root user (azure uses 'azureuser', oracle uses 'ubuntu')
+DEFAULT_USER="${SUDO_USER:-$(logname 2>/dev/null || echo 'azureuser')}"
+
 echo "====================================================="
-echo "🔧 Entropy OJ — Oracle Cloud VM Provisioning"
+echo "🔧 Entropy OJ — Cloud VM Provisioning"
+echo "   Detected user: $DEFAULT_USER"
 echo "====================================================="
 
 # ---- 1. System Update ----
@@ -66,8 +71,8 @@ apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin do
 systemctl enable docker
 systemctl start docker
 
-# Add the default 'ubuntu' user to the docker group
-usermod -aG docker ubuntu
+# Add the default user to the docker group
+usermod -aG docker "$DEFAULT_USER"
 
 echo "  ✅ Docker $(docker --version | awk '{print $3}') installed"
 
@@ -82,7 +87,7 @@ echo "  ✅ npm $(npm --version) installed"
 # ---- 5. Create Application Directory ----
 echo "[5/7] Creating application directory..."
 mkdir -p /opt/entropy-oj
-chown ubuntu:ubuntu /opt/entropy-oj
+chown "$DEFAULT_USER":"$DEFAULT_USER" /opt/entropy-oj
 
 # Create workspace directory for Docker sandbox I/O
 mkdir -p /tmp/workspaces
@@ -99,7 +104,6 @@ ufw allow 22/tcp
 
 # Redis — IMPORTANT: restrict to Render's egress IPs in production!
 # For initial setup, we allow from anywhere; tighten this after deployment.
-# To restrict: ufw allow from <RENDER_IP_1> to any port 6379 proto tcp
 ufw allow 6379/tcp comment "Redis (tighten to Render IPs after deploy)"
 
 # Worker health check (optional, for external monitoring)
@@ -110,23 +114,24 @@ ufw --force enable
 echo "  ✅ UFW firewall configured"
 echo "  ⚠️  Remember to restrict port 6379 to Render's egress IPs after deployment!"
 
-# ---- 7. Configure System Limits for Docker ----
+# ---- 7. Configure System Limits for Docker + Redis ----
 echo "[7/7] Configuring system limits..."
 
 # Increase file descriptor limits for Redis and Docker
-cat >> /etc/security/limits.conf << 'EOF'
+if ! grep -q "Entropy OJ" /etc/security/limits.conf 2>/dev/null; then
+  cat >> /etc/security/limits.conf << 'EOF'
 # Entropy OJ — production limits
 *    soft    nofile    65535
 *    hard    nofile    65535
 root soft    nofile    65535
 root hard    nofile    65535
 EOF
+fi
 
 # Set vm.overcommit_memory for Redis (recommended by Redis docs)
-echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
-# Disable Transparent Huge Pages (THP) for Redis performance
-echo "echo never > /sys/kernel/mm/transparent_hugepage/enabled" >> /etc/rc.local
-chmod +x /etc/rc.local 2>/dev/null || true
+if ! grep -q "vm.overcommit_memory" /etc/sysctl.conf 2>/dev/null; then
+  echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
+fi
 sysctl -p
 
 echo ""
@@ -134,13 +139,13 @@ echo "====================================================="
 echo "✅ VM provisioning complete!"
 echo "====================================================="
 echo ""
-echo "Next steps (run as 'ubuntu' user, not root):"
+echo "Next steps (run as '$DEFAULT_USER' user, not root):"
 echo ""
 echo "  1. Log out and log back in (to pick up docker group)"
 echo ""
 echo "  2. Clone your repository:"
 echo "     cd /opt/entropy-oj"
-echo "     git clone https://github.com/YOUR_USER/entropy-online-judge.git ."
+echo "     git clone https://github.com/aamir-coding/Entropy-OJ.git ."
 echo ""
 echo "  3. Build the sandbox runner image:"
 echo "     docker build -t entropy-runner:latest \\"
