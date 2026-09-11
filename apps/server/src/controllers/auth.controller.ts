@@ -134,7 +134,10 @@ export async function logout(req: Request, res: Response): Promise<void> {
         if (decoded?.jti && decoded?.exp) {
           const remainingSeconds = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
           if (remainingSeconds > 0) {
-            await redisClient.setex(`blacklist:jti:${decoded.jti}`, remainingSeconds, 'revoked');
+            await Promise.race([
+              redisClient.setex(`blacklist:jti:${decoded.jti}`, remainingSeconds, 'revoked'),
+              new Promise<void>((resolve) => setTimeout(() => resolve(), 1000)),
+            ]);
           }
         }
       } catch (err) {

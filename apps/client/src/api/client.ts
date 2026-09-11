@@ -3,6 +3,7 @@ import axios from 'axios';
 export const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -21,8 +22,12 @@ export const setOnUnauthorizedCallback = (cb: UnauthorizedCallback | null) => {
 api.interceptors.request.use((config) => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('entropy-token') : null;
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      if (config.headers && typeof (config.headers as any).set === 'function') {
+        (config.headers as any).set('Authorization', `Bearer ${token}`);
+      } else if (config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
   } catch {}
   return config;

@@ -51,7 +51,11 @@ export async function requireAuth(
 
     if (decoded.jti) {
       try {
-        const isBlacklisted = await redisClient.get(`blacklist:jti:${decoded.jti}`);
+        // Enforce 1000ms timeout so Redis connectivity issues never block authentication
+        const isBlacklisted = await Promise.race([
+          redisClient.get(`blacklist:jti:${decoded.jti}`),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+        ]);
         if (isBlacklisted) {
           res.status(401).json({
             success: false,

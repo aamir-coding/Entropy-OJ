@@ -23,7 +23,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<IUser | null>(null);
+  const [user, setUser] = useState<IUser | null>(() => {
+    try {
+      const savedUser = typeof window !== 'undefined' ? localStorage.getItem('entropy-user') : null;
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -31,17 +38,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const activeSessionIdRef = useRef<number>(0);
 
+  const updateStoredUser = (newUser: IUser | null) => {
+    setUser(newUser);
+    try {
+      if (newUser) {
+        localStorage.setItem('entropy-user', JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem('entropy-user');
+      }
+    } catch {}
+  };
+
   const refreshUser = useCallback(async () => {
     const currentSessionId = ++activeSessionIdRef.current;
     try {
       const res = await api.get('/auth/me');
       if (activeSessionIdRef.current === currentSessionId && res.data.success) {
-        setUser(res.data.data.user);
+        updateStoredUser(res.data.data.user);
         setStats(res.data.data.stats);
       }
     } catch {
       if (activeSessionIdRef.current === currentSessionId) {
-        setUser(null);
+        updateStoredUser(null);
         setStats(null);
       }
     } finally {
@@ -68,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOnUnauthorizedCallback(() => {
       try {
         localStorage.removeItem('entropy-token');
+        localStorage.removeItem('entropy-user');
       } catch {}
       setUser(null);
       setStats(null);
@@ -136,16 +155,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('entropy-token', res.data.data.token);
         } catch {}
       }
-      if (activeSessionIdRef.current === currentSessionId) {
-        setUser(res.data.data.user);
-        // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
+      if (activeSessionIdRef.current === currentSessionId && res.data.data?.user) {
+        updateStoredUser(res.data.data.user);
       }
-      try {
-        const meRes = await api.get('/auth/me');
-        if (activeSessionIdRef.current === currentSessionId && meRes.data.success) {
-          setStats(meRes.data.data.stats);
-        }
-      } catch {}
+      // Non-blocking stats synchronization in background (does not delay modal dismissal)
+      api.get('/auth/me')
+        .then((meRes) => {
+          if (activeSessionIdRef.current === currentSessionId && meRes.data?.success) {
+            setStats(meRes.data.data.stats);
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -158,16 +178,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('entropy-token', res.data.data.token);
         } catch {}
       }
-      if (activeSessionIdRef.current === currentSessionId) {
-        setUser(res.data.data.user);
-        // High 1: Do not synchronously close modal here; AuthModal manages its own animated dismissal
+      if (activeSessionIdRef.current === currentSessionId && res.data.data?.user) {
+        updateStoredUser(res.data.data.user);
+        setStats({
+          totalSubmissions: 0,
+          acceptedSubmissions: 0,
+          solvedProblemsCount: 0,
+          easySolved: 0,
+          mediumSolved: 0,
+          hardSolved: 0,
+          acceptanceRate: 0,
+        });
       }
-      try {
-        const meRes = await api.get('/auth/me');
-        if (activeSessionIdRef.current === currentSessionId && meRes.data.success) {
-          setStats(meRes.data.data.stats);
-        }
-      } catch {}
+      // Non-blocking background sync
+      api.get('/auth/me')
+        .then((meRes) => {
+          if (activeSessionIdRef.current === currentSessionId && meRes.data?.success) {
+            setStats(meRes.data.data.stats);
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -175,11 +205,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeSessionIdRef.current++;
     try {
       localStorage.removeItem('entropy-token');
+      localStorage.removeItem('entropy-user');
     } catch {}
     try {
       await api.post('/auth/logout');
     } finally {
-      setUser(null);
+      updateStoredUser(null);
       setStats(null);
     }
   }, []);
