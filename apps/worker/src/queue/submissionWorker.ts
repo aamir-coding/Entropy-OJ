@@ -9,7 +9,7 @@ import {
   Verdict,
 } from '@entropy-oj/shared';
 import { redisConnectionOptions, redisClient } from '../config/redis';
-import { evaluateSubmission } from '../sandbox/evaluator';
+import { evaluateSubmission, evaluateSampleRun } from '../sandbox/evaluator';
 import { env } from '../config/env';
 
 interface ISolutionDoc extends Document {
@@ -129,6 +129,16 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
           );
         }
         throw new Error(`Invalid job payload for Job ${job.id}`);
+      }
+
+      // Fast-path: Sample test runs do not require database Solution records or evaluation locks
+      if (job.data.isSampleRun) {
+        console.log(`[Worker] 🧪 Running sample cases for Problem ${job.data.problemId} (${job.data.language})`);
+        const sampleCases = await TestCaseModel.find({ problem: job.data.problemId, isSample: true })
+          .select('input output isSample order')
+          .sort({ order: 1 })
+          .lean();
+        return await evaluateSampleRun(job.data, sampleCases);
       }
 
       const evalLockKey = `lock:evaluating:${job.data.submissionId}`;

@@ -4,7 +4,7 @@ import { Solution } from '../models/Solution';
 import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { enqueueSubmission } from '../queues/submission.queue';
+import { enqueueSubmission, executeSampleRun } from '../queues/submission.queue';
 import { DockerSandbox, sandboxSemaphore } from '../sandbox/dockerRunner';
 import { env } from '../config/env';
 import {
@@ -57,11 +57,18 @@ export async function createSubmission(
     });
 
     if (existingPending) {
-      res.status(429).json({
-        success: false,
-        error: 'You already have an evaluation in progress for this problem. Please wait.',
-      });
-      return;
+      const isStale = Date.now() - new Date(existingPending.submittedAt).getTime() > 60 * 1000;
+      if (isStale) {
+        existingPending.verdict = Verdicts.INTERNAL_ERROR;
+        existingPending.compileOutput = 'Evaluation timed out.';
+        await existingPending.save();
+      } else {
+        res.status(429).json({
+          success: false,
+          error: 'You already have an evaluation in progress for this problem. Please wait.',
+        });
+        return;
+      }
     }
 
     // Create Solution record in Pending state
@@ -123,7 +130,6 @@ export async function createSubmission(
  * Ephemeral sandbox runner for sample test cases with diff output.
  */
 export const runSampleCases = async (req: AuthRequest, res: Response): Promise<void> => {
-  let sandbox: DockerSandbox | null = null;
   try {
     const { problemId, language, code } = req.body as RunSampleInput;
 
@@ -154,118 +160,38 @@ export const runSampleCases = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Critical 1: Fast capacity fail if sandbox runner is saturated to protect API event loop
-    if (sandboxSemaphore.activeCount >= sandboxSemaphore.max && sandboxSemaphore.queueLength >= 2) {
-      res.status(503).json({
-        success: false,
-        error: 'Sandbox execution engine is currently at maximum capacity. Please try again shortly.',
-      });
-      return;
-    }
+    try {
+      const response = await executeSampleRun(
+        {
+          submissionId: `sample-${new mongoose.Types.ObjectId()}`,
+          problemId: problem._id.toString(),
+          userId: req.userId || 'anonymous',
+          code,
+          language,
+          timeLimitMs: problem.timeLimitMs,
+          memoryLimitKb: problem.memoryLimitKb,
+          isSampleRun: true,
+        },
+        30000
+      );
 
-    // Create ephemeral Docker sandbox
-    sandbox = await DockerSandbox.create();
-    await sandbox.prepareSourceFile(code, language);
-
-    // Compilation step
-    const compileRes = await sandbox.compile(language, 10000);
-    if (!compileRes.success) {
-      const response: ISampleRunResponse = {
-        verdict: Verdicts.COMPILATION_ERROR,
-        totalCases: sampleCases.length,
-        passedCases: 0,
-        compileOutput: compileRes.compileOutput || 'Compilation failed with errors',
-        sampleResults: [],
-      };
       res.status(200).json({
         success: true,
         data: response,
       });
-      return;
-    }
-
-    // Process each sample case with live sandboxed execution and diffing
-    const sampleResults: ISampleCaseResult[] = [];
-    let passedCount = 0;
-    let overallVerdict: Verdict = Verdicts.ACCEPTED;
-
-    // Critical 1: Enforce wall-clock budget (25s) and cap sample execution to prevent server starvation
-    const MAX_SAMPLE_CASES = 5;
-    const casesToRun = sampleCases.slice(0, MAX_SAMPLE_CASES);
-    const MAX_SAMPLE_WALL_TIME_MS = 25000;
-    const startTime = Date.now();
-
-    for (let i = 0; i < casesToRun.length; i++) {
-      if (Date.now() - startTime > MAX_SAMPLE_WALL_TIME_MS) {
-        if (overallVerdict === Verdicts.ACCEPTED) overallVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
-        break;
-      }
-
-      const sc = casesToRun[i];
-      const caseIndex = i + 1;
-
-      const runRes = await sandbox.runTestCase(
-        sc.input,
-        language,
-        problem.timeLimitMs,
-        problem.memoryLimitKb
-      );
-
-      const diff = diffOutput(runRes.actualOutput, sc.output);
-      let caseVerdict: Verdict = Verdicts.ACCEPTED;
-
-      // Decision R3: Check TLE, MLE, RTE, and WA
-      if (runRes.timedOut || runRes.metrics.cpuTimeMs > problem.timeLimitMs) {
-        caseVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
-      } else if (runRes.metrics.maxRssKb > problem.memoryLimitKb) {
-        caseVerdict = Verdicts.MEMORY_LIMIT_EXCEEDED;
-      } else if (runRes.metrics.exitCode !== 0 || runRes.metrics.processExitStatus !== 0) {
-        caseVerdict = Verdicts.RUNTIME_ERROR;
-      } else if (!diff.isMatch) {
-        caseVerdict = Verdicts.WRONG_ANSWER;
-      }
-
-      const passed = caseVerdict === Verdicts.ACCEPTED;
-      if (passed) {
-        passedCount++;
-      } else if (overallVerdict === Verdicts.ACCEPTED) {
-        overallVerdict = caseVerdict;
-      }
-
-      sampleResults.push({
-        caseIndex,
-        input: sc.input,
-        expectedOutput: sc.output,
-        actualOutput: runRes.actualOutput,
-        passed,
-        verdict: caseVerdict,
-        executionTimeMs: runRes.metrics.cpuTimeMs,
-        memoryUsedKb: runRes.metrics.maxRssKb,
-        error: runRes.stderr || undefined,
+    } catch (err: any) {
+      console.error('[RunSample] Error running sample cases:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Sample test run execution failed: ' + (err.message || 'Internal error'),
       });
     }
-
-    const response: ISampleRunResponse = {
-      verdict: overallVerdict,
-      totalCases: sampleCases.length,
-      passedCases: passedCount,
-      sampleResults,
-    };
-
-    res.status(200).json({
-      success: true,
-      data: response,
-    });
   } catch (err: any) {
-    console.error('[RunSample] Error running sample cases:', err);
+    console.error('[RunSample] Unexpected error in runSample controller:', err);
     res.status(500).json({
       success: false,
-      error: 'Sample test run execution failed: ' + (err.message || 'Internal error'),
+      error: 'Sample test run failed: ' + (err.message || 'Internal error'),
     });
-  } finally {
-    if (sandbox) {
-      await sandbox.cleanup();
-    }
   }
 };
 

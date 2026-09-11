@@ -205,6 +205,7 @@ export interface JudgeJobPayload {
   language: SupportedLanguage;
   timeLimitMs: number;
   memoryLimitKb: number;
+  isSampleRun?: boolean;
 }
 
 export interface TestCaseExecutionResult extends IBaseTestCaseResult {

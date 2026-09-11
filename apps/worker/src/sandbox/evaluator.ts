@@ -3,6 +3,9 @@ import { DockerSandbox } from './dockerRunner';
 import {
   JudgeJobPayload,
   JudgeExecutionResult,
+  ISampleRunResponse,
+  ISampleCaseResult,
+  Verdict,
   Verdicts,
   diffOutput,
 } from '@entropy-oj/shared';
@@ -184,3 +187,83 @@ export async function evaluateSubmission(
     await sandbox.cleanup();
   }
 }
+
+export async function evaluateSampleRun(
+  job: JudgeJobPayload,
+  sampleCases: ITestCaseModel[]
+): Promise<ISampleRunResponse> {
+  const { code, language, timeLimitMs, memoryLimitKb } = job;
+  const sandbox = await DockerSandbox.create();
+
+  try {
+    await sandbox.prepareSourceFile(code, language);
+    const compileRes = await sandbox.compile(language, 10000);
+    if (!compileRes.success) {
+      return {
+        verdict: Verdicts.COMPILATION_ERROR,
+        totalCases: sampleCases.length,
+        passedCases: 0,
+        compileOutput: compileRes.compileOutput || 'Compilation failed with errors',
+        sampleResults: [],
+      };
+    }
+
+    const sampleResults: ISampleCaseResult[] = [];
+    let passedCount = 0;
+    let overallVerdict: Verdict = Verdicts.ACCEPTED;
+
+    for (let i = 0; i < sampleCases.length; i++) {
+      const sc = sampleCases[i];
+      const caseIndex = i + 1;
+
+      const runRes = await sandbox.runTestCase(
+        sc.input,
+        language,
+        timeLimitMs,
+        memoryLimitKb
+      );
+
+      const diff = diffOutput(runRes.actualOutput, sc.output);
+      let caseVerdict: Verdict = Verdicts.ACCEPTED;
+
+      if (runRes.timedOut || runRes.metrics.cpuTimeMs > timeLimitMs) {
+        caseVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+      } else if (runRes.metrics.maxRssKb > memoryLimitKb) {
+        caseVerdict = Verdicts.MEMORY_LIMIT_EXCEEDED;
+      } else if (runRes.metrics.exitCode !== 0 || runRes.metrics.processExitStatus !== 0) {
+        caseVerdict = Verdicts.RUNTIME_ERROR;
+      } else if (!diff.isMatch) {
+        caseVerdict = Verdicts.WRONG_ANSWER;
+      }
+
+      const passed = caseVerdict === Verdicts.ACCEPTED;
+      if (passed) {
+        passedCount++;
+      } else if (overallVerdict === Verdicts.ACCEPTED) {
+        overallVerdict = caseVerdict;
+      }
+
+      sampleResults.push({
+        caseIndex,
+        input: sc.input,
+        expectedOutput: sc.output,
+        actualOutput: runRes.actualOutput,
+        passed,
+        verdict: caseVerdict,
+        executionTimeMs: runRes.metrics.cpuTimeMs,
+        memoryUsedKb: runRes.metrics.maxRssKb,
+        error: runRes.stderr || undefined,
+      });
+    }
+
+    return {
+      verdict: overallVerdict,
+      totalCases: sampleCases.length,
+      passedCases: passedCount,
+      sampleResults,
+    };
+  } finally {
+    await sandbox.cleanup();
+  }
+}
+

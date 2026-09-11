@@ -1,5 +1,5 @@
-import { Queue } from 'bullmq';
-import { JudgeJobPayload, QueueConfig } from '@entropy-oj/shared';
+import { Queue, QueueEvents } from 'bullmq';
+import { JudgeJobPayload, QueueConfig, ISampleRunResponse } from '@entropy-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 
 export const submissionQueue = new Queue<JudgeJobPayload>(QueueConfig.SUBMISSION_QUEUE_NAME, {
@@ -15,6 +15,10 @@ export const submissionQueue = new Queue<JudgeJobPayload>(QueueConfig.SUBMISSION
   },
 });
 
+export const submissionQueueEvents = new QueueEvents(QueueConfig.SUBMISSION_QUEUE_NAME, {
+  connection: redisConnectionOptions,
+});
+
 export async function enqueueSubmission(payload: JudgeJobPayload): Promise<string> {
   const job = await submissionQueue.add(`sub-${payload.submissionId}`, payload, {
     jobId: payload.submissionId,
@@ -22,4 +26,14 @@ export async function enqueueSubmission(payload: JudgeJobPayload): Promise<strin
 
   console.log(`[Queue] Submission enqueued: Job ID ${job.id} for Submission ${payload.submissionId}`);
   return job.id as string;
+}
+
+export async function executeSampleRun(payload: JudgeJobPayload, timeoutMs = 25000): Promise<ISampleRunResponse> {
+  const job = await submissionQueue.add(`sample-${Date.now()}-${payload.submissionId}`, payload, {
+    attempts: 1,
+    removeOnComplete: true,
+    removeOnFail: true,
+  });
+
+  return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as ISampleRunResponse;
 }
