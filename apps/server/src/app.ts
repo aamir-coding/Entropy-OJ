@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
+import { redisClient } from './config/redis';
 import { env } from './config/env';
 import apiRoutes from './routes';
 import { notFoundHandler, errorHandler } from './middlewares/error.middleware';
@@ -69,12 +71,30 @@ export function createApp(): Express {
     message: { success: false, error: 'Too many requests, please try again later.' },
   });
 
-  // Health check endpoint (accessible on both root /health and /api/health)
-  const healthHandler = (_req: express.Request, res: express.Response) => {
+  // Health check endpoint with live connection diagnostics (accessible on both root /health and /api/health)
+  const healthHandler = async (_req: express.Request, res: express.Response) => {
+    let redisPing = 'FAILED';
+    try {
+      redisPing = await Promise.race([
+        redisClient.ping(),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+      ]);
+    } catch (e: any) {
+      redisPing = e.message || 'error';
+    }
+
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       service: 'entropy-server',
+      db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      redis: {
+        status: redisClient.status,
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        hasPassword: Boolean(env.REDIS_PASSWORD),
+        ping: redisPing,
+      },
     });
   };
 
