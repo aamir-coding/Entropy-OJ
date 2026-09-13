@@ -614,31 +614,39 @@ export const HomePage: React.FC = () => {
 
                         {/* Acceptance */}
                         <td style={{ padding: '0.75rem 1rem' }}>
-                          <Tooltip content={`Acceptance: ${prob.acceptanceRate}%`} side="top">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'default' }}>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  height: '3px',
-                                  background: 'var(--brand-neutral-600)',
-                                  borderRadius: '1px',
-                                  overflow: 'hidden',
-                                }}
-                              >
+                          {prob.totalSubmissions === 0 ? (
+                            <Tooltip content="No submissions yet" side="top">
+                              <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem', cursor: 'default', paddingLeft: '0.25rem' }}>
+                                —
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip content={`Acceptance: ${prob.acceptanceRate}% (${prob.acceptedSubmissions}/${prob.totalSubmissions})`} side="top">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'default' }}>
                                 <div
                                   style={{
-                                    width: `${prob.acceptanceRate}%`,
-                                    height: '100%',
-                                    background: 'var(--brand-white)',
+                                    flex: 1,
+                                    height: '3px',
+                                    background: 'var(--brand-neutral-600)',
                                     borderRadius: '1px',
+                                    overflow: 'hidden',
                                   }}
-                                />
+                                >
+                                  <div
+                                    style={{
+                                      width: `${prob.acceptanceRate}%`,
+                                      height: '100%',
+                                      background: 'var(--brand-white)',
+                                      borderRadius: '1px',
+                                    }}
+                                  />
+                                </div>
+                                <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', minWidth: '34px', fontFamily: 'var(--font-mono)' }}>
+                                  {prob.acceptanceRate}%
+                                </span>
                               </div>
-                              <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--text-muted)', minWidth: '34px', fontFamily: 'var(--font-mono)' }}>
-                                {prob.acceptanceRate}%
-                              </span>
-                            </div>
-                          </Tooltip>
+                            </Tooltip>
+                          )}
                         </td>
 
                         {/* Solve CTA */}
