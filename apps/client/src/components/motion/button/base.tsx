@@ -102,8 +102,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <motion.button
         ref={ref}
         type="button"
-        whileTap={reduce ? undefined : { scale: pressScale }}
-        whileHover={whileHover !== undefined ? whileHover : (reduce || !canHover ? undefined : { scale: 1.01 })}
+        whileTap={reduce || rest.disabled ? undefined : { scale: pressScale }}
+        whileHover={whileHover !== undefined ? whileHover : (reduce || !canHover || rest.disabled ? undefined : { scale: 1.01 })}
         transition={SPRING_PRESS}
         onPointerDown={handlePointerDown}
         className={cn(

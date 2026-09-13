@@ -328,6 +328,13 @@
     box-shadow var(--transition-fast);
 }
 
+.motion-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
 .motion-btn-primary {
   background: var(--brand-white);
   color: var(--brand-black);

@@ -301,6 +301,10 @@ You may assume that each input would have **exactly one solution**, and you may 
       setError('Please save the problem first before running sandbox validation.');
       return;
     }
+    if (!valCode || !valCode.trim()) {
+      setError('Model solution code cannot be empty.');
+      return;
+    }
     try {
       setIsValidating(true);
       setError(null);
@@ -1010,8 +1014,9 @@ You may assume that each input would have **exactly one solution**, and you may 
                     type="button"
                     onClick={handleValidateSolution}
                     className="btn btn-primary"
-                    disabled={isValidating || !isEditMode}
+                    disabled={isValidating || !isEditMode || !valCode || !valCode.trim()}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+                    title={!valCode || !valCode.trim() ? 'Model solution code is empty.' : undefined}
                   >
                     {isValidating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                     Run Sandbox Validation

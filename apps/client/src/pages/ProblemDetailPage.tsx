@@ -142,6 +142,7 @@ export const ProblemDetailPage: React.FC = () => {
     };
   });
   const [fontSize, setFontSize] = useState<number>(14);
+  const isCodeEmpty = !editorCode || !editorCode.trim();
 
   // Responsive mobile workspace layout (<768px vertical split)
   const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -460,7 +461,7 @@ export const ProblemDetailPage: React.FC = () => {
 
   // Real "Run Samples" using live backend evaluation (Issue C-2: Explicit view state & activeSubmission reset)
   const handleRunSampleCases = async () => {
-    if (!problem) return;
+    if (!problem || isCodeEmpty) return;
     if (sampleAbortControllerRef.current) {
       sampleAbortControllerRef.current.abort();
     }
@@ -650,7 +651,7 @@ export const ProblemDetailPage: React.FC = () => {
       return;
     }
 
-    if (!problem) return;
+    if (!problem || isCodeEmpty) return;
 
     try {
       setResultView('submission');
@@ -812,7 +813,7 @@ export const ProblemDetailPage: React.FC = () => {
           <StatefulButton
             id="run-sample-cases-btn"
             onClick={handleRunSampleCases}
-            disabled={submitting || sampleRunning}
+            disabled={submitting || sampleRunning || isCodeEmpty}
             state={runButtonState}
             loadingText="Running..."
             successText="Tested"
@@ -820,6 +821,7 @@ export const ProblemDetailPage: React.FC = () => {
             icon={<Play size={13} />}
             aria-label="Run sample test cases"
             className="btn btn-secondary"
+            title={isCodeEmpty ? 'Editor is empty. Write code to run sample cases.' : undefined}
             style={{ padding: '0.35rem 0.875rem', fontSize: '0.8125rem' }}
           >
             Run Samples
@@ -828,7 +830,7 @@ export const ProblemDetailPage: React.FC = () => {
           <StatefulButton
             id="submit-solution-btn"
             onClick={handleSubmitCode}
-            disabled={submitting}
+            disabled={submitting || isCodeEmpty}
             state={submitButtonState}
             loadingText="Evaluating..."
             successText="Accepted"
@@ -836,6 +838,7 @@ export const ProblemDetailPage: React.FC = () => {
             icon={<Send size={13} />}
             aria-label="Submit solution for evaluation"
             className="btn btn-primary"
+            title={isCodeEmpty ? 'Editor is empty. Write code to submit solution.' : undefined}
             style={{ padding: '0.35rem 1.125rem', fontSize: '0.8125rem' }}
           >
             Submit Solution
