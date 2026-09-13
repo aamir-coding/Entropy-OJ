@@ -56,7 +56,7 @@ export async function createSubmission(
     });
 
     if (existingPending) {
-      const isStale = Date.now() - new Date(existingPending.submittedAt).getTime() > 60 * 1000;
+      const isStale = Date.now() - new Date(existingPending.submittedAt).getTime() > 120 * 1000;
       if (isStale) {
         existingPending.verdict = Verdicts.INTERNAL_ERROR;
         existingPending.compileOutput = 'Evaluation timed out.';

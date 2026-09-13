@@ -302,18 +302,27 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
     {
       connection: redisConnectionOptions,
       concurrency: env.WORKER_CONCURRENCY,
+      lockDuration: 120000,       // 120s — job can run up to 2 min before being considered stalled
+      lockRenewTime: 30000,       // Renew the lock every 30s (BullMQ default is lockDuration/2)
+      stalledInterval: 60000,     // Check for stalled jobs every 60s (default: 30s)
+      maxStalledCount: 1,         // Allow 1 stall before moving to failed (default: 1)
       removeOnComplete: { age: 3600, count: 1000 },
       removeOnFail: { age: 86400, count: 5000 },
     }
   );
 
   worker.on('ready', () => {
-    console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY})`);
+    console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY}, lockDuration: 120s)`);
   });
 
   // Handle transient Redis connection drops without crashing Node runtime (Critical 1)
   worker.on('error', (err) => {
     console.error('[Worker] ⚠️ BullMQ Worker connection error:', err.message);
+  });
+
+  // Stalled job detection: log when BullMQ considers a job stalled
+  worker.on('stalled', (jobId) => {
+    console.warn(`[Worker] ⚠️ Job ${jobId} was stalled (exceeded lockDuration of 120s). BullMQ will re-queue it.`);
   });
 
   // DLQ / Final Failure Handler: Catch jobs that exhausted retries
