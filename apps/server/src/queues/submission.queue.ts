@@ -5,7 +5,7 @@ import {
   ISampleRunResponse,
   IAdminValidateSolutionResponse,
 } from '@entropy-oj/shared';
-import { redisConnectionOptions } from '../config/redis';
+import { redisConnectionOptions, redisClient } from '../config/redis';
 
 export const submissionQueue = new Queue<JudgeJobPayload>(QueueConfig.SUBMISSION_QUEUE_NAME, {
   connection: redisConnectionOptions,
@@ -24,35 +24,67 @@ export const submissionQueueEvents = new QueueEvents(QueueConfig.SUBMISSION_QUEU
   connection: redisConnectionOptions,
 });
 
-export async function enqueueSubmission(payload: JudgeJobPayload): Promise<string> {
-  const job = await submissionQueue.add(`sub-${payload.submissionId}`, payload, {
-    jobId: payload.submissionId,
-  });
+submissionQueue.on('error', (err) => {
+  console.error('[Queue] ⚠️ submissionQueue error:', err.message);
+});
 
-  console.log(`[Queue] Submission enqueued: Job ID ${job.id} for Submission ${payload.submissionId}`);
-  return job.id as string;
+submissionQueueEvents.on('error', (err) => {
+  console.error('[Queue] ⚠️ submissionQueueEvents error:', err.message);
+});
+
+export async function enqueueSubmission(payload: JudgeJobPayload): Promise<string> {
+  const redisStatus = redisClient.status;
+  console.log(`[Queue] Enqueuing submission ${payload.submissionId} (Redis: ${redisStatus})`);
+
+  try {
+    const job = await submissionQueue.add(`sub-${payload.submissionId}`, payload, {
+      jobId: payload.submissionId,
+    });
+
+    console.log(`[Queue] Submission enqueued: Job ID ${job.id} for Submission ${payload.submissionId}`);
+    return job.id as string;
+  } catch (err: any) {
+    console.error(`[Queue] Failed to enqueue submission ${payload.submissionId} (Redis: ${redisStatus}):`, err.message);
+    throw err;
+  }
 }
 
 export async function executeSampleRun(payload: JudgeJobPayload, timeoutMs = 25000): Promise<ISampleRunResponse> {
-  const job = await submissionQueue.add(`sample-${Date.now()}-${payload.submissionId}`, payload, {
-    attempts: 1,
-    removeOnComplete: true,
-    removeOnFail: true,
-  });
+  const redisStatus = redisClient.status;
+  console.log(`[Queue] Enqueuing sample run for Problem ${payload.problemId} (Redis: ${redisStatus})`);
 
-  return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as ISampleRunResponse;
+  try {
+    const job = await submissionQueue.add(`sample-${Date.now()}-${payload.submissionId}`, payload, {
+      attempts: 1,
+      removeOnComplete: true,
+      removeOnFail: true,
+    });
+
+    return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as ISampleRunResponse;
+  } catch (err: any) {
+    console.error(`[Queue] Sample run failed for Problem ${payload.problemId} (Redis: ${redisStatus}):`, err.message);
+    throw err;
+  }
 }
 
 export async function executeAdminValidation(
   payload: JudgeJobPayload,
   timeoutMs = 45000
 ): Promise<IAdminValidateSolutionResponse> {
-  const job = await submissionQueue.add(`admin-val-${Date.now()}-${payload.submissionId}`, payload, {
-    attempts: 1,
-    removeOnComplete: true,
-    removeOnFail: true,
-  });
+  const redisStatus = redisClient.status;
+  console.log(`[Queue] Enqueuing admin validation for Problem ${payload.problemId} (Redis: ${redisStatus})`);
 
-  return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as IAdminValidateSolutionResponse;
+  try {
+    const job = await submissionQueue.add(`admin-val-${Date.now()}-${payload.submissionId}`, payload, {
+      attempts: 1,
+      removeOnComplete: true,
+      removeOnFail: true,
+    });
+
+    return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as IAdminValidateSolutionResponse;
+  } catch (err: any) {
+    console.error(`[Queue] Admin validation failed for Problem ${payload.problemId} (Redis: ${redisStatus}):`, err.message);
+    throw err;
+  }
 }
 

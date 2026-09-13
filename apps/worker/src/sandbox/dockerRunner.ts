@@ -64,6 +64,27 @@ export class Semaphore {
     }
   }
 
+  /**
+   * Force-reset the semaphore to a clean state.
+   * Used for auto-recovery when leaked slots are detected (no active containers but semaphore is held).
+   */
+  reset(): void {
+    const prevActive = this.current;
+    const prevQueue = this.queue.length;
+    this.current = 0;
+    // Wake up queued waiters up to max capacity
+    while (this.queue.length > 0 && this.current < this.max) {
+      const next = this.queue.shift();
+      if (next) {
+        this.current++;
+        try { next(); } catch {}
+      }
+    }
+    if (prevActive > 0 || prevQueue > 0) {
+      console.warn(`[Semaphore] Reset: was ${prevActive}/${this.max} active, ${prevQueue} queued → now ${this.current} active, ${this.queue.length} queued.`);
+    }
+  }
+
   get activeCount(): number {
     return this.current;
   }
@@ -229,6 +250,44 @@ export async function killActiveContainers(): Promise<void> {
   );
 }
 
+/**
+ * Periodic health monitor: detects leaked semaphore slots (no active Docker containers but
+ * semaphore slots are held) and auto-resets to prevent permanent deadlocks.
+ * Returns the interval handle so it can be cleared on shutdown.
+ */
+export function startSemaphoreHealthMonitor(intervalMs = 30000): NodeJS.Timeout {
+  let stuckCycles = 0;
+
+  const timer = setInterval(() => {
+    const semActive = containerSemaphore.activeCount;
+    const semQueued = containerSemaphore.queueLength;
+    const dockerActive = activeContainers.size;
+
+    // Log heartbeat
+    console.log(
+      `[Heartbeat] Semaphore: ${semActive}/${containerSemaphore.max} active, ${semQueued} queued | ` +
+      `Docker containers: ${dockerActive} active`
+    );
+
+    // Auto-recovery: if semaphore slots are held but no Docker containers are running for 2 consecutive intervals
+    if (semActive > 0 && dockerActive === 0) {
+      stuckCycles++;
+      if (stuckCycles >= 2) {
+        console.error(
+          `[Heartbeat] ⚠️ DEADLOCK DETECTED: Semaphore holds ${semActive} slots but 0 Docker containers have been active for >${(stuckCycles * intervalMs) / 1000}s. ` +
+          `Auto-resetting semaphore to recover.`
+        );
+        containerSemaphore.reset();
+        stuckCycles = 0;
+      }
+    } else {
+      stuckCycles = 0;
+    }
+  }, intervalMs);
+  timer.unref();
+  return timer;
+}
+
 export const BASE_WORKSPACES_DIR = env.WORKSPACES_DIR || path.join(os.tmpdir(), 'entropy-workspaces');
 
 export async function sweepStaleWorkspaces(maxAgeMs = 60 * 60 * 1000): Promise<void> {
@@ -325,77 +384,80 @@ export class DockerSandbox {
   ): Promise<CompileResult> {
     const releaseSemaphore = await containerSemaphore.acquire(timeoutMs + 15000);
     const containerName = `entropy-cmp-${crypto.randomUUID()}`;
-    const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
-
-    const args = [
-      'run',
-      '--name',
-      containerName,
-      '--rm',
-      '--read-only',
-      '--tmpfs',
-      '/tmp:rw,noexec,nosuid,size=64m',
-      '--network',
-      'none',
-      '--cap-drop=ALL',
-      '--security-opt=no-new-privileges:true',
-      '--memory',
-      '512m',
-      '--memory-swap',
-      '512m',
-      '--cpus',
-      '1.0',
-      '--pids-limit',
-      '128',
-      '-v',
-      `${dockerMountPath}:/workspace`,
-      this.image,
-      'compile',
-      language,
-      timeoutMs.toString(),
-    ];
-
-    activeContainers.add(containerName);
 
     try {
-      await execFileAsync('docker', args, {
-        timeout: timeoutMs + 10000,
-        windowsHide: true,
-      });
+      const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
 
-      let compileErr = '';
+      const args = [
+        'run',
+        '--name',
+        containerName,
+        '--rm',
+        '--read-only',
+        '--tmpfs',
+        '/tmp:rw,noexec,nosuid,size=64m',
+        '--network',
+        'none',
+        '--cap-drop=ALL',
+        '--security-opt=no-new-privileges:true',
+        '--memory',
+        '512m',
+        '--memory-swap',
+        '512m',
+        '--cpus',
+        '1.0',
+        '--pids-limit',
+        '128',
+        '-v',
+        `${dockerMountPath}:/workspace`,
+        this.image,
+        'compile',
+        language,
+        timeoutMs.toString(),
+      ];
+
+      activeContainers.add(containerName);
+
       try {
-        compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
-      } catch {
-        // file may not exist if no errors
+        await execFileAsync('docker', args, {
+          timeout: timeoutMs + 10000,
+          windowsHide: true,
+        });
+
+        let compileErr = '';
+        try {
+          compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
+        } catch {
+          // file may not exist if no errors
+        }
+
+        return {
+          success: true,
+          compileOutput: compileErr.slice(0, 65536).trim(),
+          exitCode: 0,
+        };
+      } catch (error: any) {
+        // Ensure container is killed if timed out or failed
+        try {
+          await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
+        } catch {}
+        try {
+          await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
+        } catch {}
+
+        let compileErr = '';
+        try {
+          compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
+        } catch {
+          compileErr = error.stderr || error.message || 'Compilation failed';
+        }
+
+        return {
+          success: false,
+          compileOutput: compileErr.slice(0, 65536).trim(),
+          exitCode: error.code || 1,
+        };
       }
-
-      return {
-        success: true,
-        compileOutput: compileErr.slice(0, 65536).trim(),
-        exitCode: 0,
-      };
-    } catch (error: any) {
-      // Ensure container is killed if timed out or failed
-      try {
-        await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
-      } catch {}
-      try {
-        await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
-      } catch {}
-
-      let compileErr = '';
-      try {
-        compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
-      } catch {
-        compileErr = error.stderr || error.message || 'Compilation failed';
-      }
-
-      return {
-        success: false,
-        compileOutput: compileErr.slice(0, 65536).trim(),
-        exitCode: error.code || 1,
-      };
     } finally {
       activeContainers.delete(containerName);
       releaseSemaphore();
@@ -411,65 +473,69 @@ export class DockerSandbox {
     const wallTimeoutMs = Math.round(timeLimitMs * 2.5 + 2000);
     const releaseSemaphore = await containerSemaphore.acquire(wallTimeoutMs + 10000);
     const containerName = `entropy-run-${crypto.randomUUID()}`;
-    const inputPath = path.join(this.workspaceDir, 'input.txt');
-    await fs.writeFile(inputPath, input, 'utf-8');
-    await fs.chmod(inputPath, 0o666).catch(() => {});
-
-    const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
-    // Low 2: Clamp container memory limits to a safe minimum execution floor (32MB)
-    const safeMemLimitMb = Math.max(32, Math.ceil(memoryLimitKb / 1024));
-    const memLimit = `${safeMemLimitMb}m`;
-
-    const args = [
-      'run',
-      '--name',
-      containerName,
-      '--rm',
-      '--read-only',
-      '--tmpfs',
-      '/tmp:rw,noexec,nosuid,size=32m',
-      '--network',
-      'none',
-      '--cap-drop=ALL',
-      '--security-opt=no-new-privileges:true',
-      '--memory',
-      memLimit,
-      '--memory-swap',
-      memLimit,
-      '--cpus',
-      '0.5',
-      '--pids-limit',
-      '64',
-      '-v',
-      `${dockerMountPath}:/workspace`,
-      this.image,
-      'run',
-      language,
-      timeLimitMs.toString(),
-    ];
 
     let timedOut = false;
     let isOomKilled = false;
-    activeContainers.add(containerName);
 
     try {
-      await execFileAsync('docker', args, {
-        timeout: wallTimeoutMs,
-        windowsHide: true,
-      });
-    } catch (error: any) {
-      if (error.killed || error.signal === 'SIGTERM') {
-        timedOut = true;
-      }
-      if (error.code === 137 || error.status === 137 || error.signal === 'SIGKILL') {
-        isOomKilled = true;
-      }
+      const inputPath = path.join(this.workspaceDir, 'input.txt');
+      await fs.writeFile(inputPath, input, 'utf-8');
+      await fs.chmod(inputPath, 0o666).catch(() => {});
+
+      const dockerMountPath = this.normalizeDockerMountPath(this.hostMountPath);
+      // Low 2: Clamp container memory limits to a safe minimum execution floor (32MB)
+      const safeMemLimitMb = Math.max(32, Math.ceil(memoryLimitKb / 1024));
+      const memLimit = `${safeMemLimitMb}m`;
+
+      const args = [
+        'run',
+        '--name',
+        containerName,
+        '--rm',
+        '--read-only',
+        '--tmpfs',
+        '/tmp:rw,noexec,nosuid,size=32m',
+        '--network',
+        'none',
+        '--cap-drop=ALL',
+        '--security-opt=no-new-privileges:true',
+        '--memory',
+        memLimit,
+        '--memory-swap',
+        memLimit,
+        '--cpus',
+        '0.5',
+        '--pids-limit',
+        '64',
+        '-v',
+        `${dockerMountPath}:/workspace`,
+        this.image,
+        'run',
+        language,
+        timeLimitMs.toString(),
+      ];
+
+      activeContainers.add(containerName);
+
       try {
-        await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
-      } catch {}
-      try {
-        await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
-      } catch {}
+        await execFileAsync('docker', args, {
+          timeout: wallTimeoutMs,
+          windowsHide: true,
+        });
+      } catch (error: any) {
+        if (error.killed || error.signal === 'SIGTERM') {
+          timedOut = true;
+        }
+        if (error.code === 137 || error.status === 137 || error.signal === 'SIGKILL') {
+          isOomKilled = true;
+        }
+        try {
+          await execFileAsync('docker', ['kill', containerName], { windowsHide: true });
+        } catch {}
+        try {
+          await execFileAsync('docker', ['rm', '-f', containerName], { windowsHide: true });
+        } catch {}
+      }
     } finally {
       activeContainers.delete(containerName);
       releaseSemaphore();

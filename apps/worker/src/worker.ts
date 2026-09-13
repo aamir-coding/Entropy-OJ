@@ -2,17 +2,69 @@ import http from 'http';
 import mongoose from 'mongoose';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { Queue } from 'bullmq';
 import { connectDB, disconnectDB } from './config/db';
-import { redisClient } from './config/redis';
+import { redisClient, redisConnectionOptions } from './config/redis';
 import { env } from './config/env';
 import { createSubmissionWorker } from './queue/submissionWorker';
+import { QueueConfig } from '@entropy-oj/shared';
 import {
   reapOrphanedContainers,
   killActiveContainers,
   sweepStaleWorkspaces,
+  startSemaphoreHealthMonitor,
 } from './sandbox/dockerRunner';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Drain stalled/stuck jobs from the queue before the worker starts accepting new work.
+ * This prevents inheriting deadlocked state from a previous worker crash — jobs stuck in 'active'
+ * status from a dead worker would permanently occupy semaphore slots and never complete.
+ */
+async function drainStalledJobs(): Promise<void> {
+  try {
+    const queue = new Queue(QueueConfig.SUBMISSION_QUEUE_NAME, {
+      connection: redisConnectionOptions,
+    });
+
+    const activeJobs = await queue.getActive();
+    const stalledCount = activeJobs.length;
+
+    if (stalledCount > 0) {
+      console.warn(`[Worker] Found ${stalledCount} active jobs from previous session. Moving to failed...`);
+      for (const job of activeJobs) {
+        try {
+          await job.moveToFailed(
+            new Error('Worker restarted — job was stuck in active state from previous session.'),
+            job.token || '0',
+            false
+          );
+          console.log(`[Worker] Moved stalled job ${job.id} to failed.`);
+        } catch (err: any) {
+          console.warn(`[Worker] Could not move job ${job.id} to failed: ${err.message}. Attempting remove...`);
+          try {
+            await job.remove();
+            console.log(`[Worker] Removed stalled job ${job.id}.`);
+          } catch (removeErr: any) {
+            console.warn(`[Worker] Could not remove job ${job.id}: ${removeErr.message}`);
+          }
+        }
+      }
+    }
+
+    // Also clean any waiting jobs that may be duplicates from stall re-queuing
+    const waitingJobs = await queue.getWaiting();
+    if (waitingJobs.length > 0) {
+      console.log(`[Worker] ${waitingJobs.length} waiting jobs in queue (will be processed normally).`);
+    }
+
+    await queue.close();
+    console.log(`[Worker] Queue drain complete. Cleared ${stalledCount} stalled jobs.`);
+  } catch (err: any) {
+    console.warn('[Worker] Queue drain skipped (non-fatal):', err.message);
+  }
+}
 
 async function bootstrap() {
   console.log('===================================================');
@@ -42,7 +94,14 @@ async function bootstrap() {
     process.exit(1);
   }
 
+  // Drain stalled/stuck jobs from the queue before accepting new work.
+  // This prevents inheriting deadlocked state from a previous worker crash.
+  await drainStalledJobs();
+
   const worker = createSubmissionWorker();
+
+  // Start semaphore health monitor (auto-resets leaked semaphore slots after 60s of inactivity)
+  const semaphoreMonitor = startSemaphoreHealthMonitor(30000);
 
   // Health probe HTTP server for container orchestrators (Issue M-3)
   const healthPort = env.WORKER_HEALTH_PORT;
@@ -121,6 +180,7 @@ async function bootstrap() {
     forceExitTimer.unref();
 
     clearInterval(reaperInterval);
+    clearInterval(semaphoreMonitor);
 
     try {
       healthServer.close();

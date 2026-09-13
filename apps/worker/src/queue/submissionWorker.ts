@@ -117,7 +117,13 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
         !ALL_SUPPORTED_LANGUAGES.includes(job.data.language as any)
       ) {
         console.error(`[Worker] ❌ Invalid or corrupt job payload for Job ${job.id}:`, job.data);
-        if (job.data?.submissionId && typeof job.data.submissionId === 'string') {
+        if (
+          job.data?.submissionId &&
+          typeof job.data.submissionId === 'string' &&
+          !job.data.isSampleRun &&
+          !job.data.isAdminValidation &&
+          mongoose.Types.ObjectId.isValid(job.data.submissionId)
+        ) {
           await SolutionModel.findOneAndUpdate(
             { _id: job.data.submissionId, verdict: Verdicts.PENDING },
             {
@@ -302,9 +308,9 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
     {
       connection: redisConnectionOptions,
       concurrency: env.WORKER_CONCURRENCY,
-      lockDuration: 120000,       // 120s — job can run up to 2 min before being considered stalled
-      lockRenewTime: 30000,       // Renew the lock every 30s (BullMQ default is lockDuration/2)
-      stalledInterval: 60000,     // Check for stalled jobs every 60s (default: 30s)
+      lockDuration: 300000,       // 300s (5 min) — safety net; active lock renewal prevents actual expiry
+      lockRenewTime: 15000,       // Renew the lock every 15s (aggressively keeps the lock alive)
+      stalledInterval: 120000,    // Check for stalled jobs every 120s
       maxStalledCount: 1,         // Allow 1 stall before moving to failed (default: 1)
       removeOnComplete: { age: 3600, count: 1000 },
       removeOnFail: { age: 86400, count: 5000 },
@@ -312,7 +318,7 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
   );
 
   worker.on('ready', () => {
-    console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY}, lockDuration: 120s)`);
+    console.log(`[Worker] 🚀 BullMQ Submission Worker ready (Concurrency: ${env.WORKER_CONCURRENCY}, lockDuration: 300s, lockRenew: 15s)`);
   });
 
   // Handle transient Redis connection drops without crashing Node runtime (Critical 1)
@@ -322,7 +328,7 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
 
   // Stalled job detection: log when BullMQ considers a job stalled
   worker.on('stalled', (jobId) => {
-    console.warn(`[Worker] ⚠️ Job ${jobId} was stalled (exceeded lockDuration of 120s). BullMQ will re-queue it.`);
+    console.warn(`[Worker] ⚠️ Job ${jobId} was stalled (exceeded lockDuration of 300s). BullMQ will re-queue it.`);
   });
 
   // DLQ / Final Failure Handler: Catch jobs that exhausted retries
@@ -330,6 +336,13 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
     console.error(`[Worker] Job ${job?.id} failed (attempt ${job?.attemptsMade}):`, err.message);
 
     if (job && job.attemptsMade >= (job.opts?.attempts || QueueConfig.DEFAULT_JOB_ATTEMPTS)) {
+      if (
+        job.data?.isSampleRun ||
+        job.data?.isAdminValidation ||
+        !mongoose.Types.ObjectId.isValid(job.data?.submissionId)
+      ) {
+        return;
+      }
       console.warn(`[Worker] Job ${job.id} exhausted all retries. Finalizing Solution to INTERNAL_ERROR.`);
       try {
         await SolutionModel.findOneAndUpdate(

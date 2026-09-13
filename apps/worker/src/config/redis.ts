@@ -11,9 +11,8 @@ export const redisConnectionOptions: RedisOptions = {
     if (env.NODE_ENV === 'test') {
       return null;
     }
-    if (times > 10) {
-      console.error('[Worker Redis] Max reconnection attempts (10) reached.');
-      return null;
+    if (times % 10 === 0) {
+      console.warn(`[Worker Redis] Reconnection attempt ${times} to ${env.REDIS_HOST}:${env.REDIS_PORT}...`);
     }
     return Math.min(times * 200, 3000);
   },
