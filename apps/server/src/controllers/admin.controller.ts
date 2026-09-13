@@ -4,7 +4,7 @@ import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { Solution } from '../models/Solution';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { DockerSandbox, sandboxSemaphore } from '../sandbox/dockerRunner';
+import { executeAdminValidation } from '../queues/submission.queue';
 import {
   CreateProblemInput,
   UpdateProblemInput,
@@ -15,8 +15,6 @@ import {
   IAdminProblemListItem,
   IAdminProblemDetail,
   IAdminValidateSolutionResponse,
-  IAdminValidateTestCaseResult,
-  diffOutput,
 } from '@entropy-oj/shared';
 
 /**
@@ -433,7 +431,7 @@ export async function deleteAdminProblem(
 
 /**
  * POST /api/admin/problems/:id/validate
- * Run a model/reference solution in Docker against all test cases for validation.
+ * Run a model/reference solution in sandbox worker against all test cases for validation.
  */
 export async function validateModelSolution(
   req: AuthRequest,
@@ -461,11 +459,8 @@ export async function validateModelSolution(
       return;
     }
 
-    const testCases = await TestCase.find({ problem: problem._id })
-      .sort({ order: 1 })
-      .lean();
-
-    if (testCases.length === 0) {
+    const testCaseCount = await TestCase.countDocuments({ problem: problem._id });
+    if (testCaseCount === 0) {
       res.status(400).json({
         success: false,
         error: 'Cannot validate model solution: Problem has no test cases configured.',
@@ -473,113 +468,31 @@ export async function validateModelSolution(
       return;
     }
 
-    if (sandboxSemaphore.activeCount >= sandboxSemaphore.max && sandboxSemaphore.queueLength >= 2) {
-      res.status(503).json({
-        success: false,
-        error: 'Sandbox evaluation engine is currently at maximum capacity. Please try again shortly.',
-      });
-      return;
-    }
-
-    // Prepare live Docker sandbox
-    const sandbox = await DockerSandbox.create();
-
     try {
-      await sandbox.prepareSourceFile(code, language);
-      const compileRes = await sandbox.compile(language);
-
-      if (!compileRes.success) {
-        res.status(200).json({
-          success: true,
-          data: {
-            verdict: Verdicts.COMPILATION_ERROR,
-            compileOutput: compileRes.compileOutput || 'Compilation failed',
-            totalTestCases: testCases.length,
-            passedTestCases: 0,
-            executionTimeMs: 0,
-            memoryUsedKb: 0,
-            results: [],
-          } as IAdminValidateSolutionResponse,
-        });
-        return;
-      }
-
-      let maxTimeMs = 0;
-      let maxMemKb = 0;
-      let allPassed = true;
-      let overallVerdict: Verdict = Verdicts.ACCEPTED;
-      const testResults: IAdminValidateTestCaseResult[] = [];
-
-      // Critical 1: Enforce wall-clock budget (25s) to prevent event loop exhaustion and gateway timeouts
-      const MAX_VALIDATE_WALL_TIME_MS = 25000;
-      const startTime = Date.now();
-
-      for (let i = 0; i < testCases.length; i++) {
-        if (Date.now() - startTime > MAX_VALIDATE_WALL_TIME_MS) {
-          allPassed = false;
-          if (overallVerdict === Verdicts.ACCEPTED) overallVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
-          break;
-        }
-
-        const tc = testCases[i];
-        const runRes = await sandbox.runTestCase(tc.input, language, problem.timeLimitMs, problem.memoryLimitKb);
-
-        const cpuTimeMs = runRes.metrics.cpuTimeMs;
-        const memoryKb = runRes.metrics.maxRssKb;
-        maxTimeMs = Math.max(maxTimeMs, cpuTimeMs);
-        maxMemKb = Math.max(maxMemKb, memoryKb);
-
-        let testVerdict: Verdict = Verdicts.ACCEPTED;
-        if (runRes.timedOut || cpuTimeMs > problem.timeLimitMs) {
-          testVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
-        } else if (memoryKb > problem.memoryLimitKb) {
-          testVerdict = Verdicts.MEMORY_LIMIT_EXCEEDED;
-        } else if (runRes.metrics.exitCode !== 0) {
-          testVerdict = Verdicts.RUNTIME_ERROR;
-        } else {
-          const diff = diffOutput(runRes.actualOutput, tc.output);
-          if (!diff.isMatch) {
-            testVerdict = Verdicts.WRONG_ANSWER;
-          }
-        }
-
-        const passed = testVerdict === Verdicts.ACCEPTED;
-        if (!passed) {
-          allPassed = false;
-          if (overallVerdict === Verdicts.ACCEPTED) {
-            overallVerdict = testVerdict;
-          }
-        }
-
-        testResults.push({
-          testCaseIndex: i + 1,
-          isSample: tc.isSample,
-          input: tc.input,
-          expectedOutput: tc.output,
-          actualOutput: runRes.actualOutput,
-          passed,
-          verdict: testVerdict,
-          executionTimeMs: cpuTimeMs,
-          memoryUsedKb: memoryKb,
-          error: runRes.stderr || undefined,
-        });
-      }
-
-      const passedCount = testResults.filter((r) => r.passed).length;
+      const response = await executeAdminValidation(
+        {
+          submissionId: `admin-val-${new mongoose.Types.ObjectId()}`,
+          problemId: problem._id.toString(),
+          userId: req.userId || 'admin',
+          code,
+          language,
+          timeLimitMs: problem.timeLimitMs,
+          memoryLimitKb: problem.memoryLimitKb,
+          isAdminValidation: true,
+        },
+        45000
+      );
 
       res.status(200).json({
         success: true,
-        data: {
-          verdict: allPassed ? Verdicts.ACCEPTED : overallVerdict,
-          totalTestCases: testCases.length,
-          passedTestCases: passedCount,
-          executionTimeMs: maxTimeMs,
-          memoryUsedKb: maxMemKb,
-          results: testResults,
-        } as IAdminValidateSolutionResponse,
+        data: response,
       });
-    } finally {
-      await sandbox.cleanup();
+    } catch (err: any) {
+      console.error('[AdminValidate] Error validating model solution:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Model solution validation execution failed: ' + (err.message || 'Internal error'),
+      });
     }
   } catch (error) {
     next(error);

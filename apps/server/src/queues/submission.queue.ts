@@ -1,5 +1,10 @@
 import { Queue, QueueEvents } from 'bullmq';
-import { JudgeJobPayload, QueueConfig, ISampleRunResponse } from '@entropy-oj/shared';
+import {
+  JudgeJobPayload,
+  QueueConfig,
+  ISampleRunResponse,
+  IAdminValidateSolutionResponse,
+} from '@entropy-oj/shared';
 import { redisConnectionOptions } from '../config/redis';
 
 export const submissionQueue = new Queue<JudgeJobPayload>(QueueConfig.SUBMISSION_QUEUE_NAME, {
@@ -37,3 +42,17 @@ export async function executeSampleRun(payload: JudgeJobPayload, timeoutMs = 250
 
   return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as ISampleRunResponse;
 }
+
+export async function executeAdminValidation(
+  payload: JudgeJobPayload,
+  timeoutMs = 45000
+): Promise<IAdminValidateSolutionResponse> {
+  const job = await submissionQueue.add(`admin-val-${Date.now()}-${payload.submissionId}`, payload, {
+    attempts: 1,
+    removeOnComplete: true,
+    removeOnFail: true,
+  });
+
+  return (await job.waitUntilFinished(submissionQueueEvents, timeoutMs)) as IAdminValidateSolutionResponse;
+}
+

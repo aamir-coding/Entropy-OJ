@@ -5,7 +5,6 @@ import { Problem } from '../models/Problem';
 import { TestCase } from '../models/TestCase';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { enqueueSubmission, executeSampleRun } from '../queues/submission.queue';
-import { DockerSandbox, sandboxSemaphore } from '../sandbox/dockerRunner';
 import { env } from '../config/env';
 import {
   CreateSubmissionInput,

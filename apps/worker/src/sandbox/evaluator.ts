@@ -5,6 +5,8 @@ import {
   JudgeExecutionResult,
   ISampleRunResponse,
   ISampleCaseResult,
+  IAdminValidateSolutionResponse,
+  IAdminValidateTestCaseResult,
   Verdict,
   Verdicts,
   diffOutput,
@@ -261,6 +263,120 @@ export async function evaluateSampleRun(
       totalCases: sampleCases.length,
       passedCases: passedCount,
       sampleResults,
+    };
+  } finally {
+    await sandbox.cleanup();
+  }
+}
+
+export async function evaluateAdminValidation(
+  job: JudgeJobPayload,
+  testCases: ITestCaseModel[]
+): Promise<IAdminValidateSolutionResponse> {
+  const { code, language, timeLimitMs, memoryLimitKb } = job;
+  const sandbox = await DockerSandbox.create();
+
+  try {
+    await sandbox.prepareSourceFile(code, language);
+    const compileRes = await sandbox.compile(language, 10000);
+    if (!compileRes.success) {
+      return {
+        verdict: Verdicts.COMPILATION_ERROR,
+        compileOutput: compileRes.compileOutput || 'Compilation failed with errors',
+        totalTestCases: testCases.length,
+        passedTestCases: 0,
+        executionTimeMs: 0,
+        memoryUsedKb: 0,
+        results: [],
+      };
+    }
+
+    if (!testCases || testCases.length === 0) {
+      return {
+        verdict: Verdicts.ACCEPTED,
+        totalTestCases: 0,
+        passedTestCases: 0,
+        executionTimeMs: 0,
+        memoryUsedKb: 0,
+        results: [],
+      };
+    }
+
+    let maxTimeMs = 0;
+    let maxMemKb = 0;
+    let allPassed = true;
+    let overallVerdict: Verdict = Verdicts.ACCEPTED;
+    const testResults: IAdminValidateTestCaseResult[] = [];
+
+    // Wall-clock budget for admin validation (35s)
+    const MAX_VALIDATE_WALL_TIME_MS = 35000;
+    const startTime = Date.now();
+
+    for (let i = 0; i < testCases.length; i++) {
+      if (Date.now() - startTime > MAX_VALIDATE_WALL_TIME_MS) {
+        allPassed = false;
+        if (overallVerdict === Verdicts.ACCEPTED) overallVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+        break;
+      }
+
+      const tc = testCases[i];
+      const runRes = await sandbox.runTestCase(
+        tc.input,
+        language,
+        timeLimitMs,
+        memoryLimitKb
+      );
+
+      const cpuTimeMs = runRes.metrics.cpuTimeMs;
+      const memoryKb = runRes.metrics.maxRssKb;
+      maxTimeMs = Math.max(maxTimeMs, cpuTimeMs);
+      maxMemKb = Math.max(maxMemKb, memoryKb);
+
+      let testVerdict: Verdict = Verdicts.ACCEPTED;
+      if (runRes.isOomKilled || runRes.metrics.exitCode === 137 || runRes.metrics.processExitStatus === 137 || memoryKb > memoryLimitKb) {
+        testVerdict = Verdicts.MEMORY_LIMIT_EXCEEDED;
+      } else if (runRes.timedOut || cpuTimeMs > timeLimitMs || runRes.metrics.wallTimeSec * 1000 > timeLimitMs * 1.5) {
+        testVerdict = Verdicts.TIME_LIMIT_EXCEEDED;
+      } else if (runRes.metrics.exitCode !== 0 || runRes.metrics.processExitStatus !== 0) {
+        testVerdict = Verdicts.RUNTIME_ERROR;
+      } else {
+        const diff = diffOutput(runRes.actualOutput, tc.output);
+        if (!diff.isMatch) {
+          testVerdict = Verdicts.WRONG_ANSWER;
+        }
+      }
+
+      const passed = testVerdict === Verdicts.ACCEPTED;
+      if (!passed) {
+        allPassed = false;
+        if (overallVerdict === Verdicts.ACCEPTED) {
+          overallVerdict = testVerdict;
+        }
+      }
+
+      testResults.push({
+        testCaseIndex: i + 1,
+        isSample: tc.isSample ?? false,
+        input: tc.input,
+        expectedOutput: tc.output,
+        actualOutput: runRes.actualOutput,
+        passed,
+        verdict: testVerdict,
+        executionTimeMs: cpuTimeMs,
+        memoryUsedKb: memoryKb,
+        error: runRes.stderr || undefined,
+      });
+    }
+
+    const passedCount = testResults.filter((r) => r.passed).length;
+
+    return {
+      verdict: allPassed ? Verdicts.ACCEPTED : overallVerdict,
+      totalTestCases: testCases.length,
+      passedTestCases: passedCount,
+      executionTimeMs: maxTimeMs,
+      memoryUsedKb: maxMemKb,
+      results: testResults,
     };
   } finally {
     await sandbox.cleanup();

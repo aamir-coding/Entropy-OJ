@@ -206,6 +206,7 @@ export interface JudgeJobPayload {
   timeLimitMs: number;
   memoryLimitKb: number;
   isSampleRun?: boolean;
+  isAdminValidation?: boolean;
 }
 
 export interface TestCaseExecutionResult extends IBaseTestCaseResult {

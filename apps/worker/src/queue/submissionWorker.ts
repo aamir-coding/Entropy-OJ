@@ -9,7 +9,7 @@ import {
   Verdict,
 } from '@entropy-oj/shared';
 import { redisConnectionOptions, redisClient } from '../config/redis';
-import { evaluateSubmission, evaluateSampleRun } from '../sandbox/evaluator';
+import { evaluateSubmission, evaluateSampleRun, evaluateAdminValidation } from '../sandbox/evaluator';
 import { env } from '../config/env';
 
 interface ISolutionDoc extends Document {
@@ -139,6 +139,16 @@ export function createSubmissionWorker(): Worker<JudgeJobPayload> {
           .sort({ order: 1 })
           .lean();
         return await evaluateSampleRun(job.data, sampleCases);
+      }
+
+      // Fast-path: Admin model solution validation (all test cases)
+      if (job.data.isAdminValidation) {
+        console.log(`[Worker] 🔍 Validating model solution for Problem ${job.data.problemId} (${job.data.language})`);
+        const allCases = await TestCaseModel.find({ problem: job.data.problemId })
+          .select('input output isSample order')
+          .sort({ order: 1 })
+          .lean();
+        return await evaluateAdminValidation(job.data, allCases);
       }
 
       const evalLockKey = `lock:evaluating:${job.data.submissionId}`;
