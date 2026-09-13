@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPRING_LAYOUT } from '../lib/ease';
@@ -9,6 +10,8 @@ import {
   ChevronDown,
   Shield,
   Trophy,
+  Menu,
+  X,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -18,10 +21,29 @@ export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Active route tracking for the underline indicator
   const isHome = location.pathname === '/';
   const isProblems = location.pathname.startsWith('/problems') || location.pathname.startsWith('/problem');
   const isGalaxy = location.pathname === '/galaxy';
+
+  // Mobile menu drawer state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile drawer on route transition
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile drawer is open to prevent background text scrolling
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   // Outside-click and Escape key handler for user dropdown
   useEffect(() => {
@@ -67,16 +89,7 @@ export const Navbar: React.FC = () => {
         zIndex: 1000,
       }}
     >
-      <div
-        className="container"
-        style={{
-          height: '100%',
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
-          alignItems: 'center',
-          width: '100%',
-        }}
-      >
+      <div className="container navbar-desktop">
         {/* ── Left Section: Navigation Links (Home, Problems, Galaxy) ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', justifySelf: 'start' }}>
           <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -404,6 +417,248 @@ export const Navbar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Mobile Header Container (< 768px) ── */}
+      <div className="container navbar-mobile">
+        {/* Mobile Brand */}
+        <Link
+          to="/"
+          aria-label="Entropy Homepage"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            textDecoration: 'none',
+          }}
+        >
+          <img
+            src="/logo.png"
+            alt="Entropy Logo"
+            style={{
+              width: '24px',
+              height: '24px',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 0 6px rgba(255, 255, 255, 0.2))',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "'Inter', 'Outfit', sans-serif",
+              fontWeight: 300,
+              fontSize: '0.875rem',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: '#f7f7f7',
+              paddingLeft: '0.15em',
+            }}
+          >
+            ENTROPY
+          </span>
+        </Link>
+
+        {/* Mobile Right Controls: Auth Profile / Sign In + Hamburger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          {user ? (
+            <Link
+              to="/profile"
+              aria-label="User Profile"
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--brand-neutral-600)',
+                border: '1px solid var(--border-medium)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'var(--brand-white)',
+                textDecoration: 'none',
+              }}
+            >
+              {user.fullName.charAt(0).toUpperCase()}
+            </Link>
+          ) : (
+            <button
+              onClick={() => openAuthModal('login')}
+              className="btn btn-outline"
+              style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem' }}
+            >
+              Sign In
+            </button>
+          )}
+
+          <button
+            id="mobile-nav-toggle-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-xs)',
+              padding: '0.35rem',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mobile Navigation Drawer (Rendered via Portal to break out of sticky header context) ── */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <>
+                <motion.div
+                  className="mobile-nav-drawer-overlay"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setMobileMenuOpen(false)}
+                />
+                <motion.div
+                  className="mobile-nav-drawer"
+                  style={{
+                    backgroundColor: '#000000',
+                    background: '#000000',
+                  }}
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingBottom: '1rem',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      marginBottom: '1.25rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <img src="/logo.png" alt="Logo" style={{ width: '22px', height: '22px' }} />
+                      <span style={{ fontWeight: 300, letterSpacing: '0.25em', fontSize: '0.85rem', color: '#f7f7f7' }}>
+                        ENTROPY
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                      aria-label="Close menu"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Drawer Links */}
+                  <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                    <Link
+                      to="/"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`mobile-nav-drawer-link ${isHome ? 'active' : ''}`}
+                    >
+                      Home
+                    </Link>
+                    <Link
+                      to="/problems"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`mobile-nav-drawer-link ${isProblems ? 'active' : ''}`}
+                    >
+                      Problems
+                    </Link>
+                    <Link
+                      to="/galaxy"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`mobile-nav-drawer-link ${isGalaxy ? 'active' : ''}`}
+                    >
+                      Galaxy
+                    </Link>
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="mobile-nav-drawer-link"
+                        style={{ marginTop: '0.5rem' }}
+                      >
+                        <Shield size={15} style={{ color: 'var(--brand-neutral-200)' }} />
+                        <span>Problem Studio (Admin)</span>
+                      </Link>
+                    )}
+
+                    {user && (
+                      <Link
+                        to="/profile"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="mobile-nav-drawer-link"
+                        style={{ marginTop: '0.25rem' }}
+                      >
+                        <User size={15} style={{ color: 'var(--brand-neutral-200)' }} />
+                        <span>My Profile & History</span>
+                      </Link>
+                    )}
+                  </nav>
+
+                  {/* Drawer Auth Footer */}
+                  <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', marginTop: 'auto' }}>
+                    {user ? (
+                      <div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500 }}>
+                          {user.fullName}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {user.email}
+                        </div>
+                        <button
+                          onClick={handleLogout}
+                          className="btn btn-outline"
+                          style={{ width: '100%', justifyContent: 'center', color: 'var(--verdict-wa)', borderColor: 'var(--verdict-wa-border)', backgroundColor: '#0d0d0d' }}
+                        >
+                          <LogOut size={14} />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            openAuthModal('login');
+                          }}
+                          className="btn btn-outline"
+                          style={{ width: '100%', backgroundColor: '#0d0d0d' }}
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            openAuthModal('register');
+                          }}
+                          className="btn btn-primary"
+                          style={{ width: '100%' }}
+                        >
+                          Create Account
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </header>
   );
 };

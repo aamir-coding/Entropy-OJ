@@ -37,21 +37,19 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className="feature-card-grid"
       style={{
         width: '100%',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '2.5rem',
         alignItems: 'start',
         padding: '2.5rem 0',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         scrollMarginTop: '80px',
       }}
     >
-      {/* Text column (Order manipulated via direction or flex order) */}
+      {/* Text column (Order controlled via CSS for proper mobile-first hierarchy) */}
       <div
+        className={`feature-card-text ${reversed ? 'reversed' : ''}`}
         style={{
-          order: reversed ? 2 : 1,
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
@@ -151,8 +149,8 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
 
       {/* Interactive Widget Column */}
       <div
+        className={`feature-card-widget ${reversed ? 'reversed' : ''}`}
         style={{
-          order: reversed ? 1 : 2,
           width: '100%',
           minWidth: 0,
         }}

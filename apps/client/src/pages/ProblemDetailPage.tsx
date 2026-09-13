@@ -54,6 +54,7 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { defineEntropyTheme } from '../styles/monacoTheme';
 import { ProblemTimer } from '../components/ProblemTimer';
+import { MobileProblemWorkspace } from '../components/MobileProblemWorkspace';
 
 const safeStorage = {
   getItem: (key: string): string | null => {
@@ -151,6 +152,9 @@ export const ProblemDetailPage: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Mobile active tab state: 'statement' | 'editor' | 'console'
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'statement' | 'editor' | 'console'>('statement');
 
   // Console / Testcase Navigation State
   const [isConsoleCollapsed, setIsConsoleCollapsed] = useState(false);
@@ -475,6 +479,9 @@ export const ProblemDetailPage: React.FC = () => {
     setRunButtonState('loading');
     setSampleRunError(null);
     handleOpenConsoleTab('results');
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobileWorkspaceTab('console');
+    }
 
     try {
       const res = await api.post(
@@ -659,6 +666,9 @@ export const ProblemDetailPage: React.FC = () => {
       setSubmitting(true);
       setSubmitButtonState('loading');
       handleOpenConsoleTab('results');
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobileWorkspaceTab('console');
+      }
       setActiveSubmission(null);
       setSubmissionTimeoutMsg(null);
       setHintState({ loading: false, hint: null, error: null });
@@ -742,15 +752,75 @@ export const ProblemDetailPage: React.FC = () => {
   return (
     <div
       style={{
-        height: 'calc(100vh - var(--header-height))',
-        maxHeight: 'calc(100vh - var(--header-height))',
+        height: 'calc(100dvh - var(--header-height))',
+        maxHeight: 'calc(100dvh - var(--header-height))',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         position: 'relative',
       }}
     >
-      {/* Workspace Sub-Header Bar (Pinned to top of workspace) */}
+      {isMobile ? (
+        <MobileProblemWorkspace
+          problem={problem}
+          diffClass={diffClass}
+          user={user}
+          problemCodeParam={problemCodeParam}
+          isProblemSolved={isProblemSolved}
+          setIsProblemSolved={setIsProblemSolved}
+          isTimerCompleted={isTimerCompleted}
+          setIsTimerCompleted={setIsTimerCompleted}
+          timerResetTrigger={timerResetTrigger}
+          editorKeystrokes={editorKeystrokes}
+          setEditorKeystrokes={setEditorKeystrokes}
+          language={language}
+          handleLanguageChange={handleLanguageChange}
+          editorCode={editorCode}
+          setEditorCode={setEditorCode}
+          isCodeEmpty={isCodeEmpty}
+          handleResetCode={handleResetCode}
+          showResetConfirm={showResetConfirm}
+          setShowResetConfirm={setShowResetConfirm}
+          saveDraft={saveDraft}
+          blindMode={blindMode}
+          revealedTags={revealedTags}
+          setRevealedTags={setRevealedTags}
+          submitting={submitting}
+          sampleRunning={sampleRunning}
+          runButtonState={runButtonState}
+          submitButtonState={submitButtonState}
+          handleRunSampleCases={handleRunSampleCases}
+          handleSubmitCode={handleSubmitCode}
+          activeSubmission={activeSubmission}
+          submissionTimeoutMsg={submissionTimeoutMsg}
+          sampleResults={sampleResults}
+          activeCaseIndex={activeCaseIndex}
+          setActiveCaseIndex={setActiveCaseIndex}
+          resultView={resultView}
+          currentSampleCase={currentSampleCase}
+          currentResultCase={currentResultCase}
+          copiedInputIdx={copiedInputIdx}
+          handleCopyInput={handleCopyInput}
+          consoleTab={consoleTab}
+          handleOpenConsoleTab={handleOpenConsoleTab}
+          handleManualCheckStatus={handleManualCheckStatus}
+          hintState={hintState}
+          handleRequestHint={handleRequestHint}
+          pastSubmissions={pastSubmissions}
+          loadingPastSubmissions={loadingPastSubmissions}
+          openAuthModal={openAuthModal}
+          onViewCode={(sub) =>
+            setViewCodeModal({
+              open: true,
+              code: sub.code || '',
+              language: sub.language,
+              verdict: sub.verdict,
+            })
+          }
+        />
+      ) : (
+        <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Workspace Sub-Header Bar (Pinned to top of workspace) */}
       <div
         style={{
           padding: '0.5rem 1.25rem',
@@ -848,7 +918,7 @@ export const ProblemDetailPage: React.FC = () => {
 
       {/* Main Viewport Workspace Split (Left: Problem Statement, Right: Monaco Editor + Bottom Console) */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
-        <Group orientation={isMobile ? 'vertical' : 'horizontal'} {...(isMobile ? verticalLayout : horizontalLayout)} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+        <Group orientation="horizontal" {...horizontalLayout} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
           {/* LEFT PANEL: Problem Description & Submissions Tabs (Scrolls independently) */}
           <Panel id="problem-left-panel" defaultSize="45%" minSize="25%" maxSize="75%">
             <div
@@ -1950,6 +2020,8 @@ export const ProblemDetailPage: React.FC = () => {
           </Panel>
         </Group>
       </div>
+    </div>
+  )}
 
       {/* View Past Code Modal */}
       <ViewCodeModal

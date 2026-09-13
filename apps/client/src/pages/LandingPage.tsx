@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
+  ArrowDown,
   Layers,
   Sparkles,
   Cpu,
@@ -169,8 +170,18 @@ export const LandingPage: React.FC = () => {
     }, 1000);
   };
 
-  const handleEnter = () => {
-    navigate('/problems');
+  const handleExplore = () => {
+    isClickScrollingRef.current = true;
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+
+    const target = document.getElementById('features-section') || document.getElementById('feature-sandboxing');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    clickTimeoutRef.current = window.setTimeout(() => {
+      isClickScrollingRef.current = false;
+    }, 1000);
   };
 
   return (
@@ -202,25 +213,31 @@ export const LandingPage: React.FC = () => {
           </Suspense>
         </div>
 
-        {/* CTA */}
+        {/* Explore Features CTA */}
         <button
-          onClick={handleEnter}
+          id="hero-explore-btn"
+          onClick={handleExplore}
           style={styles.ctaButton}
+          aria-label="Explore features and architecture below"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)';
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
             e.currentTarget.style.color = '#ffffff';
             e.currentTarget.style.transform = 'translateY(-1px)';
+            const icon = e.currentTarget.querySelector('.cta-arrow-icon') as HTMLElement | null;
+            if (icon) icon.style.transform = 'translateY(2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
             e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
             e.currentTarget.style.transform = 'translateY(0)';
+            const icon = e.currentTarget.querySelector('.cta-arrow-icon') as HTMLElement | null;
+            if (icon) icon.style.transform = 'translateY(0)';
           }}
         >
-          Enter the Arena
-          <ArrowRight size={14} style={{ marginLeft: '0.5rem' }} />
+          <span>Explore Features</span>
+          <ArrowDown size={14} className="cta-arrow-icon" style={{ marginLeft: '0.5rem', transition: 'transform 200ms ease' }} />
         </button>
 
         {/* High-Level Stats */}
@@ -246,7 +263,7 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* ── 2. FEATURE DEEP-DIVES SECTION ── */}
-      <section id="features-section" style={styles.featuresSection}>
+      <section id="features-section" style={{ ...styles.featuresSection, scrollMarginTop: '80px' }}>
         {/* Section Header */}
         <div style={styles.sectionHeader}>
           <span style={styles.sectionPill}>Engineering Architecture</span>

@@ -292,7 +292,7 @@ export const HomePage: React.FC = () => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             {/* Search Input */}
-            <div style={{ position: 'relative', flex: '1', minWidth: '260px', maxWidth: '380px' }}>
+            <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px', maxWidth: '380px' }}>
               <Search
                 size={14}
                 style={{

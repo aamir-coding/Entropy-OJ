@@ -124,6 +124,8 @@
 
   /* Layout */
   --header-height: 56px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────── */
@@ -910,5 +912,275 @@ code, pre {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   Responsive Breakpoints & Mobile Workspace System
+   Preserves 100% desktop fidelity (min-width: 768px)
+   ========================================================================== */
+
+/* Utility Visibility Classes */
+.hidden {
+  display: none !important;
+}
+
+/* Mobile defaults (< 768px) */
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+  .md\:hidden {
+    display: flex !important;
+  }
+}
+
+/* Desktop overrides (>= 768px) */
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none !important;
+  }
+  .mobile-only {
+    display: none !important;
+  }
+  .desktop-only {
+    display: flex !important;
+  }
+  .md\:flex {
+    display: flex !important;
+  }
+  .md\:block {
+    display: block !important;
+  }
+  .md\:grid {
+    display: grid !important;
+  }
+  .hidden.md\:flex {
+    display: flex !important;
+  }
+  .hidden.md\:block {
+    display: block !important;
+  }
+  .hidden.md\:grid {
+    display: grid !important;
+  }
+}
+
+/* ── Navbar Specific Responsive Shell ─────────────────────────────────── */
+.navbar-desktop {
+  display: grid !important;
+  height: 100%;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+}
+
+.navbar-mobile {
+  display: none !important;
+  height: 100%;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+@media (max-width: 767px) {
+  .navbar-desktop {
+    display: none !important;
+  }
+  .navbar-mobile {
+    display: flex !important;
+  }
+}
+
+/* ── Mobile Workspace Layout Primitives ────────────────────────────────── */
+.mobile-workspace-container {
+  height: calc(100dvh - var(--header-height));
+  max-height: calc(100dvh - var(--header-height));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.mobile-header-bar {
+  padding: 0.45rem 0.875rem;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.mobile-segmented-tab-bar {
+  display: flex;
+  align-items: center;
+  background: #050505;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.35rem 0.65rem;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.mobile-segmented-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mobile-segmented-tab-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.mobile-segmented-tab-btn.active {
+  color: var(--brand-white);
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-medium);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-viewport-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  padding-bottom: 78px; /* Clearance for floating bottom dock */
+}
+
+.mobile-action-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(5, 5, 5, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-medium);
+  padding: 0.5rem 0.875rem calc(0.5rem + var(--safe-area-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  z-index: 50;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
+}
+
+.mobile-nav-drawer-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  z-index: 99998 !important;
+}
+
+.mobile-nav-drawer {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: min(320px, 86vw) !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  background: #000000 !important;
+  background-color: #000000 !important;
+  border-left: 1px solid var(--border-medium) !important;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.98) !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 1.25rem !important;
+  overflow-y: auto !important;
+}
+
+.mobile-nav-drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  background: #0d0d0d;
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.mobile-nav-drawer-link:hover,
+.mobile-nav-drawer-link:active {
+  background: #171717;
+  border-color: var(--border-hover);
+  color: var(--brand-white);
+}
+
+.mobile-nav-drawer-link.active {
+  background: #1a1a1a;
+  border-color: var(--brand-white);
+  color: var(--brand-white);
+}
+
+/* ── Feature Card Responsive Grid & Content Hierarchy ──────────────────── */
+.feature-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+/* On mobile / single-column, headings and content ALWAYS appear first */
+.feature-card-text {
+  order: 1 !important;
+}
+
+/* On mobile / single-column, simulations/widgets ALWAYS appear below heading */
+.feature-card-widget {
+  order: 2 !important;
+}
+
+/* On desktop (>= 768px), 2-column layout with alternating left/right alignment */
+@media (min-width: 768px) {
+  .feature-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2.5rem;
+  }
+
+  .feature-card-text {
+    order: 1 !important;
+  }
+
+  .feature-card-widget {
+    order: 2 !important;
+  }
+
+  .feature-card-text.reversed {
+    order: 2 !important;
+  }
+
+  .feature-card-widget.reversed {
+    order: 1 !important;
+  }
+}
+
+
+
 
 
