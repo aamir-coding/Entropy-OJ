@@ -65,6 +65,7 @@ interface SavedTimerState {
   isHidden: boolean;
   isCompleted?: boolean;
   completedTimeFormatted?: string;
+  hasBeenStarted?: boolean;
 }
 
 export const ProblemTimer: React.FC<ProblemTimerProps> = ({
@@ -174,6 +175,18 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     if (saved) {
       try {
         const parsed: SavedTimerState = JSON.parse(saved);
+        // Sanitize corrupted 00:01 state if user never started timer
+        if (parsed.isCompleted && parsed.completedTimeFormatted === '00:01') {
+          const wasActuallyUsed =
+            Boolean(parsed.hasBeenStarted) ||
+            Boolean(parsed.isRunning) ||
+            (parsed.mode === 'stopwatch'
+              ? (parsed.elapsedSeconds || 0) > 0
+              : typeof parsed.targetSeconds === 'number' &&
+                typeof parsed.remainingSeconds === 'number' &&
+                parsed.targetSeconds > parsed.remainingSeconds);
+          if (!wasActuallyUsed) return false;
+        }
         return Boolean(parsed.isCompleted);
       } catch {}
     }
@@ -186,10 +199,45 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     if (saved) {
       try {
         const parsed: SavedTimerState = JSON.parse(saved);
+        if (parsed.isCompleted && parsed.completedTimeFormatted === '00:01') {
+          const wasActuallyUsed =
+            Boolean(parsed.hasBeenStarted) ||
+            Boolean(parsed.isRunning) ||
+            (parsed.mode === 'stopwatch'
+              ? (parsed.elapsedSeconds || 0) > 0
+              : typeof parsed.targetSeconds === 'number' &&
+                typeof parsed.remainingSeconds === 'number' &&
+                parsed.targetSeconds > parsed.remainingSeconds);
+          if (!wasActuallyUsed) return null;
+        }
         return parsed.completedTimeFormatted || null;
       } catch {}
     }
     return null;
+  });
+
+  const [hasBeenStarted, setHasBeenStarted] = useState<boolean>(() => {
+    if (!storageKey) return false;
+    const saved = safeStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed: SavedTimerState = JSON.parse(saved);
+        if (typeof parsed.hasBeenStarted === 'boolean') {
+          return parsed.hasBeenStarted;
+        }
+        if (parsed.isRunning) return true;
+        if (parsed.mode === 'stopwatch' && (parsed.elapsedSeconds || 0) > 0) return true;
+        if (
+          parsed.mode === 'countdown' &&
+          typeof parsed.targetSeconds === 'number' &&
+          typeof parsed.remainingSeconds === 'number' &&
+          parsed.targetSeconds > parsed.remainingSeconds
+        ) {
+          return true;
+        }
+      } catch {}
+    }
+    return false;
   });
 
   const [isPillHovered, setIsPillHovered] = useState<boolean>(false);
@@ -209,14 +257,32 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
         if (saved) {
           try {
             const parsed: SavedTimerState = JSON.parse(saved);
+            const isCorrupt01 =
+              parsed.isCompleted &&
+              parsed.completedTimeFormatted === '00:01' &&
+              !parsed.hasBeenStarted &&
+              !parsed.isRunning &&
+              (parsed.mode === 'stopwatch'
+                ? (parsed.elapsedSeconds || 0) === 0
+                : parsed.targetSeconds === parsed.remainingSeconds);
+
             setMode(parsed.mode || 'countdown');
             setTargetSeconds(parsed.targetSeconds || defaultTarget);
             setRemainingSeconds(parsed.remainingSeconds ?? defaultTarget);
             setElapsedSeconds(parsed.elapsedSeconds ?? 0);
             setIsRunning(Boolean(parsed.isRunning));
             setIsHidden(Boolean(parsed.isHidden));
-            setIsCompleted(Boolean(parsed.isCompleted));
-            setCompletedTimeFormatted(parsed.completedTimeFormatted || null);
+            setIsCompleted(isCorrupt01 ? false : Boolean(parsed.isCompleted));
+            setCompletedTimeFormatted(isCorrupt01 ? null : (parsed.completedTimeFormatted || null));
+            setHasBeenStarted(
+              Boolean(
+                parsed.hasBeenStarted ??
+                  (parsed.isRunning ||
+                    (parsed.mode === 'stopwatch'
+                      ? (parsed.elapsedSeconds || 0) > 0
+                      : (parsed.targetSeconds || defaultTarget) !== parsed.remainingSeconds))
+              )
+            );
             return;
           } catch {}
         }
@@ -229,6 +295,7 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       setIsRunning(false);
       setIsCompleted(false);
       setCompletedTimeFormatted(null);
+      setHasBeenStarted(false);
     }
   }, [problemCode, difficulty, defaultTarget, storageKey]);
 
@@ -288,6 +355,7 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       isHidden,
       isCompleted,
       completedTimeFormatted: completedTimeFormatted || undefined,
+      hasBeenStarted,
     };
     safeStorage.setItem(storageKey, JSON.stringify(state));
   }, [
@@ -301,23 +369,40 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     isHidden,
     isCompleted,
     completedTimeFormatted,
+    hasBeenStarted,
   ]);
 
   // Auto-stop on Accepted Verdict (rising edge: false -> true)
   const prevIsAcceptedRef = useRef<boolean>(isAccepted);
   useEffect(() => {
     if (isAccepted && !prevIsAcceptedRef.current && !isCompleted) {
-      setIsRunning(false);
-      setIsCompleted(true);
       const timeSpentSeconds =
         mode === 'countdown'
-          ? Math.max(1, targetSeconds - remainingSeconds)
-          : Math.max(1, elapsedSeconds);
-      const formatted = formatTime(timeSpentSeconds);
-      setCompletedTimeFormatted(formatted);
+          ? targetSeconds - remainingSeconds
+          : elapsedSeconds;
+
+      const hasUserTrackedTime = hasBeenStarted || isRunning || timeSpentSeconds > 0;
+
+      // Only transition to completed solved state if user actually started / ran the timer
+      if (hasUserTrackedTime) {
+        setIsRunning(false);
+        setIsCompleted(true);
+        const actualSec = Math.max(1, timeSpentSeconds);
+        const formatted = formatTime(actualSec);
+        setCompletedTimeFormatted(formatted);
+      }
     }
     prevIsAcceptedRef.current = isAccepted;
-  }, [isAccepted, isCompleted, mode, targetSeconds, remainingSeconds, elapsedSeconds]);
+  }, [
+    isAccepted,
+    isCompleted,
+    mode,
+    targetSeconds,
+    remainingSeconds,
+    elapsedSeconds,
+    isRunning,
+    hasBeenStarted,
+  ]);
 
   // Auto-start on keystroke if user opted-in in preferences
   const prevKeystrokeRef = useRef<number>(editorKeystrokeTrigger);
@@ -327,6 +412,7 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       const autostartKey = userId ? `entropy_timer_autostart_${userId}` : 'entropy_timer_autostart';
       const isAutoStartPrefEnabled = safeStorage.getItem(autostartKey) === 'true';
       if (isAutoStartPrefEnabled && !isRunning && !isCompleted) {
+        setHasBeenStarted(true);
         setIsRunning(true);
       }
     }
@@ -334,10 +420,12 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
 
   // Button actions
   const handleTogglePlay = useCallback(() => {
+    setHasBeenStarted(true);
     setIsRunning((prev) => !prev);
   }, []);
 
   const handleReset = useCallback(() => {
+    setHasBeenStarted(false);
     setIsRunning(false);
     setIsCompleted(false);
     setCompletedTimeFormatted(null);
@@ -385,8 +473,10 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
   const handleToggleMode = useCallback(() => {
     setMode((prev) => {
       const next = prev === 'countdown' ? 'stopwatch' : 'countdown';
+      setHasBeenStarted(false);
       setIsRunning(false);
       setIsCompleted(false);
+      setCompletedTimeFormatted(null);
       if (next === 'countdown') {
         const freshTarget = DIFFICULTY_DEFAULT_SECONDS[difficulty] || 35 * 60;
         setTargetSeconds(freshTarget);
