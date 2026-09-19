@@ -2,7 +2,7 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node.js-v22-green.svg)](https://nodejs.org/)
-[![Docker](https://img.shields.io/badge/Docker-Sandboxed-2496ED.svg)](https://www.docker.com/)
+[![Sandbox](https://img.shields.io/badge/Sandbox-Direct%20Process%20(ulimit)-2496ED.svg)](https://www.kernel.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![BullMQ](https://img.shields.io/badge/BullMQ-Redis-red.svg)](https://bullmq.io/)
 [![Google Gemini](https://img.shields.io/badge/AI-Gemini%20Flash-8E75B2.svg)](https://ai.google.dev/)
@@ -10,7 +10,7 @@
 [![OpenRouter](https://img.shields.io/badge/AI-OpenRouter-6566F1.svg)](https://openrouter.ai/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-A modern, production-grade, sandboxed Online Judge and DSA learning platform. Built with the **MERN** stack (MongoDB, Express, React 19, Node.js), **Redis + BullMQ** asynchronous queues, **Docker** ephemeral container sandboxing for C++17 and Python 3.11, self-healing execution watchdogs, and a comprehensive **AI Intelligence Layer** (Socratic Debug Copilot, AI Problem QA Auditor, and Post-AC Complexity Classifier).
+A modern, production-grade, sandboxed Online Judge and DSA learning platform. Built with the **MERN** stack (MongoDB, Express, React 19, Node.js), **Redis + BullMQ** asynchronous queues, **Direct Process Sandboxing** with Linux `ulimit` and `timeout` controls for C++17 and Python 3.11, active lock renewal, and a comprehensive **AI Intelligence Layer** (Socratic Debug Copilot, AI Problem QA Auditor, and Post-AC Complexity Classifier).
 
 ---
 
@@ -53,10 +53,10 @@ flowchart TB
 
     subgraph ExecutionLayer ["Execution Layer (Azure VM)"]
         JudgeWorker["BullMQ Judge Worker (Concurrency: 2, Active Lock Renewal)"]
-        Watchdog["Semaphore Heartbeat & Deadlock Auto-Recovery"]
-        SandboxMgr["Docker Sandbox Manager"]
-        subgraph Runner ["Ephemeral Docker Container (per test case)"]
-            DK["entropy-runner:latest (g++-12 / python-3.11 / rusage)"]
+        ProcessSem["Process Semaphore & Active PID Tracker"]
+        SandboxMgr["ProcessSandbox Engine"]
+        subgraph Runner ["Direct Process Sandbox (per test case)"]
+            DK["runner_process.sh (g++-12 / python-3.11 / ulimit / GNU time)"]
         end
     end
 
@@ -79,7 +79,7 @@ flowchart TB
     JudgeWorker -->|"Dequeue Job"| SubQueue
     JudgeWorker -->|"Fetch Test Cases"| MongoDB
     JudgeWorker -->|"Execute inside Sandbox"| SandboxMgr
-    Watchdog -->|"Monitor / Reset Leaked Slots"| JudgeWorker
+    ProcessSem -->|"Limit Concurrent Procs"| JudgeWorker
     SandboxMgr --> DK
     JudgeWorker -->|"Write Verdict & Metrics"| MongoDB
 
@@ -134,36 +134,34 @@ A dedicated auditing tool for contest creators and problem setters:
 ### 3. 🛠️ Admin Problem Studio & Authoring Tool
 - **Full Problem Authoring Lifecycle**: Interactive tabbed editor covering Metadata, Statement (Markdown + KaTeX split preview), Sample Cases, and Judge Test Cases.
 - **Batch Test Case Importer**: JSON and raw delimiter bulk importer for large test suites.
-- **Sandbox Model Solution Validator**: Run reference solutions in Python and C++ against all test cases inside the Docker sandbox with live diagnostic breakdowns before publishing (routed via BullMQ with a 45-second execution budget).
+- **Sandbox Model Solution Validator**: Run reference solutions in Python and C++ against all test cases inside the process sandbox with live diagnostic breakdowns before publishing (routed via BullMQ with a 45-second execution budget).
 - **Centralized Model Solutions**: Reference model solutions in both Python 3.11 and C++17 pre-configured for standard DSA problems.
 - **Role-Based Access Control (RBAC)**: Strict `admin` middleware verification and cascading deletion of problems, test cases, and solution records.
 
 ---
 
-### 4. ⚡ Self-Healing Execution & Concurrency Watchdogs
+### 4. ⚡ Execution Resiliency & Concurrency Controls
 - **Active Lock Renewal**: BullMQ worker is configured with a 300s lock duration and active lock renewals every 15 seconds (`lockRenewTime: 15000`), ensuring compute-heavy test suites never stall.
 - **Pre-Flight Queue Draining (`drainStalledJobs`)**: Scans and clears leftover active jobs on worker reboot, preventing inherited deadlocks from previous process crashes.
-- **Autonomous Semaphore Watchdog (`startSemaphoreHealthMonitor`)**: 30-second heartbeat monitor checks active semaphore slots against running Docker containers; automatically resets the semaphore if leaked slots are detected for $>60$ seconds.
+- **Process Semaphore & Active PID Tracking**: Manages slot concurrency via `processSemaphore` and tracks active child process PIDs (`activeProcesses`), ensuring graceful termination (`SIGTERM`/`SIGKILL`) during worker shutdown without Docker daemon dependencies.
 - **Stale Submission Timeout**: 120-second timeout recovery marks abandoned pending evaluations as `Internal Error`, unblocking users from submitting new code.
 
 ---
 
 ## 🛡️ Sandboxed Execution & Security Architecture
 
-Untrusted user code is executed in isolated, disposable Docker containers built on defense-in-depth principles:
+Untrusted user code is executed in isolated child processes on the host worker via `runner_process.sh`, enforcing defense-in-depth security through Linux kernel primitives (`ulimit`, `timeout`) and unprivileged user isolation:
 
 | Security Dimension | Configuration | Purpose |
 | :--- | :--- | :--- |
-| **Network Isolation** | `--network none` | Completely prevents inbound/outbound calls, sockets, and data exfiltration. |
-| **Memory Ceiling** | `--memory <limit>m` `--memory-swap <limit>m` | Clamps container memory (clamped to minimum 32MB); swap disabled to prevent host RAM thrashing. |
-| **CPU Throttling** | `--cpus 0.5` (Run) / `--cpus 1.0` (Compile) | Prevents CPU starvation; precise CPU user+system time measured via `rusage`. |
-| **Process Limit** | `--pids-limit 64` (Run) / `--pids-limit 128` (Compile) | Prevents fork bombs and background thread spawning. |
-| **Filesystem Hardening**| `--read-only` root fs | User code cannot modify system binaries or system files. |
-| **Temporary Storage** | `--tmpfs /tmp:rw,noexec,nosuid,size=32m` | Provides non-executable scratchpad memory. |
-| **User Privileges** | Non-root UID 1001 (`runner`) | Container processes run with minimal Linux capabilities. |
-| **Capability Dropping** | `--cap-drop=ALL` | Drops all kernel capabilities (e.g., `CAP_SYS_ADMIN`, `CAP_NET_RAW`). |
-| **Privilege Escalation**| `--security-opt=no-new-privileges:true` | Blocks privilege escalation via setuid/setgid binaries. |
-| **Disk Output Limit** | `ulimit -f 131072` in `runner.sh` | Hard 64MB file output ceiling prevents disk fill attacks. |
+| **Execution Isolation** | Direct Child Process (`runner_process.sh`) | Eliminates Docker container spin-up latency (~10ms vs 1-30s) and prevents B-series CPU credit depletion. |
+| **User Privileges** | Non-root UID 1001 (`runner`) | Process runs as an unprivileged dedicated user with no sudo or system rights. |
+| **Wall-Clock Timeout** | `timeout -k 1s <WALL_TIMEOUT>` | Hard wall-clock ceiling kills runaway processes (infinite loops) and terminates sleeping code. |
+| **Disk Write Quota** | `ulimit -f 131072` (64 MB) | Hard 64MB file output ceiling prevents disk fill / storage exhaustion attacks. |
+| **Process Limit** | `ulimit -u 64` | Restricts maximum process/thread creation to strictly prevent fork bombs. |
+| **Memory Monitoring** | GNU `time` (`MAX_RSS_KB`) | Captures peak resident set size; accurately enforces Memory Limit Exceeded (MLE). |
+| **Output Truncation** | `head -c 65536` (64 KB) | Caps standard output and standard error to 64 KB to protect database and network buffers. |
+| **Workspace Isolation**| `/tmp/workspaces/job-*` | Unique per-job workspace directories with automated TTL cleanup. |
 | **BOLA / IDOR Protection**| Signed JWT httpOnly Cookies / Bearer | Users can only inspect their own submission source code and history. |
 | **Payload Protection** | Zod Schemas (Max 64 KB) | Prevents payload stuffing and database bloat. |
 
@@ -186,15 +184,14 @@ entropy-online-judge/
 │   │   ├── src/models/         # User, Problem, TestCase & Solution Mongoose schemas
 │   │   ├── src/queues/         # BullMQ queue producers (submission.queue.ts, ai.queue.ts)
 │   │   ├── src/routes/         # Express API route declarations & rate limiters
-│   │   ├── src/sandbox/        # Docker runner abstraction & compiler/execution wrappers
 │   │   └── src/tests/          # Automated node:test integration & unit test suites
 │   ├── worker/                 # BullMQ execution worker service
 │   │   ├── src/evaluator/      # Sandboxed testcase evaluator & diff comparer
 │   │   ├── src/queue/          # BullMQ submission worker with active lock renewal
-│   │   ├── src/sandbox/        # Docker container manager, rusage metrics & semaphore watchdog
-│   │   └── docker/             # Ephemeral execution container definitions
-│   │       ├── Dockerfile.runner # Debian-based runner image (GCC 12, Python 3.11, GNU time)
-│   │       └── runner.sh       # Execution script with rusage & output truncation
+│   │   ├── src/sandbox/        # ProcessSandbox engine, GNU time metrics & process semaphore
+│   │   ├── Dockerfile          # Self-contained worker image with embedded GCC, Python3 & GNU time
+│   │   └── docker/             # Host-level runner script
+│   │       └── runner_process.sh # Execution script with ulimit & output truncation
 │   └── client/                 # React 19 + Vite + Monaco Editor SPA
 │       ├── src/components/     # Monaco Editor, MobileProblemWorkspace, Navbar, ProblemTimer, Badges
 │       ├── src/pages/          # HomePage, ProblemDetailPage, GalaxyPage, ProfilePage, Auth
@@ -239,7 +236,6 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 JWT_SECRET=super_secret_jwt_key_change_in_production
 JWT_EXPIRES_DAYS=7
-RUNNER_IMAGE=entropy-runner:latest
 
 # AI Intelligence Layer Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -253,15 +249,7 @@ FEATURE_AI_CLASSIFY=true
 
 ---
 
-### Step 3: Build Sandbox Runner Docker Image
-```bash
-npm run build:runner
-```
-*(Alias for `docker build -t entropy-runner:latest -f apps/worker/docker/Dockerfile.runner apps/worker/docker`)*
-
----
-
-### Step 4: Seed Database with Problems
+### Step 3: Seed Database with Problems
 ```bash
 npm run seed:server
 ```
@@ -269,7 +257,7 @@ npm run seed:server
 
 ---
 
-### Step 5: Start Development Services
+### Step 4: Start Development Services
 Run the 3 applications concurrently:
 
 ```bash
@@ -296,7 +284,7 @@ The live application is partitioned across dedicated cloud environments:
 * **Data Layer (Database)**: Cloud-hosted **MongoDB Atlas** M0 replica set cluster.
 * **Execution Layer (Sandboxed Worker & Broker)**: Running on an **Azure Virtual Machine** orchestrated via `docker-compose.prod.yml`:
   * **Redis 7 (Alpine)**: Password-protected, AOF persistence, 512MB memory limit (`noeviction`).
-  * **Worker Service (`apps/worker`)**: BullMQ consumer with Docker socket mount (`/var/run/docker.sock`) running unprivileged disposable containers (`entropy-runner:latest`).
+  * **Worker Service (`apps/worker`)**: BullMQ consumer with embedded compiler toolchain (`gcc`, `g++`, `python3`, `time`, `coreutils`) executing untrusted code via direct process sandboxing (`runner_process.sh`). Zero Docker socket mount required.
 
 ---
 
@@ -319,7 +307,7 @@ The codebase includes thorough test coverage across shared types, sandboxed exec
 # 1. Run Shared Package Tests (Diff Output & Normalization)
 npm run test:shared
 
-# 2. Run Execution Worker Tests (Docker Sandbox, TLE, RTE, CE, AC)
+# 2. Run Execution Worker Tests (Process Sandbox, metrics parsing, workspace management)
 npm run test:worker
 
 # 3. Run Server Integration Tests (REST APIs, Auth, Admin Lifecycle)
@@ -384,7 +372,7 @@ npm run test
 | `POST` | `/api/admin/problems` | Admin | Create new problem with sample & hidden test cases |
 | `PUT` | `/api/admin/problems/:id` | Admin | Update problem details, constraints & test suites |
 | `DELETE` | `/api/admin/problems/:id` | Admin | Permanently cascade delete problem and associated data |
-| `POST` | `/api/admin/problems/:id/validate` | Admin | Execute model solution against all judge cases in Docker |
+| `POST` | `/api/admin/problems/:id/validate` | Admin | Execute model solution against all judge cases in sandbox |
 
 ---
 
