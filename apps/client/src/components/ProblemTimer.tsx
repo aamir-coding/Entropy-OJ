@@ -247,11 +247,15 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     onCompletedChange?.(isCompleted);
   }, [isCompleted, onCompletedChange]);
 
+  // Track rising edge of problem acceptance (false -> true)
+  const prevIsAcceptedRef = useRef<boolean>(isAccepted);
+
   // Sync with difficulty changes when no session is active or on problem switch
   const activeProblemRef = useRef<string | undefined>(problemCode);
   useEffect(() => {
     if (activeProblemRef.current !== problemCode) {
       activeProblemRef.current = problemCode;
+      prevIsAcceptedRef.current = false;
       if (storageKey) {
         const saved = safeStorage.getItem(storageKey);
         if (saved) {
@@ -373,7 +377,6 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
   ]);
 
   // Auto-stop on Accepted Verdict (rising edge: false -> true)
-  const prevIsAcceptedRef = useRef<boolean>(isAccepted);
   useEffect(() => {
     if (isAccepted && !prevIsAcceptedRef.current && !isCompleted) {
       const timeSpentSeconds =
@@ -390,9 +393,11 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
         const actualSec = Math.max(1, timeSpentSeconds);
         const formatted = formatTime(actualSec);
         setCompletedTimeFormatted(formatted);
+        prevIsAcceptedRef.current = true;
       }
+    } else if (!isAccepted) {
+      prevIsAcceptedRef.current = false;
     }
-    prevIsAcceptedRef.current = isAccepted;
   }, [
     isAccepted,
     isCompleted,
@@ -414,15 +419,24 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       if (isAutoStartPrefEnabled && !isRunning && !isCompleted) {
         setHasBeenStarted(true);
         setIsRunning(true);
+        prevIsAcceptedRef.current = false;
+        onReset?.();
       }
     }
-  }, [editorKeystrokeTrigger, isRunning, isCompleted, userId]);
+  }, [editorKeystrokeTrigger, isRunning, isCompleted, userId, onReset]);
 
   // Button actions
   const handleTogglePlay = useCallback(() => {
     setHasBeenStarted(true);
-    setIsRunning((prev) => !prev);
-  }, []);
+    setIsRunning((prev) => {
+      const next = !prev;
+      if (next) {
+        prevIsAcceptedRef.current = false;
+        onReset?.();
+      }
+      return next;
+    });
+  }, [onReset]);
 
   const handleReset = useCallback(() => {
     setHasBeenStarted(false);
@@ -430,6 +444,8 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     setIsCompleted(false);
     setCompletedTimeFormatted(null);
     setIsPillHovered(false);
+    prevIsAcceptedRef.current = false;
+    onReset?.();
     if (mode === 'countdown') {
       const freshTarget = DIFFICULTY_DEFAULT_SECONDS[difficulty] || 35 * 60;
       setTargetSeconds(freshTarget);
@@ -437,7 +453,7 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
     } else {
       setElapsedSeconds(0);
     }
-  }, [difficulty, mode]);
+  }, [difficulty, mode, onReset]);
 
   // External reset trigger (e.g. from editor header reset code button)
   const prevResetTriggerRef = useRef<number>(resetTrigger);
@@ -477,6 +493,8 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       setIsRunning(false);
       setIsCompleted(false);
       setCompletedTimeFormatted(null);
+      prevIsAcceptedRef.current = false;
+      onReset?.();
       if (next === 'countdown') {
         const freshTarget = DIFFICULTY_DEFAULT_SECONDS[difficulty] || 35 * 60;
         setTargetSeconds(freshTarget);
@@ -486,7 +504,7 @@ export const ProblemTimer: React.FC<ProblemTimerProps> = ({
       }
       return next;
     });
-  }, [difficulty]);
+  }, [difficulty, onReset]);
 
   const handleToggleHide = useCallback(() => {
     setIsHidden((prev) => !prev);

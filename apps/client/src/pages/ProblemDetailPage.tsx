@@ -661,6 +661,7 @@ export const ProblemDetailPage: React.FC = () => {
     if (!problem || isCodeEmpty) return;
 
     try {
+      setIsProblemSolved(false);
       setResultView('submission');
       setSampleResults([]);
       setSubmitting(true);
