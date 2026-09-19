@@ -57,7 +57,7 @@ export class GroqProvider implements AIProvider {
         };
 
         if (params.maxTokens) {
-          body.max_tokens = params.maxTokens;
+          body.max_tokens = Math.min(params.maxTokens, 4096);
         }
 
         if (params.responseFormat === 'json') {

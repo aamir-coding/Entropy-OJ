@@ -32,8 +32,6 @@ services:
         value: 7
       - key: CLIENT_URL
         sync: false                  # Vercel production URL
-      - key: RUNNER_IMAGE
-        value: entropy-runner:latest
       - key: ADMIN_SEED_PASSWORD
         sync: false                  # Set manually for initial seed
 

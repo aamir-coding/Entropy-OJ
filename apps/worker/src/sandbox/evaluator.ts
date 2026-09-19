@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { DockerSandbox } from './dockerRunner';
+import { ProcessSandbox } from './processRunner';
 import {
   JudgeJobPayload,
   JudgeExecutionResult,
@@ -26,7 +26,7 @@ export async function evaluateSubmission(
   testCases: ITestCaseModel[]
 ): Promise<JudgeExecutionResult> {
   const { submissionId, code, language, timeLimitMs, memoryLimitKb } = job;
-  const sandbox = await DockerSandbox.create();
+  const sandbox = await ProcessSandbox.create();
 
   try {
     // 1. Prepare source code file
@@ -195,7 +195,7 @@ export async function evaluateSampleRun(
   sampleCases: ITestCaseModel[]
 ): Promise<ISampleRunResponse> {
   const { code, language, timeLimitMs, memoryLimitKb } = job;
-  const sandbox = await DockerSandbox.create();
+  const sandbox = await ProcessSandbox.create();
 
   try {
     await sandbox.prepareSourceFile(code, language);
@@ -274,7 +274,7 @@ export async function evaluateAdminValidation(
   testCases: ITestCaseModel[]
 ): Promise<IAdminValidateSolutionResponse> {
   const { code, language, timeLimitMs, memoryLimitKb } = job;
-  const sandbox = await DockerSandbox.create();
+  const sandbox = await ProcessSandbox.create();
 
   try {
     await sandbox.prepareSourceFile(code, language);

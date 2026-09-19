@@ -26,14 +26,15 @@ export class GeminiProvider implements AIProvider {
 
   constructor(config: GeminiProviderConfig = {}) {
     this.apiKey = config.apiKey || process.env.GEMINI_API_KEY;
-    const defaultModel = config.defaultModel || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const defaultModel = config.defaultModel || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     this.models = config.models || [
       defaultModel,
-      'gemini-3.0-flash',
-      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-3.6-flash',
       'gemini-3.5-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-3.7-flash',
+      'gemini-3.0-flash',
     ].filter((m, i, arr) => arr.indexOf(m) === i); // Deduplicate
 
     const rpm = config.rpmLimit || (process.env.GEMINI_RPM_LIMIT ? parseInt(process.env.GEMINI_RPM_LIMIT, 10) : 10);
@@ -88,6 +89,7 @@ export class GeminiProvider implements AIProvider {
           contents,
           generationConfig: {
             temperature: params.temperature ?? 0.4,
+            maxOutputTokens: params.maxTokens || 8192,
           },
         };
 
@@ -95,10 +97,6 @@ export class GeminiProvider implements AIProvider {
           body.systemInstruction = {
             parts: [{ text: systemMessage.content }],
           };
-        }
-
-        if (params.maxTokens) {
-          body.generationConfig.maxOutputTokens = params.maxTokens;
         }
 
         if (params.responseFormat === 'json') {
@@ -138,6 +136,9 @@ export class GeminiProvider implements AIProvider {
 
         const data = (await res.json()) as any;
         const candidate = data?.candidates?.[0];
+        if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+          console.warn(`[Gemini] Candidate finishReason for model '${model}': ${candidate.finishReason}`);
+        }
         const content = candidate?.content?.parts?.map((p: any) => p.text || '').join('') || '';
 
         const usageMetadata = data?.usageMetadata;

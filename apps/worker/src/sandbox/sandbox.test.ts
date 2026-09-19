@@ -2,17 +2,17 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { DockerSandbox, parseMetrics } from './dockerRunner';
+import { ProcessSandbox, parseMetrics } from './processRunner';
 import { evaluateSubmission } from './evaluator';
 import { Verdicts, SupportedLanguages } from '@entropy-oj/shared';
 import mongoose from 'mongoose';
 
 const execFileAsync = promisify(execFile);
 
-let isDockerAvailable = false;
+let isToolchainAvailable = false;
 
-describe('Docker Sandbox & Evaluator Engine Tests', () => {
-  describe('parseMetrics pure unit tests (runs without Docker)', () => {
+describe('Process Sandbox & Evaluator Engine Tests', () => {
+  describe('parseMetrics pure unit tests (runs without toolchain)', () => {
     it('should parse well-formed metrics output correctly', () => {
       const raw = [
         'WALL_SEC=0.12',
@@ -74,7 +74,7 @@ describe('Docker Sandbox & Evaluator Engine Tests', () => {
     });
 
     it('should create and clean up local sandbox workspaces', async () => {
-      const sandbox = await DockerSandbox.create();
+      const sandbox = await ProcessSandbox.create();
       assert.ok(sandbox);
       await sandbox.cleanup();
     });
@@ -82,20 +82,21 @@ describe('Docker Sandbox & Evaluator Engine Tests', () => {
 
   before(async () => {
     try {
-      await execFileAsync('docker', ['info'], { windowsHide: true });
-      isDockerAvailable = true;
+      await execFileAsync('g++', ['--version'], { windowsHide: true });
+      await execFileAsync('python3', ['--version'], { windowsHide: true });
+      isToolchainAvailable = true;
     } catch {
-      console.warn('[Test] Docker daemon not available; skipping live container tests.');
-      isDockerAvailable = false;
+      console.warn('[Test] Compiler toolchain not available; skipping live execution tests.');
+      isToolchainAvailable = false;
     }
   });
 
-  it('should compile valid C++ code successfully (if Docker present)', async (t) => {
-    if (!isDockerAvailable) {
-      t.skip('Docker is not running');
+  it('should compile valid C++ code successfully (if toolchain present)', async (t) => {
+    if (!isToolchainAvailable) {
+      t.skip('Toolchain is not available');
       return;
     }
-    const sandbox = await DockerSandbox.create();
+    const sandbox = await ProcessSandbox.create();
     try {
       const code = `#include <iostream>\nint main() { std::cout << "OK" << std::endl; return 0; }`;
       await sandbox.prepareSourceFile(code, SupportedLanguages.CPP);
@@ -106,12 +107,12 @@ describe('Docker Sandbox & Evaluator Engine Tests', () => {
     }
   });
 
-  it('should return Compilation Error on invalid C++ code (if Docker present)', async (t) => {
-    if (!isDockerAvailable) {
-      t.skip('Docker is not running');
+  it('should return Compilation Error on invalid C++ code (if toolchain present)', async (t) => {
+    if (!isToolchainAvailable) {
+      t.skip('Toolchain is not available');
       return;
     }
-    const sandbox = await DockerSandbox.create();
+    const sandbox = await ProcessSandbox.create();
     try {
       const code = `int main() { syntax_error_here; }`;
       await sandbox.prepareSourceFile(code, SupportedLanguages.CPP);
@@ -123,9 +124,9 @@ describe('Docker Sandbox & Evaluator Engine Tests', () => {
     }
   });
 
-  it('should evaluate correct C++ code to Accepted (if Docker present)', async (t) => {
-    if (!isDockerAvailable) {
-      t.skip('Docker is not running');
+  it('should evaluate correct C++ code to Accepted (if toolchain present)', async (t) => {
+    if (!isToolchainAvailable) {
+      t.skip('Toolchain is not available');
       return;
     }
     const testCases: any[] = [
@@ -193,9 +194,9 @@ int main() {
     assert.strictEqual(result.totalTestCases, 2);
   });
 
-  it('should detect Wrong Answer with fail-fast (if Docker present)', async (t) => {
-    if (!isDockerAvailable) {
-      t.skip('Docker is not running');
+  it('should detect Wrong Answer with fail-fast (if toolchain present)', async (t) => {
+    if (!isToolchainAvailable) {
+      t.skip('Toolchain is not available');
       return;
     }
     const testCases: any[] = [
@@ -244,9 +245,9 @@ int main() {
     assert.strictEqual(result.passedTestCases, 1);
   });
 
-  it('should evaluate Python 3 code correctly (if Docker present)', async (t) => {
-    if (!isDockerAvailable) {
-      t.skip('Docker is not running');
+  it('should evaluate Python 3 code correctly (if toolchain present)', async (t) => {
+    if (!isToolchainAvailable) {
+      t.skip('Toolchain is not available');
       return;
     }
     const testCases: any[] = [

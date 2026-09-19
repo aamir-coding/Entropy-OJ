@@ -35,7 +35,6 @@ const envSchema = z
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters for security'),
     JWT_EXPIRES_DAYS: z.coerce.number().int().min(1).default(7),
     CLIENT_URL: z.string().default('http://localhost:5173'),
-    RUNNER_IMAGE: z.string().default('entropy-runner:latest'),
 
     // AI Feature Flags (parsed as booleans)
     FEATURE_AI_HINTS: booleanFeatureFlag,

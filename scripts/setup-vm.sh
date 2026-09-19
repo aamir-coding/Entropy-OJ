@@ -13,9 +13,8 @@
 #  After running this script, you still need to:
 #    1. Clone the repo
 #    2. Create the .env file for docker-compose.prod.yml
-#    3. Build the entropy-runner image
-#    4. Start docker-compose.prod.yml
-#    5. Configure cloud firewall / NSG rules
+#    3. Start: docker compose -f docker-compose.prod.yml up -d --build
+#    4. Configure cloud firewall / NSG rules
 # ============================================================
 
 set -euo pipefail
@@ -147,23 +146,18 @@ echo "  2. Clone your repository:"
 echo "     cd /opt/entropy-oj"
 echo "     git clone https://github.com/aamir-coding/Entropy-OJ.git ."
 echo ""
-echo "  3. Build the sandbox runner image:"
-echo "     docker build -t entropy-runner:latest \\"
-echo "       -f apps/worker/docker/Dockerfile.runner \\"
-echo "       apps/worker/docker"
-echo ""
-echo "  4. Create the .env file:"
+echo "  3. Create the .env file:"
 echo "     cp .env.oracle-vm.example .env"
 echo "     nano .env  # Fill in MONGO_URI and REDIS_PASSWORD"
 echo ""
-echo "  5. Start the production stack:"
-echo "     docker compose -f docker-compose.prod.yml up -d"
+echo "  4. Start the production stack (builds worker with embedded toolchain):"
+echo "     docker compose -f docker-compose.prod.yml up -d --build"
 echo ""
-echo "  6. Verify:"
+echo "  5. Verify:"
 echo "     docker compose -f docker-compose.prod.yml logs -f"
 echo "     curl http://localhost:5001/health"
 echo ""
-echo "  7. IMPORTANT — Tighten Redis firewall:"
+echo "  6. IMPORTANT — Tighten Redis firewall:"
 echo "     sudo ufw delete allow 6379/tcp"
 echo "     sudo ufw allow from <RENDER_EGRESS_IP> to any port 6379 proto tcp"
 echo ""

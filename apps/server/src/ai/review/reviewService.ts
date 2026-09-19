@@ -34,21 +34,28 @@ export class ReviewService {
       );
     }
 
-    // 2. Prepare problem package components
+    // 2. Prepare problem package components with length safety to prevent token exhaustion
+    const truncateText = (str: string, maxLen = 400): string => {
+      if (!str) return '';
+      const trimmed = str.trim();
+      if (trimmed.length <= maxLen) return trimmed;
+      return `${trimmed.slice(0, maxLen)}... [truncated ${trimmed.length - maxLen} chars]`;
+    };
+
     const samplesFormatted = (options.sampleCases || [])
       .map(
         (sc, i) =>
-          `[Sample Case ${i + 1}]\nInput:\n${sc.input}\nOutput:\n${sc.output}${
-            sc.explanation ? `\nExplanation: ${sc.explanation}` : ''
+          `[Sample Case ${i + 1}]\nInput:\n${truncateText(sc.input, 500)}\nOutput:\n${truncateText(sc.output, 500)}${
+            sc.explanation ? `\nExplanation: ${truncateText(sc.explanation, 500)}` : ''
           }`
       )
       .join('\n\n');
 
     const testCasesFormatted = (options.testCases || [])
-      .slice(0, 30) // Include up to 30 full judge test cases for deep analysis
+      .slice(0, 25) // Include up to 25 judge test cases for deep analysis
       .map(
         (tc, i) =>
-          `[Test Case ${i + 1} (${tc.isSample ? 'Sample' : 'Hidden'})]\nInput:\n${tc.input}\nExpected Output:\n${tc.output}`
+          `[Test Case ${i + 1} (${tc.isSample ? 'Sample' : 'Hidden'})]\nInput:\n${truncateText(tc.input, 300)}\nExpected Output:\n${truncateText(tc.output, 300)}`
       )
       .join('\n\n');
 
@@ -100,7 +107,7 @@ ${testCasesFormatted || 'None provided.'}
 ${options.editorial ? `=== EDITORIAL ===\n${options.editorial}\n` : ''}
 ${
   options.referenceSolution
-    ? `=== REFERENCE MODEL SOLUTION (${options.referenceSolutionLanguage || 'cpp'}) ===\n${options.referenceSolution}\n`
+    ? `=== REFERENCE MODEL SOLUTION (${options.referenceSolutionLanguage || 'cpp'}) ===\n${truncateText(options.referenceSolution, 3000)}\n`
     : ''
 }
 
@@ -111,32 +118,59 @@ Please perform a thorough audit and return the structured JSON review findings.`
       { role: 'user', content: userPrompt },
     ];
 
-    const provider = options.customProvider || getProvider('gemini');
+    // 3. Configure Multi-Provider Fallback Chain: Gemini -> Groq -> OpenRouter
+    const providersToUse: AIProvider[] = options.customProvider
+      ? [options.customProvider]
+      : [getProvider('gemini'), getProvider('groq'), getProvider('openrouter')];
 
-    const completion = await provider.chatCompletion({
-      model: '',
-      messages,
-      temperature: 0.2,
-      maxTokens: 3000,
-      responseFormat: 'json',
-    });
+    let lastError: any = null;
 
-    try {
-      const parsed = parseAIJson<IProblemReviewResponse>(completion.content);
-      return {
-        statementAmbiguities: Array.isArray(parsed.statementAmbiguities) ? parsed.statementAmbiguities : [],
-        missingEdgeCases: Array.isArray(parsed.missingEdgeCases) ? parsed.missingEdgeCases : [],
-        adversarialInputs: Array.isArray(parsed.adversarialInputs) ? parsed.adversarialInputs : [],
-        inconsistencies: Array.isArray(parsed.inconsistencies) ? parsed.inconsistencies : [],
-        overallAssessment: parsed.overallAssessment || 'Audit completed.',
-      };
-    } catch (parseErr) {
-      console.error('[ReviewService] JSON parse error for AI review response:', completion.content);
-      throw new AIProviderError(
-        'AI review returned invalid structured format. Please retry.',
-        502
-      );
+    for (let i = 0; i < providersToUse.length; i++) {
+      const currentProvider = providersToUse[i];
+      const isLast = i === providersToUse.length - 1;
+
+      try {
+        console.log(`[ReviewService] 🤖 Sending problem review to provider '${currentProvider.name}'...`);
+        const startTime = Date.now();
+        const completion = await currentProvider.chatCompletion({
+          model: '',
+          messages,
+          temperature: 0.2,
+          maxTokens: 8192,
+          responseFormat: 'json',
+        });
+
+        const elapsed = Date.now() - startTime;
+        console.log(`[ReviewService] ⚡ Provider '${currentProvider.name}' responded in ${elapsed}ms`);
+
+        if (!completion.content || completion.content.trim().length === 0) {
+          throw new Error(`Provider '${currentProvider.name}' returned empty response content.`);
+        }
+
+        const parsed = parseAIJson<IProblemReviewResponse>(completion.content);
+
+        return {
+          statementAmbiguities: Array.isArray(parsed.statementAmbiguities) ? parsed.statementAmbiguities : [],
+          missingEdgeCases: Array.isArray(parsed.missingEdgeCases) ? parsed.missingEdgeCases : [],
+          adversarialInputs: Array.isArray(parsed.adversarialInputs) ? parsed.adversarialInputs : [],
+          inconsistencies: Array.isArray(parsed.inconsistencies) ? parsed.inconsistencies : [],
+          overallAssessment: parsed.overallAssessment || 'Problem review audit completed.',
+        };
+      } catch (err: any) {
+        lastError = err;
+        console.warn(
+          `[ReviewService] Provider '${currentProvider.name}' failed during review or parse (${err.message}). ${
+            isLast ? 'No remaining fallback providers.' : `Cascading to fallback provider '${providersToUse[i + 1].name}'...`
+          }`
+        );
+      }
     }
+
+    console.error('[ReviewService] All AI review providers failed:', lastError?.message);
+    throw new AIProviderError(
+      'AI review returned invalid structured format. Please retry.',
+      lastError?.statusCode || 502
+    );
   }
 }
 

@@ -5,7 +5,7 @@
 
 export const QueueConfig = {
   SUBMISSION_QUEUE_NAME: 'submission-queue',
-  DEFAULT_JOB_ATTEMPTS: 2,
+  DEFAULT_JOB_ATTEMPTS: 3,
   BACKOFF_DELAY_MS: 3000,
 } as const;
 

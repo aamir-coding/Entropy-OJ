@@ -10,12 +10,11 @@ const workerEnvSchema = z.object({
   REDIS_HOST: z.string().min(1).default('localhost'),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
   REDIS_PASSWORD: z.string().optional(),
-  RUNNER_IMAGE: z.string().min(1).default('entropy-runner:latest'),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
   DOCKER_TIMEOUT_SEC: z.coerce.number().int().positive().default(15),
   WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(5001),
-  HOST_WORKSPACES_DIR: z.string().optional(),
   WORKSPACES_DIR: z.string().optional(),
+  RUNNER_SCRIPT_PATH: z.string().default('/usr/local/bin/runner_process.sh'),
 });
 
 const parsed = workerEnvSchema.safeParse(process.env);
@@ -25,4 +24,3 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
-

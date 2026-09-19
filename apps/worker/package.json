@@ -1,15 +1,13 @@
 {
   "name": "@entropy-oj/worker",
   "version": "1.0.0",
-  "description": "Dockerized Sandboxed Evaluation Worker for Entropy",
+  "description": "Sandboxed Process Evaluation Worker for Entropy",
   "main": "dist/worker.js",
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run clean && tsc",
     "start": "node dist/worker.js",
     "dev": "tsx watch src/worker.ts",
-    "build:image": "docker build -t entropy-runner:latest -t oj-runner:latest -f docker/Dockerfile.runner docker",
-    "image:prune": "docker image prune -f",
     "test": "node --test dist/**/*.test.js"
   },
   "dependencies": {

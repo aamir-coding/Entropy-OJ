@@ -44,7 +44,15 @@ export function extractCandidateJson(raw: string): string {
   }
 
   if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    text = text.substring(startIdx, endIdx + 1).trim();
+    const afterEnd = text.substring(endIdx + 1).trim();
+    // If text after last brace contains tokens indicating truncated continuation, keep rest of text
+    if (!afterEnd.includes('{') && !afterEnd.includes('[') && !afterEnd.includes('"')) {
+      text = text.substring(startIdx, endIdx + 1).trim();
+    } else {
+      text = text.substring(startIdx).trim();
+    }
+  } else if (startIdx !== -1 && endIdx === -1) {
+    text = text.substring(startIdx).trim();
   }
 
   return text;
@@ -162,6 +170,71 @@ export function repairJsonString(raw: string): string {
 }
 
 /**
+ * Detects and repairs truncated JSON strings caused by LLM max token cutoffs.
+ * Safely closes dangling strings, incomplete keys/properties, and unclosed arrays/objects.
+ */
+export function repairTruncatedJson(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let s = raw.trim();
+  s = s.replace(/```[a-zA-Z]*\s*$/, '').trim();
+
+  // First pass: close open string literals if truncated mid-string
+  let inString = false;
+  let isEscaped = false;
+  for (let i = 0; i < s.length; i++) {
+    const char = s[i];
+    if (inString) {
+      if (isEscaped) isEscaped = false;
+      else if (char === '\\') isEscaped = true;
+      else if (char === '"') inString = false;
+    } else {
+      if (char === '"') { inString = true; isEscaped = false; }
+    }
+  }
+
+  if (inString) {
+    s += '"';
+  }
+
+  // Remove incomplete trailing key/property constructs
+  // e.g. , "key": or , "key" or { "key": or { "key"
+  s = s.replace(/,\s*"[^"]*"\s*:\s*"?$/, '');
+  s = s.replace(/,\s*"[^"]*"$/, '');
+  s = s.replace(/\{\s*"[^"]*"\s*:\s*"?$/, '');
+  s = s.replace(/\{\s*"[^"]*"$/, '');
+  s = s.replace(/\{\s*$/, '');
+  s = s.replace(/,\s*$/, '');
+
+  // Second pass: compute required closing delimiters
+  const closeStack: string[] = [];
+  inString = false;
+  isEscaped = false;
+  for (let i = 0; i < s.length; i++) {
+    const char = s[i];
+    if (inString) {
+      if (isEscaped) isEscaped = false;
+      else if (char === '\\') isEscaped = true;
+      else if (char === '"') inString = false;
+    } else {
+      if (char === '"') inString = true;
+      else if (char === '{') closeStack.push('}');
+      else if (char === '[') closeStack.push(']');
+      else if (char === '}' || char === ']') {
+        if (closeStack.length > 0 && closeStack[closeStack.length - 1] === char) {
+          closeStack.pop();
+        }
+      }
+    }
+  }
+
+  while (closeStack.length > 0) {
+    s += closeStack.pop();
+  }
+
+  return s;
+}
+
+/**
  * Extracts structured fields for review schemas when outer JSON is broken.
  */
 function extractStructuralFields(raw: string): Record<string, any> | null {
@@ -175,6 +248,15 @@ function extractStructuralFields(raw: string): Record<string, any> | null {
     } catch {
       result.statementAmbiguities = [];
     }
+  } else {
+    const openAmbiguities = raw.match(/"statementAmbiguities"\s*:\s*(\[[^]*)/);
+    if (openAmbiguities) {
+      try {
+        result.statementAmbiguities = JSON.parse(repairTruncatedJson(openAmbiguities[1]));
+      } catch {
+        result.statementAmbiguities = [];
+      }
+    }
   }
 
   // Extract missingEdgeCases array
@@ -184,6 +266,15 @@ function extractStructuralFields(raw: string): Record<string, any> | null {
       result.missingEdgeCases = JSON.parse(repairJsonString(edgeCasesMatch[1]));
     } catch {
       result.missingEdgeCases = [];
+    }
+  } else {
+    const openEdgeCases = raw.match(/"missingEdgeCases"\s*:\s*(\[[^]*)/);
+    if (openEdgeCases) {
+      try {
+        result.missingEdgeCases = JSON.parse(repairTruncatedJson(openEdgeCases[1]));
+      } catch {
+        result.missingEdgeCases = [];
+      }
     }
   }
 
@@ -200,6 +291,15 @@ function extractStructuralFields(raw: string): Record<string, any> | null {
     } catch {
       result.adversarialInputs = [];
     }
+  } else {
+    const openAdversarial = raw.match(/"adversarialInputs"\s*:\s*(\[[^]*)/);
+    if (openAdversarial) {
+      try {
+        result.adversarialInputs = JSON.parse(repairTruncatedJson(openAdversarial[1]));
+      } catch {
+        result.adversarialInputs = [];
+      }
+    }
   }
 
   // Extract inconsistencies array
@@ -209,6 +309,15 @@ function extractStructuralFields(raw: string): Record<string, any> | null {
       result.inconsistencies = JSON.parse(repairJsonString(inconsistenciesMatch[1]));
     } catch {
       result.inconsistencies = [];
+    }
+  } else {
+    const openInconsistencies = raw.match(/"inconsistencies"\s*:\s*(\[[^]*)/);
+    if (openInconsistencies) {
+      try {
+        result.inconsistencies = JSON.parse(repairTruncatedJson(openInconsistencies[1]));
+      } catch {
+        result.inconsistencies = [];
+      }
     }
   }
 
@@ -241,7 +350,7 @@ function extractStructuralFields(raw: string): Record<string, any> | null {
 
 /**
  * Universal safe parser for AI JSON responses.
- * Tries direct parsing -> JS evaluation -> regex repair -> subfield extraction.
+ * Tries direct parsing -> truncation repair -> JS evaluation -> regex repair -> subfield extraction.
  */
 export function parseAIJson<T = any>(rawInput: string): T {
   if (!rawInput || typeof rawInput !== 'string') {
@@ -255,10 +364,26 @@ export function parseAIJson<T = any>(rawInput: string): T {
   try {
     return JSON.parse(candidate) as T;
   } catch {
-    // Continue to next stages
+    // Continue
   }
 
-  // 3. Stage 2: Sandboxed JS Object evaluation
+  // 3. Try parsing with truncation repair on candidate
+  try {
+    const candidateRepaired = repairTruncatedJson(candidate);
+    return JSON.parse(candidateRepaired) as T;
+  } catch {
+    // Continue
+  }
+
+  // 4. Try parsing with truncation repair on rawInput
+  try {
+    const rawRepaired = repairTruncatedJson(rawInput);
+    return JSON.parse(rawRepaired) as T;
+  } catch {
+    // Continue
+  }
+
+  // 5. Sandboxed JS Object evaluation
   try {
     const evaluated = evaluateJsObject(candidate);
     if (evaluated && typeof evaluated === 'object') {
@@ -268,7 +393,7 @@ export function parseAIJson<T = any>(rawInput: string): T {
     // Continue
   }
 
-  // 4. Stage 3: Regex repair then JSON.parse
+  // 6. Regex repair then JSON.parse
   const repaired = repairJsonString(candidate);
   try {
     return JSON.parse(repaired) as T;
@@ -276,7 +401,15 @@ export function parseAIJson<T = any>(rawInput: string): T {
     // Continue
   }
 
-  // 5. Stage 4: Try JS Object evaluation on repaired text
+  // 7. Regex repair + truncation repair
+  try {
+    const repairedAndClosed = repairTruncatedJson(repaired);
+    return JSON.parse(repairedAndClosed) as T;
+  } catch {
+    // Continue
+  }
+
+  // 8. Try JS Object evaluation on repaired text
   try {
     const evaluated = evaluateJsObject(repaired);
     if (evaluated && typeof evaluated === 'object') {
@@ -286,10 +419,16 @@ export function parseAIJson<T = any>(rawInput: string): T {
     // Continue
   }
 
-  // 6. Stage 5: Structural field extraction fallback
-  const structural = extractStructuralFields(candidate);
-  if (structural && Object.keys(structural).length > 0) {
-    return structural as T;
+  // 9. Structural field extraction fallback on candidate
+  const structuralCandidate = extractStructuralFields(candidate);
+  if (structuralCandidate && Object.keys(structuralCandidate).length > 0) {
+    return structuralCandidate as T;
+  }
+
+  // 10. Structural field extraction fallback on full rawInput
+  const structuralRaw = extractStructuralFields(rawInput);
+  if (structuralRaw && Object.keys(structuralRaw).length > 0) {
+    return structuralRaw as T;
   }
 
   throw new Error(`Failed to parse AI JSON response: ${candidate.slice(0, 150)}...`);

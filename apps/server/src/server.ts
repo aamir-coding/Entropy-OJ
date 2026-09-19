@@ -5,7 +5,6 @@ import { redisClient } from './config/redis';
 import { submissionQueue } from './queues/submission.queue';
 import { aiQueue } from './queues/ai.queue';
 import { createAIWorker } from './ai/aiWorker';
-import { killActiveContainers } from './sandbox/dockerRunner';
 import { ensureProblemsSeeded } from './seeds/seedProblems';
 
 async function bootstrap() {
@@ -59,12 +58,7 @@ async function bootstrap() {
       });
     } catch {}
 
-    try {
-      await killActiveContainers();
-      console.log('[Server] Active sandbox containers cleaned.');
-    } catch (err: any) {
-      console.error('[Server] Error cleaning sandbox containers:', err.message);
-    }
+
 
     try {
       await aiWorker.close();

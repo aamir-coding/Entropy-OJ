@@ -9,11 +9,11 @@ import { env } from './config/env';
 import { createSubmissionWorker } from './queue/submissionWorker';
 import { QueueConfig } from '@entropy-oj/shared';
 import {
-  reapOrphanedContainers,
-  killActiveContainers,
+  killActiveProcesses,
   sweepStaleWorkspaces,
-  startSemaphoreHealthMonitor,
-} from './sandbox/dockerRunner';
+  processSemaphore,
+  activeProcesses,
+} from './sandbox/processRunner';
 
 const execFileAsync = promisify(execFile);
 
@@ -68,20 +68,18 @@ async function drainStalledJobs(): Promise<void> {
 
 async function bootstrap() {
   console.log('===================================================');
-  console.log('🛡️  Entropy — Sandbox Execution Worker');
+  console.log('🛡️  Entropy — Sandbox Execution Worker (Direct Process Mode)');
   console.log('===================================================');
 
   // Verify Database connection
   await connectDB();
 
-  // Startup sweeping of stale workspace folders & exited containers
+  // Startup sweeping of stale workspace folders
   await sweepStaleWorkspaces();
-  await reapOrphanedContainers();
 
-  // Periodic reaper interval (every 10 minutes)
+  // Periodic workspace cleanup interval (every 10 minutes)
   const reaperInterval = setInterval(async () => {
     await sweepStaleWorkspaces();
-    await reapOrphanedContainers();
   }, 10 * 60 * 1000);
   reaperInterval.unref();
 
@@ -100,30 +98,28 @@ async function bootstrap() {
 
   const worker = createSubmissionWorker();
 
-  // Start semaphore health monitor (auto-resets leaked semaphore slots after 60s of inactivity)
-  const semaphoreMonitor = startSemaphoreHealthMonitor(30000);
-
-  // Health probe HTTP server for container orchestrators (Issue M-3)
+  // Health probe HTTP server for container orchestrators
   const healthPort = env.WORKER_HEALTH_PORT;
 
-  // Docker availability status cache (Low 1: prevent child process spawn overhead on frequent probes)
-  let lastDockerCheckTime = 0;
-  let cachedDockerStatus = false;
-  const DOCKER_STATUS_CACHE_TTL_MS = 20000; // 20s TTL
+  // Compiler availability status cache (check if g++ and python3 are installed)
+  let lastToolchainCheckTime = 0;
+  let cachedToolchainStatus = false;
+  const TOOLCHAIN_STATUS_CACHE_TTL_MS = 30000; // 30s TTL
 
-  async function checkDockerConnected(): Promise<boolean> {
+  async function checkToolchainAvailable(): Promise<boolean> {
     const now = Date.now();
-    if (now - lastDockerCheckTime < DOCKER_STATUS_CACHE_TTL_MS) {
-      return cachedDockerStatus;
+    if (now - lastToolchainCheckTime < TOOLCHAIN_STATUS_CACHE_TTL_MS) {
+      return cachedToolchainStatus;
     }
     try {
-      await execFileAsync('docker', ['info', '--format', '{{.ServerVersion}}'], { timeout: 3000, windowsHide: true });
-      cachedDockerStatus = true;
+      await execFileAsync('g++', ['--version'], { timeout: 3000, windowsHide: true });
+      await execFileAsync('python3', ['--version'], { timeout: 3000, windowsHide: true });
+      cachedToolchainStatus = true;
     } catch {
-      cachedDockerStatus = false;
+      cachedToolchainStatus = false;
     }
-    lastDockerCheckTime = now;
-    return cachedDockerStatus;
+    lastToolchainCheckTime = now;
+    return cachedToolchainStatus;
   }
 
   const healthServer = http.createServer(async (req, res) => {
@@ -137,13 +133,13 @@ async function bootstrap() {
         isRedisConnected = pong === 'PONG';
       } catch {}
 
-      const isDockerConnected = await checkDockerConnected();
+      const isToolchainReady = await checkToolchainAvailable();
 
       const isHealthy =
         isDbConnected &&
         isWorkerRunning &&
         isRedisConnected &&
-        (env.NODE_ENV === 'test' || isDockerConnected);
+        (env.NODE_ENV === 'test' || isToolchainReady);
 
       res.writeHead(isHealthy ? 200 : 503, { 'Content-Type': 'application/json' });
       res.end(
@@ -151,8 +147,10 @@ async function bootstrap() {
           status: isHealthy ? 'healthy' : 'degraded',
           db: isDbConnected ? 'connected' : 'disconnected',
           redis: isRedisConnected ? 'connected' : 'disconnected',
-          docker: isDockerConnected ? 'connected' : 'disconnected',
+          toolchain: isToolchainReady ? 'ready' : 'unavailable',
           worker: isWorkerRunning ? 'running' : 'stopped',
+          executionMode: 'direct-process',
+          semaphore: `${processSemaphore.activeCount}/${processSemaphore.max} active, ${processSemaphore.queueLength} queued`,
           uptime: process.uptime(),
         })
       );
@@ -166,13 +164,23 @@ async function bootstrap() {
     console.log(`[Worker] 🩺 Health probe listening on port ${healthPort} (/health)`);
   });
 
+  // Periodic heartbeat log — provides visibility into semaphore state without the
+  // complexity of the old Docker container tracking watchdog.
+  const heartbeatInterval = setInterval(() => {
+    console.log(
+      `[Heartbeat] Semaphore: ${processSemaphore.activeCount}/${processSemaphore.max} active, ` +
+      `${processSemaphore.queueLength} queued | Active PIDs: ${activeProcesses.size}`
+    );
+  }, 30000);
+  heartbeatInterval.unref();
+
   let isShuttingDown = false;
   const gracefulShutdown = async (signal: string, exitCode = 0) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`\n[Worker] Received ${signal}. Shutting down gracefully (exitCode: ${exitCode})...`);
 
-    // Hard 30-second kill switch to prevent hanging shutdowns (Issue C-3)
+    // Hard 30-second kill switch to prevent hanging shutdowns
     const forceExitTimer = setTimeout(() => {
       console.error('[Worker] ⚠️ Shutdown timeout of 30s exceeded. Forcing exit.');
       process.exit(exitCode || 1);
@@ -180,7 +188,7 @@ async function bootstrap() {
     forceExitTimer.unref();
 
     clearInterval(reaperInterval);
-    clearInterval(semaphoreMonitor);
+    clearInterval(heartbeatInterval);
 
     try {
       healthServer.close();
@@ -194,16 +202,14 @@ async function bootstrap() {
       ]);
       console.log('[Worker] BullMQ worker stopped cleanly.');
     } catch (err: any) {
-      console.warn('[Worker] Worker close timed out or encountered error, force cleaning active containers:', err.message);
-      await killActiveContainers();
+      console.warn('[Worker] Worker close timed out or encountered error:', err.message);
     }
 
     try {
-      await killActiveContainers();
-      await reapOrphanedContainers();
-      console.log('[Worker] Active containers cleaned.');
+      await killActiveProcesses();
+      console.log('[Worker] Active child processes terminated.');
     } catch (err: any) {
-      console.error('[Worker] Error cleaning containers during shutdown:', err.message);
+      console.error('[Worker] Error killing child processes during shutdown:', err.message);
     }
 
     try {
@@ -242,4 +248,3 @@ bootstrap().catch((err) => {
   console.error('[Worker] Fatal error during worker startup:', err);
   process.exit(1);
 });
-
