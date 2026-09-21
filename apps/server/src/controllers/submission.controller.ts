@@ -437,11 +437,46 @@ export async function getUserSolvedProblems(
 
     const solvedProblems = Array.from(solvedMap.values());
 
+    // Compute approach distribution across distinct solved problems with classification
+    let approachDistribution: { approach: string; count: number }[] = [];
+    try {
+      const approachDistributionRaw = await Solution.aggregate([
+        {
+          $match: {
+            user: new mongoose.Types.ObjectId(targetUserId),
+            verdict: Verdicts.ACCEPTED,
+            'classification.approach': { $exists: true, $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: { problem: '$problem', approach: '$classification.approach' },
+          },
+        },
+        {
+          $group: {
+            _id: '$_id.approach',
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ]);
+
+      approachDistribution = approachDistributionRaw.map((a) => ({
+        approach: String(a._id),
+        count: Number(a.count),
+      }));
+    } catch (aggErr) {
+      console.warn('[getUserSolvedProblems] Aggregation fallback warning:', aggErr);
+    }
+
     res.status(200).json({
       success: true,
       data: {
         solvedProblems,
         totalSolved: solvedProblems.length,
+        approachDistribution,
       },
     });
   } catch (error) {

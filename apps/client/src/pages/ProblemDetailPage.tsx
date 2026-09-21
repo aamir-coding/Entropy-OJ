@@ -807,6 +807,9 @@ export const ProblemDetailPage: React.FC = () => {
           handleManualCheckStatus={handleManualCheckStatus}
           hintState={hintState}
           handleRequestHint={handleRequestHint}
+          isClassifying={isClassifying}
+          classifyError={classifyError}
+          handleClassifyApproach={handleClassifyApproach}
           pastSubmissions={pastSubmissions}
           loadingPastSubmissions={loadingPastSubmissions}
           openAuthModal={openAuthModal}
@@ -865,6 +868,26 @@ export const ProblemDetailPage: React.FC = () => {
             >
               #{problem.problemCode}
             </span>
+            <Tooltip content="Socratic Debug Hints and Approach Classification powered by Entropy AI" side="bottom">
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-mono)',
+                  padding: '0.1rem 0.4rem',
+                  background: 'var(--brand-neutral-600)',
+                  border: '1px solid var(--border-medium)',
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  cursor: 'default',
+                }}
+              >
+                <Brain size={11} style={{ color: 'var(--text-secondary)' }} />
+                <span>AI-Assisted</span>
+              </span>
+            </Tooltip>
           </div>
         </div>
 
@@ -1578,45 +1601,63 @@ export const ProblemDetailPage: React.FC = () => {
                           ) : resultView === 'submission' && activeSubmission ? (
                             /* Full Submission Verdict View */
                             <div>
+                              {/* Post-Submission AI Summary Banner */}
+                              {activeSubmission.verdict !== Verdicts.PENDING && (
+                                <div
+                                  style={{
+                                    background: 'var(--bg-surface)',
+                                    border: '1px solid var(--border-faint)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    padding: '0.45rem 0.75rem',
+                                    marginBottom: '0.75rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.75rem',
+                                    color: 'var(--text-secondary)',
+                                    animation: 'fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  }}
+                                >
+                                  {activeSubmission.verdict === Verdicts.ACCEPTED ? (
+                                    <>
+                                      <Sparkles size={13} style={{ color: 'var(--verdict-ac)', flexShrink: 0 }} />
+                                      <span>
+                                        {activeSubmission.classification
+                                          ? `Your ${activeSubmission.classification.approach} approach runs in ${activeSubmission.classification.timeComplexity} time.`
+                                          : 'Accepted — classify your algorithmic approach below.'}
+                                      </span>
+                                    </>
+                                  ) : activeSubmission.verdict === Verdicts.WRONG_ANSWER ? (
+                                    <>
+                                      <Lightbulb size={13} style={{ color: 'var(--verdict-wa)', flexShrink: 0 }} />
+                                      <span>
+                                        {activeSubmission.failedTestCaseNumber
+                                          ? `Failed on test case #${activeSubmission.failedTestCaseNumber}. A Socratic debug hint is available below.`
+                                          : 'Failed on a test case. A Socratic debug hint is available below.'}
+                                      </span>
+                                    </>
+                                  ) : activeSubmission.verdict === Verdicts.TIME_LIMIT_EXCEEDED ? (
+                                    <>
+                                      <Lightbulb size={13} style={{ color: 'var(--verdict-tle)', flexShrink: 0 }} />
+                                      <span>Time limit exceeded. Get an AI hint below to identify optimization opportunities.</span>
+                                    </>
+                                  ) : activeSubmission.verdict === Verdicts.COMPILATION_ERROR ? (
+                                    <>
+                                      <Lightbulb size={13} style={{ color: 'var(--verdict-wa)', flexShrink: 0 }} />
+                                      <span>Compilation error detected. Request a debug hint below for guidance.</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lightbulb size={13} style={{ color: 'var(--verdict-wa)', flexShrink: 0 }} />
+                                      <span>Runtime error or issue detected. Request a debug hint below for guidance.</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexWrap: 'wrap' }}>
                                   <VerdictBadge verdict={activeSubmission.verdict} />
-                                  {activeSubmission.verdict === Verdicts.ACCEPTED && !activeSubmission.classification && (
-                                    <Tooltip content="Analyze algorithmic approach & Big-O complexity via AI" side="top">
-                                      <button
-                                        id="btn-classify-approach"
-                                        onClick={() => handleClassifyApproach(activeSubmission.submissionId)}
-                                        disabled={isClassifying}
-                                        className="btn btn-sm"
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '0.35rem',
-                                          padding: '0.2rem 0.65rem',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          background: 'rgba(56, 189, 248, 0.12)',
-                                          color: 'var(--accent-cyan)',
-                                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                                          borderRadius: 'var(--radius-sm)',
-                                          cursor: isClassifying ? 'not-allowed' : 'pointer',
-                                          transition: 'all 0.15s ease',
-                                        }}
-                                      >
-                                        {isClassifying ? (
-                                          <>
-                                            <Loader2 size={13} className="animate-spin" />
-                                            <span>Analyzing Approach...</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Sparkles size={13} />
-                                            <span>Classify Approach & Complexity</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    </Tooltip>
-                                  )}
                                 </div>
 
                                 {activeSubmission.verdict !== Verdicts.PENDING && (
@@ -1641,25 +1682,6 @@ export const ProblemDetailPage: React.FC = () => {
                                 )}
                               </div>
 
-                              {classifyError && (
-                                <div
-                                  style={{
-                                    marginBottom: '0.75rem',
-                                    padding: '0.4rem 0.75rem',
-                                    fontSize: '0.75rem',
-                                    color: 'var(--verdict-wa)',
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.4rem',
-                                  }}
-                                >
-                                  <AlertCircle size={13} />
-                                  <span>{classifyError}</span>
-                                </div>
-                              )}
 
                               {activeSubmission.failedTestCaseNumber && (
                                 <div
@@ -1714,165 +1736,269 @@ export const ProblemDetailPage: React.FC = () => {
                                 </div>
                               )}
 
-                              {/* Approach & Complexity Classification Badge (Post-AC) */}
-                              {activeSubmission.verdict === Verdicts.ACCEPTED && activeSubmission.classification && (
+                              {/* Entropy AI Insights Panel */}
+                              {activeSubmission.verdict !== Verdicts.PENDING && (
                                 <div
                                   style={{
-                                    marginTop: '0.75rem',
-                                    background: '#080808',
-                                    border: '1px solid rgba(5, 223, 114, 0.25)',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderLeft: '2px solid var(--brand-neutral-200)',
                                     borderRadius: 'var(--radius-sm)',
                                     padding: '0.75rem 1rem',
+                                    marginTop: '0.75rem',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                      <Sparkles size={14} /> Approach Classification
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AI Verified</span>
-                                  </div>
-                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                                    <strong>Pattern:</strong> {activeSubmission.classification.approach}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                    <span><strong>Time:</strong> {activeSubmission.classification.timeComplexity}</span>
-                                    <span><strong>Space:</strong> {activeSubmission.classification.spaceComplexity}</span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Socratic Hint Copilot Button & Card (Non-AC failures) */}
-                              {activeSubmission.verdict !== Verdicts.ACCEPTED && activeSubmission.verdict !== Verdicts.PENDING && (
-                                <div style={{ marginTop: '0.875rem' }}>
-                                  {!hintState.hint && !hintState.loading && (
-                                    <button
-                                      id="btn-request-ai-hint"
-                                      onClick={() => handleRequestHint(activeSubmission.submissionId)}
-                                      className="btn btn-outline"
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      marginBottom: '0.625rem',
+                                    }}
+                                  >
+                                    <div
                                       style={{
-                                        width: '100%',
-                                        display: 'flex',
+                                        display: 'inline-flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        padding: '0.5rem 1rem',
-                                        borderColor: 'rgba(234, 179, 8, 0.4)',
-                                        background: 'rgba(234, 179, 8, 0.06)',
-                                        color: '#eab308',
-                                        fontSize: '0.8125rem',
+                                        gap: '0.35rem',
+                                        fontSize: '0.75rem',
                                         fontWeight: 600,
-                                        cursor: 'pointer',
+                                        color: 'var(--text-secondary)',
+                                        letterSpacing: '0.04em',
+                                        textTransform: 'uppercase',
                                       }}
                                     >
-                                      <Lightbulb size={15} />
-                                      <span>Get Socratic Debug Hint 💡</span>
-                                    </button>
-                                  )}
-
-                                  {hintState.loading && (
-                                    <div
-                                      style={{
-                                        padding: '0.75rem 1rem',
-                                        background: 'rgba(234, 179, 8, 0.05)',
-                                        border: '1px solid rgba(234, 179, 8, 0.2)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.6rem',
-                                        color: '#eab308',
-                                        fontSize: '0.8125rem',
-                                      }}
-                                    >
-                                      <Loader2 size={16} className="animate-spin" />
-                                      <span>Consulting Socratic Tutor...</span>
+                                      <Sparkles size={13} style={{ color: 'var(--text-muted)' }} />
+                                      <span>Entropy AI</span>
                                     </div>
-                                  )}
+                                  </div>
 
-                                  {hintState.error && (
-                                    <div
-                                      style={{
-                                        marginTop: '0.5rem',
-                                        padding: '0.5rem 0.75rem',
-                                        background: 'rgba(239, 68, 68, 0.08)',
-                                        border: '1px solid rgba(239, 68, 68, 0.25)',
-                                        borderRadius: 'var(--radius-sm)',
-                                        color: 'var(--verdict-wa)',
-                                        fontSize: '0.8125rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.4rem',
-                                      }}
-                                    >
-                                      <AlertCircle size={14} />
-                                      <span>{hintState.error}</span>
-                                    </div>
-                                  )}
-
-                                  {hintState.hint && (
-                                    <div
-                                      style={{
-                                        marginTop: '0.5rem',
-                                        padding: '0.875rem 1rem',
-                                        background: '#080808',
-                                        border: '1px solid rgba(234, 179, 8, 0.25)',
-                                        borderRadius: 'var(--radius-sm)',
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                          marginBottom: '0.4rem',
-                                          paddingBottom: '0.35rem',
-                                          borderBottom: '1px solid rgba(234, 179, 8, 0.15)',
-                                        }}
-                                      >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#eab308', fontWeight: 600, fontSize: '0.8125rem' }}>
-                                          <Lightbulb size={15} />
-                                          <span>Socratic Debug Hint</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                          {hintState.remainingDaily !== undefined && (
-                                            <span>{hintState.remainingDaily} hints left today</span>
-                                          )}
-                                          {hintState.provider && hintState.provider !== 'none' && (
-                                            <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>
-                                              {hintState.provider}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div style={{ fontSize: '0.8125rem', lineHeight: 1.55, color: 'var(--text-primary)' }}>
-                                        <ReactMarkdown
-                                          remarkPlugins={[remarkGfm, remarkMath]}
-                                          rehypePlugins={[rehypeKatex]}
-                                          components={{
-                                            p: ({ node, ...props }) => <p style={{ margin: '0 0 0.35rem 0', lineHeight: 1.55 }} {...props} />,
-                                            code: ({ node, inline: isInline, ...props }: any) =>
-                                              isInline ? (
-                                                <code
-                                                  style={{
-                                                    background: 'rgba(255, 255, 255, 0.08)',
-                                                    padding: '0.1rem 0.35rem',
-                                                    borderRadius: 'var(--radius-xs)',
-                                                    fontSize: '0.85em',
-                                                    fontFamily: 'var(--font-mono)',
-                                                    color: 'var(--text-primary)',
-                                                  }}
-                                                  {...props}
-                                                />
-                                              ) : (
-                                                <pre style={{ background: '#000000', border: '1px solid var(--border-subtle)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-xs)', margin: '0.35rem 0', fontSize: '0.78rem' }}>
-                                                  <code {...props} />
-                                                </pre>
-                                              ),
+                                  {/* AC: Classification or CTA to Classify */}
+                                  {activeSubmission.verdict === Verdicts.ACCEPTED && (
+                                    <div>
+                                      {activeSubmission.classification ? (
+                                        <div
+                                          style={{
+                                            background: '#000000',
+                                            border: '1px solid rgba(5, 223, 114, 0.25)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '0.75rem 1rem',
                                           }}
                                         >
-                                          {hintState.hint}
-                                        </ReactMarkdown>
-                                      </div>
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                              <Sparkles size={14} /> Approach Classification
+                                            </span>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                              <Sparkles size={11} /> ENTROPY AI
+                                            </span>
+                                          </div>
+                                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                                            <strong>Pattern:</strong> {activeSubmission.classification.approach}
+                                          </div>
+                                          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            <span><strong>Time:</strong> {activeSubmission.classification.timeComplexity}</span>
+                                            <span><strong>Space:</strong> {activeSubmission.classification.spaceComplexity}</span>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.625rem' }}>
+                                            Solution accepted. Classify your algorithmic pattern and computational complexity.
+                                          </p>
+                                          <button
+                                            id="btn-classify-approach"
+                                            onClick={() => handleClassifyApproach(activeSubmission.submissionId)}
+                                            disabled={isClassifying}
+                                            className="btn btn-sm"
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '0.35rem',
+                                              padding: '0.35rem 0.75rem',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 600,
+                                              background: 'rgba(56, 189, 248, 0.12)',
+                                              color: 'var(--accent-cyan)',
+                                              border: '1px solid rgba(56, 189, 248, 0.35)',
+                                              borderRadius: 'var(--radius-sm)',
+                                              cursor: isClassifying ? 'not-allowed' : 'pointer',
+                                              transition: 'all 0.15s ease',
+                                            }}
+                                          >
+                                            {isClassifying ? (
+                                              <>
+                                                <Loader2 size={13} className="animate-spin" />
+                                                <span>Analyzing Approach...</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Sparkles size={13} />
+                                                <span>Classify Approach & Complexity</span>
+                                              </>
+                                            )}
+                                          </button>
+                                          {classifyError && (
+                                            <div
+                                              style={{
+                                                marginTop: '0.5rem',
+                                                padding: '0.4rem 0.75rem',
+                                                fontSize: '0.75rem',
+                                                color: 'var(--verdict-wa)',
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.4rem',
+                                              }}
+                                            >
+                                              <AlertCircle size={13} />
+                                              <span>{classifyError}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Socratic Hint Copilot Button & Card (Non-AC failures) */}
+                                  {activeSubmission.verdict !== Verdicts.ACCEPTED && (
+                                    <div>
+                                      {!hintState.hint && !hintState.loading && (
+                                        <button
+                                          id="btn-request-ai-hint"
+                                          onClick={() => handleRequestHint(activeSubmission.submissionId)}
+                                          className="btn btn-outline"
+                                          style={{
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.5rem 1rem',
+                                            borderColor: 'rgba(234, 179, 8, 0.4)',
+                                            background: 'rgba(234, 179, 8, 0.06)',
+                                            color: '#eab308',
+                                            fontSize: '0.8125rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          <Lightbulb size={15} />
+                                          <span>Get Socratic Debug Hint</span>
+                                        </button>
+                                      )}
+
+                                      {hintState.loading && (
+                                        <div
+                                          style={{
+                                            padding: '0.75rem 1rem',
+                                            background: 'rgba(234, 179, 8, 0.05)',
+                                            border: '1px solid rgba(234, 179, 8, 0.2)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.6rem',
+                                            color: '#eab308',
+                                            fontSize: '0.8125rem',
+                                          }}
+                                        >
+                                          <Loader2 size={16} className="animate-spin" />
+                                          <span>Consulting Socratic Tutor...</span>
+                                        </div>
+                                      )}
+
+                                      {hintState.error && (
+                                        <div
+                                          style={{
+                                            padding: '0.5rem 0.75rem',
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            color: 'var(--verdict-wa)',
+                                            fontSize: '0.8125rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.4rem',
+                                          }}
+                                        >
+                                          <AlertCircle size={14} />
+                                          <span>{hintState.error}</span>
+                                        </div>
+                                      )}
+
+                                      {hintState.hint && (
+                                        <div
+                                          style={{
+                                            padding: '0.875rem 1rem',
+                                            background: '#080808',
+                                            border: '1px solid rgba(234, 179, 8, 0.25)',
+                                            borderRadius: 'var(--radius-sm)',
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              marginBottom: '0.4rem',
+                                              paddingBottom: '0.35rem',
+                                              borderBottom: '1px solid rgba(234, 179, 8, 0.15)',
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#eab308', fontWeight: 600, fontSize: '0.8125rem' }}>
+                                                <Lightbulb size={15} />
+                                                <span>Socratic Debug Hint</span>
+                                              </div>
+                                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                                <Sparkles size={10} /> ENTROPY AI
+                                              </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                              {hintState.remainingDaily !== undefined && (
+                                                <span>{hintState.remainingDaily} hints left today</span>
+                                              )}
+                                              {hintState.provider && hintState.provider !== 'none' && (
+                                                <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>
+                                                  {hintState.provider}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div style={{ fontSize: '0.8125rem', lineHeight: 1.55, color: 'var(--text-primary)' }}>
+                                            <ReactMarkdown
+                                              remarkPlugins={[remarkGfm, remarkMath]}
+                                              rehypePlugins={[rehypeKatex]}
+                                              components={{
+                                                p: ({ node, ...props }) => <p style={{ margin: '0 0 0.35rem 0', lineHeight: 1.55 }} {...props} />,
+                                                code: ({ node, inline: isInline, ...props }: any) =>
+                                                  isInline ? (
+                                                    <code
+                                                      style={{
+                                                        background: 'rgba(255, 255, 255, 0.08)',
+                                                        padding: '0.1rem 0.35rem',
+                                                        borderRadius: 'var(--radius-xs)',
+                                                        fontSize: '0.85em',
+                                                        fontFamily: 'var(--font-mono)',
+                                                        color: 'var(--text-primary)',
+                                                      }}
+                                                      {...props}
+                                                    />
+                                                  ) : (
+                                                    <pre style={{ background: '#000000', border: '1px solid var(--border-subtle)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-xs)', margin: '0.35rem 0', fontSize: '0.78rem' }}>
+                                                      <code {...props} />
+                                                    </pre>
+                                                  ),
+                                              }}
+                                            >
+                                              {hintState.hint}
+                                            </ReactMarkdown>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>

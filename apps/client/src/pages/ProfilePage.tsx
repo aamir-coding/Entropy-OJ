@@ -63,6 +63,11 @@ interface ISubmissionItem {
   };
   language: string;
   verdict: string;
+  classification?: {
+    approach: string;
+    timeComplexity: string;
+    spaceComplexity: string;
+  };
   executionTime?: number;
   memoryUsed?: number;
   passedTestCases?: number;
@@ -95,6 +100,7 @@ export const ProfilePage: React.FC = () => {
 
   // Solved problems state
   const [solvedProblems, setSolvedProblems] = useState<ISolvedProblemItem[]>([]);
+  const [approachDistribution, setApproachDistribution] = useState<{ approach: string; count: number }[]>([]);
   const [loadingSolved, setLoadingSolved] = useState(true);
   const [errorSolved, setErrorSolved] = useState<string | null>(null);
 
@@ -164,6 +170,7 @@ export const ProfilePage: React.FC = () => {
       const res = await api.get(`/submissions/user/${user._id}/solved`);
       if (res.data.success) {
         setSolvedProblems(res.data.data.solvedProblems || []);
+        setApproachDistribution(res.data.data.approachDistribution || []);
       }
     } catch (err: any) {
       console.error('Failed to fetch solved problems:', err);
@@ -793,6 +800,136 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Entropy AI: Algorithmic Approach Distribution Widget */}
+        <div
+          className="glass-panel"
+          style={{
+            padding: '1.5rem 1.75rem',
+            marginBottom: '1.5rem',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-cyan)',
+                }}
+              >
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                  Approach Distribution
+                </h3>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Algorithmic patterns detected across your accepted solutions
+                </span>
+              </div>
+            </div>
+
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontSize: '0.625rem',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                padding: '0.15rem 0.5rem',
+                borderRadius: 'var(--radius-xs)',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <Sparkles size={10} /> ENTROPY AI
+            </span>
+          </div>
+
+          {approachDistribution.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '1rem',
+                marginTop: '0.5rem',
+              }}
+            >
+              {(() => {
+                const maxCount = Math.max(...approachDistribution.map((a) => a.count), 1);
+                return approachDistribution.map((item) => {
+                  const percentage = Math.round((item.count / maxCount) * 100);
+                  return (
+                    <div
+                      key={item.approach}
+                      style={{
+                        padding: '0.6rem 0.75rem',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-faint)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          {item.approach}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                          {item.count} {item.count === 1 ? 'problem' : 'problems'}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '5px',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          borderRadius: 'var(--radius-xs)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background: 'linear-gradient(90deg, var(--brand-neutral-400), var(--brand-neutral-200))',
+                            borderRadius: 'var(--radius-xs)',
+                            transition: 'width 0.4s ease-out',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '1.25rem',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                fontSize: '0.78rem',
+                background: 'rgba(255, 255, 255, 0.015)',
+                border: '1px dashed var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                Solve problems and classify your accepted solutions to analyze your algorithmic pattern portfolio with Entropy AI.
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Practice Preferences */}
         <div
           className="glass-panel"
@@ -1358,6 +1495,7 @@ export const ProfilePage: React.FC = () => {
                     <thead>
                       <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
                         <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Verdict</th>
+                        <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Approach</th>
                         <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Problem</th>
                         <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Test Cases</th>
                         <th style={{ padding: '0.75rem 1.25rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Language</th>
@@ -1410,6 +1548,28 @@ export const ProfilePage: React.FC = () => {
                                 )}
                                 <span>{sub.verdict}</span>
                               </span>
+                            </td>
+
+                            {/* Algorithmic Approach Classification */}
+                            <td style={{ padding: '0.875rem 1.25rem' }}>
+                              {sub.classification?.approach ? (
+                                <span
+                                  className="badge badge-tag"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    fontSize: '0.72rem',
+                                    padding: '0.15rem 0.5rem',
+                                  }}
+                                  title={`Time: ${sub.classification.timeComplexity || 'N/A'}, Space: ${sub.classification.spaceComplexity || 'N/A'}`}
+                                >
+                                  <Sparkles size={10} style={{ color: 'var(--text-muted)' }} />
+                                  <span>{sub.classification.approach}</span>
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>—</span>
+                              )}
                             </td>
 
                             {/* Problem Name & Code */}
