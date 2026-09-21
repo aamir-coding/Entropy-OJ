@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Timer,
 } from 'lucide-react';
+import { EntropyAiIcon } from '../components/icons/EntropyAiIcon';
 
 interface ISolvedProblemItem {
   _id: string;
@@ -824,7 +825,7 @@ export const ProfilePage: React.FC = () => {
                   color: 'var(--accent-cyan)',
                 }}
               >
-                <Sparkles size={16} />
+                <EntropyAiIcon size={16} />
               </div>
               <div>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
@@ -852,7 +853,7 @@ export const ProfilePage: React.FC = () => {
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              <Sparkles size={10} /> ENTROPY AI
+              <EntropyAiIcon size={10} /> ENTROPY AI
             </span>
           </div>
 
@@ -1564,7 +1565,7 @@ export const ProfilePage: React.FC = () => {
                                   }}
                                   title={`Time: ${sub.classification.timeComplexity || 'N/A'}, Space: ${sub.classification.spaceComplexity || 'N/A'}`}
                                 >
-                                  <Sparkles size={10} style={{ color: 'var(--text-muted)' }} />
+                                  <EntropyAiIcon size={10} style={{ color: 'var(--text-muted)' }} />
                                   <span>{sub.classification.approach}</span>
                                 </span>
                               ) : (

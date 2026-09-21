@@ -44,6 +44,7 @@ import {
   AlertCircle,
   XCircle,
 } from 'lucide-react';
+import { EntropyAiIcon } from './icons/EntropyAiIcon';
 
 export interface MobileProblemWorkspaceProps {
   problem: IProblem;
@@ -811,7 +812,7 @@ export const MobileProblemWorkspace: React.FC<MobileProblemWorkspaceProps> = ({
                         >
                           {activeSubmission.verdict === Verdicts.ACCEPTED ? (
                             <>
-                              <Sparkles size={12} style={{ color: 'var(--verdict-ac)', flexShrink: 0 }} />
+                              <EntropyAiIcon size={12} style={{ color: 'var(--verdict-ac)', flexShrink: 0 }} />
                               <span>
                                 {activeSubmission.classification
                                   ? `Your ${activeSubmission.classification.approach} approach runs in ${activeSubmission.classification.timeComplexity} time.`
@@ -919,7 +920,7 @@ export const MobileProblemWorkspace: React.FC<MobileProblemWorkspaceProps> = ({
                                 textTransform: 'uppercase',
                               }}
                             >
-                              <Sparkles size={13} style={{ color: 'var(--text-muted)' }} />
+                              <EntropyAiIcon size={13} style={{ color: 'var(--text-muted)' }} />
                               <span>Entropy AI</span>
                             </div>
                           </div>
@@ -938,10 +939,10 @@ export const MobileProblemWorkspace: React.FC<MobileProblemWorkspaceProps> = ({
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                      <Sparkles size={13} /> Approach Classification
+                                      <EntropyAiIcon size={13} /> Approach Classification
                                     </span>
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                      <Sparkles size={10} /> ENTROPY AI
+                                      <EntropyAiIcon size={10} /> ENTROPY AI
                                     </span>
                                   </div>
                                   <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
@@ -983,7 +984,7 @@ export const MobileProblemWorkspace: React.FC<MobileProblemWorkspaceProps> = ({
                                       </>
                                     ) : (
                                       <>
-                                        <Sparkles size={12} />
+                                        <EntropyAiIcon size={12} />
                                         <span>Classify Approach & Complexity</span>
                                       </>
                                     )}
@@ -1104,7 +1105,7 @@ export const MobileProblemWorkspace: React.FC<MobileProblemWorkspaceProps> = ({
                                         <span>Socratic Debug Hint</span>
                                       </div>
                                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                        <Sparkles size={10} /> ENTROPY AI
+                                        <EntropyAiIcon size={10} /> ENTROPY AI
                                       </span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>

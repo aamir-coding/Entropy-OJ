@@ -40,6 +40,7 @@ import {
   ShieldAlert,
   RotateCcw,
 } from 'lucide-react';
+import { EntropyAiIcon } from '../../components/icons/EntropyAiIcon';
 
 const MarkdownMathView: React.FC<{ content: string; className?: string; inline?: boolean }> = ({
   content,
@@ -1164,7 +1165,7 @@ You may assume that each input would have **exactly one solution**, and you may 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                    <Sparkles size={11} /> ENTROPY AI
+                    <EntropyAiIcon size={11} /> ENTROPY AI
                   </div>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
                     <Bot size={20} /> AI Problem-Setting QA Auditor
@@ -1201,7 +1202,7 @@ You may assume that each input would have **exactly one solution**, and you may 
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} />
+                      <EntropyAiIcon size={16} />
                       <span>Run Full AI QA Audit</span>
                     </>
                   )}

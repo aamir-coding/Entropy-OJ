@@ -51,6 +51,7 @@ import {
   Brain,
 } from 'lucide-react';
 
+import { EntropyAiIcon } from '../components/icons/EntropyAiIcon';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { defineEntropyTheme } from '../styles/monacoTheme';
 import { ProblemTimer } from '../components/ProblemTimer';
@@ -1620,7 +1621,7 @@ export const ProblemDetailPage: React.FC = () => {
                                 >
                                   {activeSubmission.verdict === Verdicts.ACCEPTED ? (
                                     <>
-                                      <Sparkles size={13} style={{ color: 'var(--verdict-ac)', flexShrink: 0 }} />
+                                      <EntropyAiIcon size={13} style={{ color: 'var(--verdict-ac)', flexShrink: 0 }} />
                                       <span>
                                         {activeSubmission.classification
                                           ? `Your ${activeSubmission.classification.approach} approach runs in ${activeSubmission.classification.timeComplexity} time.`
@@ -1768,7 +1769,7 @@ export const ProblemDetailPage: React.FC = () => {
                                         textTransform: 'uppercase',
                                       }}
                                     >
-                                      <Sparkles size={13} style={{ color: 'var(--text-muted)' }} />
+                                      <EntropyAiIcon size={13} style={{ color: 'var(--text-muted)' }} />
                                       <span>Entropy AI</span>
                                     </div>
                                   </div>
@@ -1787,10 +1788,10 @@ export const ProblemDetailPage: React.FC = () => {
                                         >
                                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                                             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--verdict-ac)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                              <Sparkles size={14} /> Approach Classification
+                                              <EntropyAiIcon size={14} /> Approach Classification
                                             </span>
                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                              <Sparkles size={11} /> ENTROPY AI
+                                              <EntropyAiIcon size={11} /> ENTROPY AI
                                             </span>
                                           </div>
                                           <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
@@ -1833,7 +1834,7 @@ export const ProblemDetailPage: React.FC = () => {
                                               </>
                                             ) : (
                                               <>
-                                                <Sparkles size={13} />
+                                                <EntropyAiIcon size={13} />
                                                 <span>Classify Approach & Complexity</span>
                                               </>
                                             )}
@@ -1954,7 +1955,7 @@ export const ProblemDetailPage: React.FC = () => {
                                                 <span>Socratic Debug Hint</span>
                                               </div>
                                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.625rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                                <Sparkles size={10} /> ENTROPY AI
+                                                <EntropyAiIcon size={10} /> ENTROPY AI
                                               </span>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
