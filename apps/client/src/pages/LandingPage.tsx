@@ -730,7 +730,7 @@ export const LandingPage: React.FC = () => {
               items={LANDING_NAV_ITEMS}
               value={activeSection}
               onValueChange={handleNavChange}
-              indicatorClassName="bg-white shadow-[0_0_8px_rgba(255,255,255,0.95)]"
+              indicatorClassName="bg-white shadow-[0_0_8px_rgba(255,255,255,0.95)] entropy-bounce-dot-indicator"
             />
           </motion.aside>
         )}

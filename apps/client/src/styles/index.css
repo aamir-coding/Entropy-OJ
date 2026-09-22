@@ -867,12 +867,13 @@ code, pre {
 /* ── Minimal Floating Navigation Sidebar ────────────────────────────────── */
 .entropy-bounce-sidebar-container {
   position: fixed;
-  left: max(1.5rem, calc((100vw - 1200px) / 2 - 140px));
+  left: max(1.5rem, calc((100vw - 1160px) / 2 - 145px));
   top: 50%;
   transform: translateY(-50%);
   z-index: 40;
   user-select: none;
   pointer-events: auto;
+  transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .entropy-bounce-sidebar-container ul,
@@ -1331,6 +1332,17 @@ code, pre {
     max-width: 1360px !important;
     gap: 1.5rem !important;
   }
+
+  .entropy-bounce-sidebar-container {
+    left: max(2rem, calc((100vw - 1440px) / 2 - 165px)) !important;
+  }
+
+  .entropy-bounce-sidebar-container button,
+  .entropy-bounce-sidebar-container a {
+    font-size: 0.84rem !important;
+    padding: 0.35rem 0.75rem 0.35rem 24px !important;
+    letter-spacing: 0.035em !important;
+  }
 }
 
 /* ── Large Desktop & Pro Display (min-width: 1920px) ─────────────────────── */
@@ -1342,6 +1354,16 @@ code, pre {
 
   .hero-logo-text {
     font-size: clamp(2.5rem, 4vw, 3.8rem) !important;
+  }
+
+  .entropy-bounce-sidebar-container {
+    left: max(2.25rem, calc((100vw - 1440px) / 2 - 175px)) !important;
+  }
+
+  .entropy-bounce-sidebar-container button,
+  .entropy-bounce-sidebar-container a {
+    font-size: 0.88rem !important;
+    padding: 0.38rem 0.8rem 0.38rem 24px !important;
   }
 }
 
@@ -1390,4 +1412,26 @@ code, pre {
   .admin-editor-container {
     max-width: 1380px !important;
   }
+
+  .entropy-bounce-sidebar-container {
+    left: max(2.5rem, calc((100vw - 1740px) / 2 - 200px)) !important;
+  }
+
+  .entropy-bounce-sidebar-container button,
+  .entropy-bounce-sidebar-container a {
+    font-size: 0.94rem !important;
+    padding: 0.44rem 0.9rem 0.44rem 26px !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .entropy-bounce-sidebar-container button[data-active="true"],
+  .entropy-bounce-sidebar-container a[data-active="true"] {
+    font-weight: 500 !important;
+  }
+
+  .entropy-bounce-sidebar-container .entropy-bounce-dot-indicator {
+    width: 6px !important;
+    height: 6px !important;
+  }
 }
+
