@@ -33,6 +33,19 @@ export const GalaxyPage: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const teleportTimerRef = useRef<NodeJS.Timeout | number | null>(null);
 
+  const [screenWidth, setScreenWidth] = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  const isMobile = screenWidth < 768;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     document.title = 'Galaxy Node Map | Entropy';
     isMountedRef.current = true;
@@ -81,7 +94,22 @@ export const GalaxyPage: React.FC = () => {
   }, [fetchProgress, user]);
 
   const handleToggleCluster = (clusterId: string) => {
-    setExpandedClusterId((prev) => (prev === clusterId ? null : clusterId));
+    setExpandedClusterId((prev) => {
+      const willExpand = prev !== clusterId;
+      if (willExpand && isMobile) {
+        if (teleportTimerRef.current) {
+          clearTimeout(teleportTimerRef.current);
+        }
+        teleportTimerRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          const elem = document.getElementById(`cluster-${clusterId}`);
+          if (elem) {
+            elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 120);
+      }
+      return willExpand ? clusterId : null;
+    });
   };
 
   // Reliable global click-to-unlock: clicking outside the active locked star system collapses it
@@ -127,8 +155,10 @@ export const GalaxyPage: React.FC = () => {
     }, 100);
   };
 
-  // Lazy zig-zag positioning across wide horizontal cosmic space
+  // Lazy zig-zag positioning across wide horizontal cosmic space on desktop,
+  // centered along cosmic meridian (50%) on mobile for clean boundary clearance
   const getClusterHorizontalOffset = (index: number, total: number): number => {
+    if (isMobile) return 50;
     if (index === total - 1) return 50; // Grand apex finale at dead center!
     const isLeft = index % 2 === 0;
     const waveShift = Math.sin(index * 1.3) * 4; // subtle natural cosmic variation
@@ -239,15 +269,15 @@ export const GalaxyPage: React.FC = () => {
           maxWidth: '1240px',
           width: '100%',
           margin: '0 auto',
-          padding: '1.5rem 1.5rem 8rem 1.5rem',
+          padding: isMobile ? '1rem 0.75rem 6rem 0.75rem' : '1.5rem 1.5rem 8rem 1.5rem',
         }}
       >
         {/* Galaxy Map Intro Header */}
         <div
           style={{
             textAlign: 'center',
-            marginBottom: '3.5rem',
-            padding: '1.75rem 2.25rem',
+            marginBottom: isMobile ? '2.5rem' : '3.5rem',
+            padding: isMobile ? '1.25rem 1rem' : '1.75rem 2.25rem',
             borderRadius: 'var(--radius-sm)',
             background: 'rgba(10, 10, 10, 0.85)',
             backdropFilter: 'blur(20px)',
@@ -255,7 +285,7 @@ export const GalaxyPage: React.FC = () => {
             border: '1px solid var(--border-medium)',
             boxShadow: 'var(--shadow-elevated)',
             maxWidth: '800px',
-            margin: '0 auto 3.5rem auto',
+            margin: isMobile ? '0 auto 2.5rem auto' : '0 auto 3.5rem auto',
           }}
         >
           <div
@@ -283,7 +313,7 @@ export const GalaxyPage: React.FC = () => {
           <h1
             style={{
               margin: '0 0 0.5rem 0',
-              fontSize: '2rem',
+              fontSize: isMobile ? '1.5rem' : '2rem',
               fontWeight: 400,
               fontFamily: 'var(--font-heading)',
               letterSpacing: '-0.035em',
@@ -369,11 +399,11 @@ export const GalaxyPage: React.FC = () => {
                 {index === 3 && (
                   <div
                     style={{
-                      margin: '5rem 0 3.5rem 0',
+                      margin: isMobile ? '3.5rem 0 2.5rem 0' : '5rem 0 3.5rem 0',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '1rem',
+                      gap: isMobile ? '0.5rem' : '1rem',
                     }}
                   >
                     <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, var(--border-medium))' }} />
@@ -384,7 +414,7 @@ export const GalaxyPage: React.FC = () => {
                         background: 'rgba(10, 10, 10, 0.95)',
                         border: '1px solid var(--border-medium)',
                         boxShadow: 'var(--glass-shadow)',
-                        fontSize: '0.6875rem',
+                        fontSize: isMobile ? '0.625rem' : '0.6875rem',
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 600,
                         color: 'var(--brand-neutral-100)',
@@ -392,6 +422,8 @@ export const GalaxyPage: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
+                        textAlign: 'center',
+                        maxWidth: '92%',
                       }}
                     >
                       <Radio size={13} color="var(--brand-neutral-200)" />
@@ -404,11 +436,11 @@ export const GalaxyPage: React.FC = () => {
                 {index === 9 && (
                   <div
                     style={{
-                      margin: '5rem 0 3.5rem 0',
+                      margin: isMobile ? '3.5rem 0 2.5rem 0' : '5rem 0 3.5rem 0',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '1rem',
+                      gap: isMobile ? '0.5rem' : '1rem',
                     }}
                   >
                     <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, var(--border-medium))' }} />
@@ -419,7 +451,7 @@ export const GalaxyPage: React.FC = () => {
                         background: 'rgba(10, 10, 10, 0.95)',
                         border: '1px solid var(--border-medium)',
                         boxShadow: 'var(--glass-shadow)',
-                        fontSize: '0.6875rem',
+                        fontSize: isMobile ? '0.625rem' : '0.6875rem',
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 600,
                         color: 'var(--brand-neutral-100)',
@@ -427,6 +459,8 @@ export const GalaxyPage: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
+                        textAlign: 'center',
+                        maxWidth: '92%',
                       }}
                     >
                       <ShieldAlert size={13} color="var(--diff-hard)" />
@@ -446,6 +480,8 @@ export const GalaxyPage: React.FC = () => {
                   availableCodes={availableCodes}
                   horizontalOffsetPercent={horizontalOffset}
                   onSelectProblem={(p) => setSelectedProblem(p)}
+                  isMobile={isMobile}
+                  screenWidth={screenWidth}
                 />
               </React.Fragment>
             );

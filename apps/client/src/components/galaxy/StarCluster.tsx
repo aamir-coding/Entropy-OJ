@@ -218,6 +218,8 @@ interface StarClusterProps {
   availableCodes: Set<string>;
   horizontalOffsetPercent: number;
   onSelectProblem: (problem: IStarProblem) => void;
+  isMobile?: boolean;
+  screenWidth?: number;
 }
 
 // Clean, professional black lock & unlock cursors with subtle white contour for universal visibility
@@ -234,6 +236,8 @@ export const StarCluster: React.FC<StarClusterProps> = ({
   availableCodes,
   horizontalOffsetPercent,
   onSelectProblem,
+  isMobile,
+  screenWidth,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   // Suppress hover immediately when user clicks the core to unlock,
@@ -252,8 +256,12 @@ export const StarCluster: React.FC<StarClusterProps> = ({
   const progressRatio = totalCount > 0 ? solvedCount / totalCount : 0;
   const physics = useMemo(() => getStellarPhysics(cluster), [cluster]);
 
+  // Responsive orbit scaling: on mobile (<768px), scale outer orbits so they fit safely within screen boundaries
+  const currentScreenWidth = screenWidth || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const mobileMode = isMobile !== undefined ? isMobile : currentScreenWidth < 768;
+
   // Multi-tier Concentric Orbit Engine for decluttering large problem sets
-  const { orbitalRings, orbitalNodes, svgDims, maxRadius } = useMemo(() => {
+  const { orbitalRings, orbitalNodes, svgDims, maxRadius, orbitScale, effectiveMaxRadius } = useMemo(() => {
     const N = cluster.problems.length;
     let ringConfigs: { radius: number; count: number }[] = [];
 
@@ -283,12 +291,25 @@ export const StarCluster: React.FC<StarClusterProps> = ({
       ];
     }
 
+    const baseMaxRadius = ringConfigs[ringConfigs.length - 1].radius;
+
+    // On mobile screens, dynamically scale orbit radii to fit within viewport
+    let scale = 1;
+    if (mobileMode) {
+      // Leave at least 42px clearance on each side for star diffraction flares & padding
+      const maxAllowedRadius = Math.max(105, Math.floor((currentScreenWidth / 2) - 42));
+      scale = Math.min(1, maxAllowedRadius / baseMaxRadius);
+    }
+
+    const effectiveMaxRadius = Math.round(baseMaxRadius * scale);
+
     let probIdx = 0;
     const nodes: { prob: IStarProblem; x: number; y: number; delayMs: number; ringRadius: number }[] = [];
     const rings: { radius: number }[] = [];
 
     ringConfigs.forEach((rc, rIdx) => {
-      rings.push({ radius: rc.radius });
+      const scaledRingRadius = Math.round(rc.radius * scale);
+      rings.push({ radius: scaledRingRadius });
       const ringProblems = cluster.problems.slice(probIdx, probIdx + rc.count);
       const angleStep = 360 / rc.count;
       // Stagger angle phase between rings for organic cosmic distribution
@@ -297,23 +318,22 @@ export const StarCluster: React.FC<StarClusterProps> = ({
       ringProblems.forEach((prob, i) => {
         const angleDeg = i * angleStep + phaseOffset;
         const rad = (angleDeg * Math.PI) / 180;
-        const x = Math.cos(rad) * rc.radius;
-        const y = Math.sin(rad) * (rc.radius * 0.72); // 2.5D perspective
+        const x = Math.cos(rad) * scaledRingRadius;
+        const y = Math.sin(rad) * (scaledRingRadius * 0.72); // 2.5D perspective
         nodes.push({
           prob,
           x,
           y,
           delayMs: (probIdx + i) * 30,
-          ringRadius: rc.radius,
+          ringRadius: scaledRingRadius,
         });
       });
 
       probIdx += rc.count;
     });
 
-    const maxRadius = ringConfigs[ringConfigs.length - 1].radius;
-    const svgWidth = Math.max(560, (maxRadius + 65) * 2);
-    const svgHeight = Math.max(420, (maxRadius * 0.72 + 55) * 2);
+    const svgWidth = Math.max(mobileMode ? currentScreenWidth - 16 : 560, (effectiveMaxRadius + (mobileMode ? 35 : 65)) * 2);
+    const svgHeight = Math.max(mobileMode ? 240 : 420, (effectiveMaxRadius * 0.72 + (mobileMode ? 35 : 55)) * 2);
 
     return {
       orbitalRings: rings,
@@ -324,15 +344,30 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         halfW: svgWidth / 2,
         halfH: svgHeight / 2,
       },
-      maxRadius,
+      maxRadius: baseMaxRadius,
+      orbitScale: scale,
+      effectiveMaxRadius,
     };
-  }, [cluster.problems]);
+  }, [cluster.problems, mobileMode, currentScreenWidth]);
 
-  // Side-docking telemetry logic:
-  // If the star system is on the right side of the page (offset >= 50%), slide to the LEFT (inward).
-  // If on the left side (offset < 50%), slide to the RIGHT (inward).
+  // Side-docking telemetry logic on desktop, bottom docking below orbits on mobile
   const isRightSide = horizontalOffsetPercent >= 50;
   const sideDistance = maxRadius + 42;
+  const neededTopFromCenter = (effectiveMaxRadius * 0.72) + 24;
+  const currentTopFromCenter = (physics.blossomSize / 2) + 14;
+  const mobileVerticalShift = Math.max(0, Math.round(neededTopFromCenter - currentTopFromCenter));
+
+  const telemetryTransform = useMemo(() => {
+    if (!isBlossomed) return 'translate(0, 0)';
+    if (mobileMode) {
+      // On mobile, dock gracefully below the 2.5D constellation
+      return `translate(0, ${mobileVerticalShift}px)`;
+    }
+    // On desktop, glide to the side
+    return isRightSide
+      ? `translate(calc(-50% - ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`
+      : `translate(calc(50% + ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`;
+  }, [isBlossomed, mobileMode, mobileVerticalShift, isRightSide, sideDistance, physics.blossomSize]);
 
   const handleCoreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -350,7 +385,11 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         position: 'relative',
         left: `${horizontalOffsetPercent}%`,
         transform: 'translateX(-50%)',
-        margin: isBlossomed ? '5.5rem 0' : '4.25rem 0',
+        margin: isBlossomed
+          ? mobileMode
+            ? '5.5rem 0 13.5rem 0'
+            : '5.5rem 0'
+          : '4.25rem 0',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -584,7 +623,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         </Tooltip>
       </div>
 
-      {/* Cluster Label & Info: Glides smoothly to the side when blossomed */}
+      {/* Cluster Label & Info: Glides smoothly to the side on desktop, below constellation on mobile */}
       <div
         className="cluster-label-telemetry"
         onClick={handleCoreClick}
@@ -593,21 +632,33 @@ export const StarCluster: React.FC<StarClusterProps> = ({
           marginTop: '14px',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isBlossomed ? (isRightSide ? 'flex-end' : 'flex-start') : 'center',
-          textAlign: isBlossomed ? (isRightSide ? 'right' : 'left') : 'center',
+          alignItems: isBlossomed
+            ? mobileMode
+              ? 'center'
+              : isRightSide
+              ? 'flex-end'
+              : 'flex-start'
+            : 'center',
+          textAlign: isBlossomed
+            ? mobileMode
+              ? 'center'
+              : isRightSide
+              ? 'right'
+              : 'left'
+            : 'center',
           cursor: isExpanded ? unlockCursor : lockCursor,
           zIndex: 35,
-          width: 'max-content',
-          maxWidth: isBlossomed ? '280px' : '220px',
+          width: isBlossomed && mobileMode ? 'min(320px, calc(100vw - 32px))' : 'max-content',
+          maxWidth: isBlossomed
+            ? mobileMode
+              ? 'min(320px, calc(100vw - 32px))'
+              : '280px'
+            : '220px',
           background: 'transparent',
           border: 'none',
           boxShadow: 'none',
           padding: 0,
-          transform: isBlossomed
-            ? isRightSide
-              ? `translate(calc(-50% - ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`
-              : `translate(calc(50% + ${sideDistance}px), calc(-50% - ${(physics.blossomSize / 2) + 14}px))`
-            : 'translate(0, 0)',
+          transform: telemetryTransform,
           transition: 'transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), max-width 0.4s ease',
           pointerEvents: 'auto',
           userSelect: 'none',
@@ -644,7 +695,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
         <h3
           style={{
             margin: '0.25rem 0 0.35rem 0',
-            fontSize: isBlossomed ? '1.25rem' : '1.05rem',
+            fontSize: isBlossomed ? (mobileMode ? '1.125rem' : '1.25rem') : '1.05rem',
             fontWeight: 500,
             fontFamily: 'var(--font-heading)',
             letterSpacing: '-0.025em',
@@ -689,7 +740,7 @@ export const StarCluster: React.FC<StarClusterProps> = ({
               lineHeight: 1.45,
               textShadow: '0 1px 8px rgba(0, 0, 0, 0.95)',
               animation: 'fadeIn 0.3s ease',
-              maxWidth: '260px',
+              maxWidth: mobileMode ? '100%' : '260px',
             }}
           >
             {cluster.sectorDescription}
