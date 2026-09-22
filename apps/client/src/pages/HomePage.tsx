@@ -205,7 +205,7 @@ export const HomePage: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-            <div style={{ maxWidth: '600px' }}>
+            <div style={{ maxWidth: '720px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
                 <span className="badge badge-tag">
                   <Shield size={10} /> Docker Sandbox
@@ -214,10 +214,10 @@ export const HomePage: React.FC = () => {
                   <Code size={10} /> C++17 & Python 3
                 </span>
               </div>
-              <h1 className="text-gradient" style={{ fontSize: '1.875rem', fontWeight: 400, lineHeight: 1.15, marginBottom: '0.5rem', letterSpacing: '-0.035em' }}>
+              <h1 className="text-gradient" style={{ fontSize: 'clamp(1.875rem, 2.2vw, 2.35rem)', fontWeight: 400, lineHeight: 1.15, marginBottom: '0.5rem', letterSpacing: '-0.035em' }}>
                 Solve. Submit. Live Verdicts.
               </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, maxWidth: '520px' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, maxWidth: '620px' }}>
                 Master algorithmic data structures with an isolated execution sandbox, microsecond CPU timing, and real-time judge feedback.
               </p>
             </div>
@@ -292,7 +292,7 @@ export const HomePage: React.FC = () => {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             {/* Search Input */}
-            <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px', maxWidth: '380px' }}>
+            <div style={{ position: 'relative', flex: '1 1 220px', minWidth: '200px', maxWidth: '420px' }}>
               <Search
                 size={14}
                 style={{

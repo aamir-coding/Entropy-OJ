@@ -198,7 +198,7 @@ export const LandingPage: React.FC = () => {
         <p style={styles.tagline}>Navigate the algorithmic universe</p>
 
         {/* 3D Hero Element */}
-        <div style={styles.heroContainer}>
+        <div className="landing-hero-container" style={styles.heroContainer}>
           <Suspense
             fallback={
               <div style={styles.heroFallback}>
@@ -262,7 +262,7 @@ export const LandingPage: React.FC = () => {
       {/* ── 2. FULL SEQUENTIAL CHAPTERS ── */}
       <main className="landing-features-section" style={styles.featuresSection}>
         {/* Section Header */}
-        <div style={styles.sectionHeader}>
+        <div className="landing-section-header" style={styles.sectionHeader}>
           <span style={styles.sectionPill}>Engineering Architecture</span>
           <h2 className="landing-section-heading" style={styles.sectionHeading}>
             Built from the Kernel Up for Code Execution
@@ -824,7 +824,6 @@ const styles: Record<string, React.CSSProperties> = {
 
   heroContainer: {
     width: '100%',
-    maxWidth: '400px',
     marginBottom: '1.25rem',
   },
 
@@ -900,8 +899,6 @@ const styles: Record<string, React.CSSProperties> = {
   /* ── 2. FEATURES SHOWCASE SECTION ── */
   featuresSection: {
     width: '100%',
-    maxWidth: '1160px',
-    padding: '2rem 1.5rem 5rem 1.5rem',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -911,7 +908,6 @@ const styles: Record<string, React.CSSProperties> = {
   sectionHeader: {
     textAlign: 'center' as const,
     marginBottom: '2.5rem',
-    maxWidth: '680px',
     marginLeft: 'auto',
     marginRight: 'auto',
   },

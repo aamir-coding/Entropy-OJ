@@ -46,9 +46,9 @@ const BENTO_ITEMS: BentoItem[] = [
     id: 'blind',
     icon: EyeOff,
     tag: 'EVALUATION ENVIRONMENT',
-    title: 'Blind Interview & Anti-Cheat Mode',
+    title: 'Blind Interview and Competitive Programming Mode',
     description:
-      'Replicates authentic technical interview pressure. Conceals problem tags and hidden test data while enforcing a focused, full-screen Monaco environment with live stopwatch timing.',
+      'Replicates authentic technical interview and competitive programming pressure. Conceals problem tags and hidden test data while enforcing a focused Monaco environment with live stopwatch timing.',
     accent: '#fbbf24',
     badge: 'Interview Simulator',
     highlights: [
@@ -153,7 +153,6 @@ export const BentoGrid: React.FC = () => {
         className="bento-grid-container"
         style={{
           width: '100%',
-          maxWidth: '1080px',
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '1.25rem',

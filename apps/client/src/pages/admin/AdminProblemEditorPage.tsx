@@ -800,7 +800,7 @@ You may assume that each input would have **exactly one solution**, and you may 
         {/* TAB 2: VISIBLE SAMPLE CASES                              */}
         {/* ======================================================== */}
         {activeTab === 'samples' && (
-          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="admin-editor-container" style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Visible Sample Test Cases</h3>
@@ -889,7 +889,7 @@ You may assume that each input would have **exactly one solution**, and you may 
         {/* TAB 3: HIDDEN JUDGE CASES                                */}
         {/* ======================================================== */}
         {activeTab === 'judge' && (
-          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="admin-editor-container" style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Hidden Judge Test Cases</h3>
@@ -1152,7 +1152,7 @@ You may assume that each input would have **exactly one solution**, and you may 
         {/* TAB 5: AI QA PROBLEM REVIEW (GEMINI FLASH)               */}
         {/* ======================================================== */}
         {activeTab === 'ai-review' && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="admin-editor-container" style={{ margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Header / Intro Card */}
             <div
               className="glass-panel"

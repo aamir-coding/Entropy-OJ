@@ -261,19 +261,16 @@ export const GalaxyPage: React.FC = () => {
         onTeleportToCluster={handleTeleportToCluster}
       />
 
-      {/* Main Galaxy Map Viewport (Expanded to 1240px wide for expansive cosmic zig-zag) */}
+      {/* Main Galaxy Map Viewport (Expanded dynamically on wide/QHD screens) */}
       <div
+        className="galaxy-viewport-container"
         style={{
-          position: 'relative',
-          zIndex: 10,
-          maxWidth: '1240px',
-          width: '100%',
-          margin: '0 auto',
           padding: isMobile ? '1rem 0.75rem 6rem 0.75rem' : '1.5rem 1.5rem 8rem 1.5rem',
         }}
       >
         {/* Galaxy Map Intro Header */}
         <div
+          className="galaxy-intro-header"
           style={{
             textAlign: 'center',
             marginBottom: isMobile ? '2.5rem' : '3.5rem',
@@ -284,7 +281,6 @@ export const GalaxyPage: React.FC = () => {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid var(--border-medium)',
             boxShadow: 'var(--shadow-elevated)',
-            maxWidth: '800px',
             margin: isMobile ? '0 auto 2.5rem auto' : '0 auto 3.5rem auto',
           }}
         >

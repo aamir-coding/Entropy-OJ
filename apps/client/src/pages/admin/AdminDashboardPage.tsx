@@ -109,7 +109,7 @@ export const AdminDashboardPage: React.FC = () => {
   );
 
   return (
-    <div style={{ flex: 1, padding: '2rem 1.5rem', maxWidth: '1280px', margin: '0 auto', width: '100%' }}>
+    <div className="container" style={{ flex: 1, padding: '2rem 1.5rem', width: '100%' }}>
       {/* Header Bar */}
       <div
         style={{

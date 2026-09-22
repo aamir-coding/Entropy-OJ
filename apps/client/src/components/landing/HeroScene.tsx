@@ -27,7 +27,7 @@ export const HeroScene: React.FC = () => {
       style={{
         width: "100%",
         aspectRatio: "1",
-        maxHeight: "460px",
+        maxHeight: "clamp(420px, 28vw, 540px)",
         position: "relative",
         userSelect: "none",
         touchAction: "none",

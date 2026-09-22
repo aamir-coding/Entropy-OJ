@@ -143,7 +143,12 @@ export const ProblemDetailPage: React.FC = () => {
       [SupportedLanguages.CPP]: initialStarter,
     };
   });
-  const [fontSize, setFontSize] = useState<number>(14);
+  const [fontSize, setFontSize] = useState<number>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 2200) {
+      return 16;
+    }
+    return 14;
+  });
   const isCodeEmpty = !editorCode || !editorCode.trim();
 
   // Responsive mobile workspace layout (<768px vertical split)
@@ -1299,6 +1304,7 @@ export const ProblemDetailPage: React.FC = () => {
                         <option value={14}>14px</option>
                         <option value={16}>16px</option>
                         <option value={18}>18px</option>
+                        <option value={20}>20px</option>
                       </select>
                     </div>
 
