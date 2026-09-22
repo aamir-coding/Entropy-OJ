@@ -8,38 +8,13 @@ import {
   XCircle,
   Terminal,
 } from 'lucide-react';
+import { EntropyAiIcon } from '../icons/EntropyAiIcon';
 
-interface HintTier {
-  id: number;
-  label: string;
-  tag: string;
-  text: string;
-}
-
-const HINT_TIERS: HintTier[] = [
-  {
-    id: 1,
-    label: 'Tier 1: Pattern',
-    tag: 'CONCEPTUAL NUDGE',
-    text: 'Notice that each element only needs to find its complement (target - nums[i]). Instead of an O(N²) nested loop scanning every pair, what linear data structure can store elements you have already seen and check for complements in O(1) average time?',
-  },
-  {
-    id: 2,
-    label: 'Tier 2: Boundary',
-    tag: 'EDGE CONSTRAINT',
-    text: 'Check your map insertion sequence. If you insert nums[i] into the map before checking if (target - nums[i]) exists, what happens if target = 6 and nums[i] = 3? Could an element match against itself?',
-  },
-  {
-    id: 3,
-    label: 'Tier 3: Diagnosis',
-    tag: 'LOGIC ISOLATION',
-    text: 'Your code returned indices [0, 0] because the lookup matched the number currently being evaluated. Look at your loop: ensure the complement check happens before inserting nums[i] into the seen hash map.',
-  },
-];
+const SAMPLE_SOCRATIC_HINT =
+  'Your solution returned identical indices [0, 0]. Notice your map lookup order: if you insert nums[i] into the map before checking if target - nums[i] exists, what happens when target = 6 and nums[i] = 3? Can an element match against itself?';
 
 export const SocraticHintWidget: React.FC = () => {
   const [hintState, setHintState] = useState<'unrun' | 'loading' | 'delivered'>('unrun');
-  const [activeTier, setActiveTier] = useState<number>(1);
 
   const handleRequestHint = () => {
     setHintState('loading');
@@ -50,13 +25,11 @@ export const SocraticHintWidget: React.FC = () => {
 
   const handleReset = () => {
     setHintState('unrun');
-    setActiveTier(1);
   };
-
-  const currentTier = HINT_TIERS.find((t) => t.id === activeTier) || HINT_TIERS[0];
 
   return (
     <div
+      className="socratic-hint-container"
       style={{
         backgroundColor: '#070707',
         border: '1px solid rgba(255, 255, 255, 0.09)',
@@ -72,6 +45,20 @@ export const SocraticHintWidget: React.FC = () => {
         flexDirection: 'column',
       }}
     >
+      <style>{`
+        @media (max-width: 600px) {
+          .socratic-hint-container {
+            height: auto !important;
+            max-height: none !important;
+            min-height: 340px !important;
+          }
+          .socratic-diagnostic-strip {
+            grid-template-columns: 1fr !important;
+            gap: 0.45rem !important;
+          }
+        }
+      `}</style>
+
       {/* ── Console Header ── */}
       <div
         style={{
@@ -120,6 +107,7 @@ export const SocraticHintWidget: React.FC = () => {
 
       {/* ── Testcase Diagnostic Failure Strip ── */}
       <div
+        className="socratic-diagnostic-strip"
         style={{
           padding: '0.75rem 1rem',
           backgroundColor: '#040404',
@@ -238,6 +226,21 @@ export const SocraticHintWidget: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: '#eab308', fontWeight: 600, fontSize: '0.8rem' }}>
                   <Lightbulb size={15} />
                   <span>Socratic Debug Hint</span>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: '0.62rem',
+                      color: 'rgba(255, 255, 255, 0.4)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      padding: '0.1rem 0.35rem',
+                      borderRadius: '3px',
+                      marginLeft: '0.2rem',
+                    }}
+                  >
+                    <EntropyAiIcon size={10} /> ENTROPY AI
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.68rem', color: 'rgba(255, 255, 255, 0.45)' }}>
@@ -259,30 +262,6 @@ export const SocraticHintWidget: React.FC = () => {
                 </div>
               </div>
 
-              {/* Progressive 3-Tier Selector Pills */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                {HINT_TIERS.map((tier) => (
-                  <button
-                    key={tier.id}
-                    onClick={() => setActiveTier(tier.id)}
-                    style={{
-                      padding: '0.2rem 0.55rem',
-                      borderRadius: '4px',
-                      border: activeTier === tier.id ? '1px solid #eab308' : '1px solid rgba(255, 255, 255, 0.08)',
-                      backgroundColor: activeTier === tier.id ? 'rgba(234, 179, 8, 0.12)' : 'transparent',
-                      color: activeTier === tier.id ? '#eab308' : 'rgba(255, 255, 255, 0.45)',
-                      fontSize: '0.65rem',
-                      fontWeight: activeTier === tier.id ? 600 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 120ms ease',
-                      fontFamily: "var(--font-mono, monospace)",
-                    }}
-                  >
-                    {tier.label}
-                  </button>
-                ))}
-              </div>
-
               {/* Socratic Hint Text */}
               <div
                 style={{
@@ -292,10 +271,10 @@ export const SocraticHintWidget: React.FC = () => {
                   backgroundColor: 'rgba(255, 255, 255, 0.02)',
                   border: '1px solid rgba(255, 255, 255, 0.04)',
                   borderRadius: '4px',
-                  padding: '0.65rem 0.8rem',
+                  padding: '0.75rem 0.85rem',
                 }}
               >
-                {currentTier.text}
+                {SAMPLE_SOCRATIC_HINT}
               </div>
 
               {/* AST Code-Stripping Security Guarantee Footer */}

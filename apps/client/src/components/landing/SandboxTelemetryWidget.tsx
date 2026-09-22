@@ -15,43 +15,49 @@ const LOG_SEQUENCE: LogEntry[] = [
     time: '[19:37:01.002]',
     tag: 'INIT',
     tagColor: '#38bdf8',
-    message: 'spawned disposable container (id: entropy-run-8f2e)',
+    message: 'allocated /tmp/workspaces/entropy-job-8f2e (chmod 777)',
   },
   {
     time: '[19:37:01.005]',
     tag: 'SEC',
     tagColor: '#05df72',
-    message: 'jails locked: uid=1001 cap_drop=ALL rofs=true net=none',
+    message: 'dropped privileges: uid=1001 (runner) · gid=1001 (runner)',
   },
   {
     time: '[19:37:01.008]',
-    tag: 'CGROUP',
+    tag: 'ULIMIT',
     tagColor: '#38bdf8',
-    message: 'cgroup v2 enforced: memory.max=256M, pids.max=64, cpu=0.5',
+    message: 'resource ceilings: pids.max=64 (ulimit -u) · fsize=64MB (ulimit -f)',
   },
   {
     time: '[19:37:01.011]',
     tag: 'EXEC',
     tagColor: '#f59e0b',
-    message: 'evaluating solution.cpp against test cases (15/15)...',
+    message: 'executing runner_process.sh run cpp 1000 (slot 1/2 acquired)',
   },
   {
-    time: '[19:37:01.024]',
+    time: '[19:37:01.022]',
+    tag: 'WATCHDOG',
+    tagColor: '#a78bfa',
+    message: 'watchdog timeout -k 1s 3.0s armed · PID 28419 registered',
+  },
+  {
+    time: '[19:37:01.025]',
     tag: 'RUSAGE',
     tagColor: '#a78bfa',
-    message: 'getrusage: user=10.8ms sys=1.6ms peak_rss=8,412KB',
+    message: 'GNU time: user=0.009s sys=0.002s wall=0.012s peak_rss=8,412KB',
   },
   {
-    time: '[19:37:01.027]',
+    time: '[19:37:01.028]',
     tag: 'DONE',
     tagColor: '#05df72',
-    message: 'verdict=ACCEPTED (all 15 test cases passed)',
+    message: 'verdict=ACCEPTED (exit=0, 15/15 cases passed)',
   },
   {
-    time: '[19:37:01.030]',
-    tag: 'EXIT',
+    time: '[19:37:01.031]',
+    tag: 'CLEANUP',
     tagColor: '#05df72',
-    message: 'container purged in 3.8ms (0 byte host leak)',
+    message: 'workspace purged in 1.2ms (0-byte leak, PID released)',
   },
 ];
 
@@ -118,6 +124,31 @@ export const SandboxTelemetryWidget: React.FC = () => {
         flexDirection: 'column',
       }}
     >
+      <style>{`
+        @media (max-width: 550px) {
+          .sandbox-status-desktop {
+            display: none !important;
+          }
+          .sandbox-status-mobile {
+            display: flex !important;
+          }
+          .sandbox-title-desktop {
+            display: none !important;
+          }
+          .sandbox-title-mobile {
+            display: inline !important;
+          }
+        }
+        @media (min-width: 551px) {
+          .sandbox-status-mobile {
+            display: none !important;
+          }
+          .sandbox-title-mobile {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* ── Terminal Titlebar ── */}
       <div
         style={{
@@ -139,7 +170,8 @@ export const SandboxTelemetryWidget: React.FC = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.68rem' }}>
             <Terminal size={11} style={{ color: 'rgba(255, 255, 255, 0.35)' }} />
-            <span>entropy-worker · sandbox session</span>
+            <span className="sandbox-title-desktop">entropy-worker · sandbox session</span>
+            <span className="sandbox-title-mobile">entropy-worker</span>
           </div>
         </div>
 
@@ -261,15 +293,15 @@ export const SandboxTelemetryWidget: React.FC = () => {
           /* ── Idle State: Clean Waiting Prompt ── */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', lineHeight: '1.6' }}>
             <div style={{ color: 'rgba(255, 255, 255, 0.75)' }}>
-              <span style={{ color: '#4dabf7' }}>$</span> entropy-judge --image entropy-runner:latest --isolate
+              <span style={{ color: '#4dabf7' }}>$</span> runner_process.sh run cpp 1000
             </div>
 
             <div style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.71rem' }}>
-              Daemon ready · Linux kernel 6.6 · cgroup v2 · microsecond rusage
+              Daemon ready · Linux kernel 6.6 · ulimit isolation · GNU time rusage
             </div>
 
             <div style={{ color: 'rgba(255, 255, 255, 0.45)', marginTop: '0.5rem', fontSize: '0.72rem' }}>
-              Click <span style={{ color: '#05df72', fontWeight: 500 }}>"Run Test"</span> above to spawn an isolated container sandbox and stream execution telemetry.
+              Click <span style={{ color: '#05df72', fontWeight: 500 }}>"Run Test"</span> above to execute via direct host process sandbox with ulimit resource ceilings.
               <span style={{ opacity: cursorVisible ? 1 : 0, color: '#4dabf7', marginLeft: '0.2rem' }}>_</span>
             </div>
           </div>
@@ -278,7 +310,7 @@ export const SandboxTelemetryWidget: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', lineHeight: '1.5' }}>
             {/* Command line */}
             <div style={{ color: 'rgba(255, 255, 255, 0.65)', marginBottom: '0.2rem', fontSize: '0.71rem' }}>
-              <span style={{ color: '#4dabf7' }}>$</span> docker run --rm --network none --read-only -m 256m --pids-limit 64 oj-runner:latest
+              <span style={{ color: '#4dabf7' }}>$</span> runuser -u runner -- timeout -k 1s 3.0s /usr/bin/time -o metrics.txt ./solution.out &lt; input.txt
             </div>
 
             {/* Live streaming lines */}
@@ -341,44 +373,60 @@ export const SandboxTelemetryWidget: React.FC = () => {
       >
         {status === 'completed' ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ color: '#05df72', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                <CheckCircle2 size={11} /> EXIT 0 (ACCEPTED)
-              </span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
-              <span>CPU: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>12.4ms</strong></span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
-              <span>RSS: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>8.4MB</strong> / 256MB</span>
+            <div className="sandbox-status-desktop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ color: '#05df72', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <CheckCircle2 size={11} /> EXIT 0 (ACCEPTED)
+                </span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
+                <span>CPU: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>11.0ms</strong></span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
+                <span>RSS: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>8.4MB</strong> / 256MB</span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span>SEMAPHORE: <strong style={{ color: '#05df72', fontWeight: 500 }}>1/2</strong></span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
+                <span>PIDS: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>1</strong> / 64</span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span>NET: <strong style={{ color: '#05df72', fontWeight: 500 }}>0 B</strong></span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
-              <span>PIDS: <strong style={{ color: '#f7f7f7', fontWeight: 500 }}>1</strong> / 64</span>
+            <div className="sandbox-status-mobile" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontSize: '0.65rem' }}>
+              <span style={{ color: '#05df72', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <CheckCircle2 size={11} /> ACCEPTED
+              </span>
+              <span>11.0ms · 8.4MB · 64 PIDs</span>
             </div>
           </>
         ) : status === 'running' ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#f59e0b' }}>
-              <span>EXECUTING IN CGROUP...</span>
+              <span>EXECUTING VIA RUNNER_PROCESS.SH...</span>
             </div>
             <div>
-              <span>ISOLATING UID 1001</span>
+              <span>ISOLATING UID 1001 (RUNNER)</span>
             </div>
           </>
         ) : (
           /* Idle State Status Bar */
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 500 }}>STATUS: READY</span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
-              <span>CGROUP: <strong style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>256MB / 64 PIDs</strong></span>
+            <div className="sandbox-status-desktop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 500 }}>STATUS: READY</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
+                <span>ULIMIT: <strong style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>64 PIDs / 64MB FILE</strong></span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span>SANDBOX: <strong style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>DIRECT PROCESS</strong></span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
+                <span>SEMAPHORE: <strong style={{ color: '#05df72', fontWeight: 400 }}>2 SLOTS</strong></span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span>ROOTFS: <strong style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>EROFS (READ-ONLY)</strong></span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>│</span>
-              <span>NET: <strong style={{ color: '#05df72', fontWeight: 400 }}>NONE</strong></span>
+            <div className="sandbox-status-mobile" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', width: '100%', fontSize: '0.65rem' }}>
+              <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>STATUS: READY</span>
+              <span>64 PIDs · 64MB · DIRECT</span>
             </div>
           </>
         )}

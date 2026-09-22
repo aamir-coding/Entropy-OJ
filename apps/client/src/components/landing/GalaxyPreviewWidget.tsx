@@ -26,6 +26,14 @@ const CONNECTIONS = [
   { from: '1d-dp', to: 'graphs', dash: '3 3', color: 'rgba(255, 255, 255, 0.22)' },
 ];
 
+const SHORT_NAMES: Record<string, string> = {
+  'arrays-hashing': 'Arrays',
+  'binary-search': 'BinSearch',
+  'trees': 'Trees',
+  '1d-dp': '1D-DP',
+  'graphs': 'Graphs',
+};
+
 export const GalaxyPreviewWidget: React.FC = () => {
   const nodesWithCluster = useMemo(() => {
     return PREVIEW_NODES.map((node) => {
@@ -58,6 +66,7 @@ export const GalaxyPreviewWidget: React.FC = () => {
 
   return (
     <div
+      className="galaxy-preview-container"
       style={{
         backgroundColor: '#070707',
         border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -72,6 +81,26 @@ export const GalaxyPreviewWidget: React.FC = () => {
         flexDirection: 'column',
       }}
     >
+      <style>{`
+        @media (max-width: 600px) {
+          .galaxy-preview-container {
+            height: auto !important;
+            max-height: none !important;
+            min-height: 420px !important;
+          }
+          .galaxy-node-label-desktop {
+            display: none !important;
+          }
+          .galaxy-node-label-mobile {
+            display: inline !important;
+          }
+        }
+        @media (min-width: 601px) {
+          .galaxy-node-label-mobile {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* Titlebar */}
       <div
         style={{
@@ -275,7 +304,8 @@ export const GalaxyPreviewWidget: React.FC = () => {
                   pointerEvents: 'auto',
                 }}
               >
-                {node.cluster.name}
+                <span className="galaxy-node-label-desktop">{node.cluster.name}</span>
+                <span className="galaxy-node-label-mobile">{SHORT_NAMES[node.clusterId] || node.cluster.name}</span>
               </span>
             </div>
           );
@@ -346,7 +376,7 @@ export const GalaxyPreviewWidget: React.FC = () => {
             gap: '0.5rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Difficulties:</span>
             <span style={{ color: '#05df72' }}>Easy: {difficultyCounts.easy}</span>
             <span style={{ color: '#f59e0b' }}>Medium: {difficultyCounts.med}</span>

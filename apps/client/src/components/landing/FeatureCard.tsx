@@ -11,7 +11,8 @@ export interface FeatureCardProps {
   id?: string;
   tag: string;
   title: string;
-  description: string;
+  subtitle?: string;
+  description: React.ReactNode;
   icon: LucideIcon;
   accentColor?: string;
   specs?: FeatureSpec[];
@@ -23,6 +24,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
   id,
   tag,
   title,
+  subtitle,
   description,
   icon: Icon,
   accentColor = '#4dabf7',
@@ -40,7 +42,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
       className="feature-card-grid"
       style={{
         width: '100%',
-        alignItems: 'start',
+        alignItems: 'center',
         padding: '2.5rem 0',
         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         scrollMarginTop: '80px',
@@ -86,23 +88,41 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
           </span>
         </div>
 
-        {/* Feature Title */}
-        <h3
-          style={{
-            margin: 0,
-            fontSize: '1.65rem',
-            fontWeight: 500,
-            color: '#f7f7f7',
-            letterSpacing: '-0.025em',
-            lineHeight: 1.25,
-            fontFamily: "var(--font-display, 'Geist', sans-serif)",
-          }}
-        >
-          {title}
-        </h3>
+        {/* Feature Title & Subtitle Hierarchy */}
+        <div>
+          <h3
+            className="feature-card-title"
+            style={{
+              margin: 0,
+              fontSize: '1.75rem',
+              fontWeight: 600,
+              color: '#ffffff',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.2,
+              fontFamily: "var(--font-display, 'Geist', sans-serif)",
+            }}
+          >
+            {title}
+          </h3>
+          {subtitle && (
+            <div
+              style={{
+                marginTop: '0.45rem',
+                fontSize: '0.98rem',
+                fontWeight: 500,
+                color: accentColor,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.45,
+                fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
+        </div>
 
         {/* Crisp, Technical Description */}
-        <p
+        <div
           style={{
             margin: 0,
             fontSize: '0.88rem',
@@ -112,7 +132,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
           }}
         >
           {description}
-        </p>
+        </div>
 
         {/* Technical Specification Chips */}
         {specs.length > 0 && (

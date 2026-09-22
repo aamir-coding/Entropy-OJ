@@ -1191,6 +1191,69 @@ code, pre {
   }
 }
 
+/* ── Mobile Optimization Utilities & Adaptive Breakpoints ──────────────── */
+.hero-logo-text {
+  font-size: clamp(2.1rem, 7.5vw, 3rem) !important;
+  letter-spacing: 0.35em !important;
+}
+
+@media (max-width: 640px) {
+  .hero-logo-text {
+    letter-spacing: 0.16em !important;
+  }
+
+  .feature-card-grid {
+    gap: 1.4rem !important;
+    padding: 1.75rem 0 !important;
+  }
+
+  .feature-card-title {
+    font-size: clamp(1.35rem, 5vw, 1.75rem) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .bento-card-inner {
+    flex-direction: column !important;
+    gap: 1.25rem !important;
+  }
+
+  .bento-card-hover {
+    padding: 1.2rem !important;
+  }
+
+  .bento-card-text-panel {
+    min-width: 100% !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .admin-studio-container {
+    height: auto !important;
+    min-height: 480px !important;
+  }
+}
+
+.landing-section-heading {
+  font-size: clamp(1.5rem, 5vw, 2.1rem) !important;
+}
+
+.landing-cta-heading {
+  font-size: clamp(1.4rem, 5vw, 2rem) !important;
+}
+
+@media (max-width: 640px) {
+  .landing-features-section {
+    padding: 1.5rem 1rem 3.5rem 1rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .ai-demo-mode-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
 
 
