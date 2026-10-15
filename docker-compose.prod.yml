@@ -45,6 +45,11 @@ services:
       dockerfile: apps/worker/Dockerfile
     container_name: entropy-worker
     restart: unless-stopped
+    # FIX: hard memory ceiling for the worker container (and every submission inside it).
+    # A runaway submission gets killed (exit 137 -> Memory Limit Exceeded) instead of
+    # crashing the whole VM. memswap_limit = mem_limit means "no extra swap".
+    mem_limit: 768m
+    memswap_limit: 768m
     volumes:
       # Shared workspace directory for sandbox I/O (no Docker socket needed!)
       - /tmp/workspaces:/tmp/workspaces

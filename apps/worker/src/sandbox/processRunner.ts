@@ -9,6 +9,22 @@ import { env } from '../config/env';
 
 const execFileAsync = promisify(execFile);
 
+// ─── Sandbox Environment (FIX: secret leak) ───────────────────────────────────
+// SECURITY: user code must NEVER see the worker's secrets (MONGO_URI, REDIS_PASSWORD).
+// Previously we passed { ...process.env }, which copied every secret into the
+// sandbox. Now the runner script gets only the few variables it actually needs.
+function buildSandboxEnv(workspaceDir: string): NodeJS.ProcessEnv {
+  if (process.platform === 'win32') {
+    // Local Windows development only — there is no Linux sandbox on Windows anyway.
+    return { ...process.env, HOME: workspaceDir };
+  }
+  return {
+    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+    HOME: workspaceDir,
+    LANG: 'C.UTF-8',
+  };
+}
+
 // ─── Concurrency Semaphore ─────────────────────────────────────────────────────
 // Limits the number of concurrent child processes to prevent overloading the host.
 // No Docker container tracking needed — the semaphore purely caps concurrent executions.
@@ -251,15 +267,19 @@ export class ProcessSandbox {
         const proc = execFile('bash', args, {
           timeout: timeoutMs + 10000,
           cwd: this.workspaceDir,
-          env: { ...process.env, HOME: this.workspaceDir },
+          env: buildSandboxEnv(this.workspaceDir), // FIX: no secrets passed to the sandbox
           windowsHide: true,
         });
 
         // Track the child process PID for graceful shutdown
         if (proc.pid) activeProcesses.add(proc.pid);
 
-        await new Promise<void>((resolve, reject) => {
-          proc.on('close', () => resolve());
+        // FIX: capture the runner script's exit code.
+        // 0 = compiled successfully, anything else = compilation error.
+        // null = the process was killed (e.g. compilation took too long).
+        // Before this fix the exit code was ignored, so EVERY compile looked successful.
+        const exitCode = await new Promise<number | null>((resolve, reject) => {
+          proc.on('close', (code: number | null) => resolve(code));
           proc.on('error', reject);
         });
 
@@ -270,6 +290,16 @@ export class ProcessSandbox {
           compileErr = await fs.readFile(path.join(this.workspaceDir, 'compile_err.txt'), 'utf-8');
         } catch {
           // file may not exist if no errors
+        }
+
+        if (exitCode !== 0) {
+          const fallbackMessage =
+            exitCode === null ? 'Compilation timed out.' : 'Compilation failed with errors.';
+          return {
+            success: false,
+            compileOutput: (compileErr.trim() || fallbackMessage).slice(0, 65536),
+            exitCode: exitCode ?? 1,
+          };
         }
 
         return {
@@ -321,7 +351,7 @@ export class ProcessSandbox {
         const proc = execFile('bash', args, {
           timeout: wallTimeoutMs,
           cwd: this.workspaceDir,
-          env: { ...process.env, HOME: this.workspaceDir },
+          env: buildSandboxEnv(this.workspaceDir), // FIX: no secrets passed to the sandbox
           windowsHide: true,
         });
 

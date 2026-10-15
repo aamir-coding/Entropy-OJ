@@ -39,8 +39,11 @@ if [ "$MODE" = "compile" ]; then
     COMPILE_ERR="$WORKSPACE_DIR/compile_err.txt"
     COMPILE_STATUS="$WORKSPACE_DIR/compile_status.txt"
 
+    # FIX: the compiler now runs as the unprivileged 'runner' user (via $RUN_AS),
+    # not as root. Compiling as root let a submission #include root-only files
+    # (e.g. /proc/1/environ) and see their contents in the compiler error output.
     if [ "$LANG" = "cpp" ]; then
-        if g++ -O2 -std=c++17 -Wall -Wextra "$WORKSPACE_DIR/solution.cpp" -o "$WORKSPACE_DIR/solution.out" 2> "$COMPILE_ERR"; then
+        if $RUN_AS g++ -O2 -std=c++17 -Wall -Wextra "$WORKSPACE_DIR/solution.cpp" -o "$WORKSPACE_DIR/solution.out" 2> "$COMPILE_ERR"; then
             echo "0" > "$COMPILE_STATUS"
             chmod 755 "$WORKSPACE_DIR/solution.out" 2>/dev/null || true
             exit 0
@@ -52,7 +55,7 @@ if [ "$MODE" = "compile" ]; then
             exit 1
         fi
     elif [ "$LANG" = "python" ]; then
-        if python3 -m py_compile "$WORKSPACE_DIR/solution.py" 2> "$COMPILE_ERR"; then
+        if $RUN_AS python3 -m py_compile "$WORKSPACE_DIR/solution.py" 2> "$COMPILE_ERR"; then
             echo "0" > "$COMPILE_STATUS"
             exit 0
         else
@@ -96,8 +99,9 @@ elif [ "$MODE" = "run" ]; then
     fi
 
     # ── Process-level sandboxing via ulimit ──
-    # File output ceiling: 131072 blocks = 64MB (prevents disk exhaustion)
-    ulimit -f 131072 2>/dev/null || true
+    # File output ceiling. In bash, -f is counted in 1 KB blocks:
+    # 65536 blocks x 1 KB = 64 MB (prevents disk exhaustion)
+    ulimit -f 65536 2>/dev/null || true
     # Max processes/threads: prevents fork bombs
     ulimit -u 64 2>/dev/null || true
 

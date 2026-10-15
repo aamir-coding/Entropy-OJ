@@ -88,11 +88,10 @@ export function createApp(): Express {
       timestamp: new Date().toISOString(),
       service: 'entropy-server',
       db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      // FIX: this endpoint is public, so never reveal infrastructure details
+      // (Redis host / VM IP, port, password presence). Status + ping is enough.
       redis: {
         status: redisClient.status,
-        host: env.REDIS_HOST,
-        port: env.REDIS_PORT,
-        hasPassword: Boolean(env.REDIS_PASSWORD),
         ping: redisPing,
       },
     });

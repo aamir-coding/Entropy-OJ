@@ -253,7 +253,7 @@ FEATURE_AI_CLASSIFY=true
 ```bash
 npm run seed:server
 ```
-*Seeds standard DSA problems (**Two Sum**, **Valid Parentheses**, **Reverse Array**, **Longest Unique Substring**, **Maximum Subarray**, **Trapping Rain Water**, etc.) along with sample cases, hidden test cases, and a default admin account (`admin@entropy-oj.com` / `Admin123456!`).*
+*Seeds standard DSA problems (**Two Sum**, **Valid Parentheses**, **Reverse Array**, **Longest Unique Substring**, **Maximum Subarray**, **Trapping Rain Water**, etc.) along with sample cases and hidden test cases. In development, an admin account is created from the `ADMIN_SEED_PASSWORD` environment variable.*
 
 ---
 
