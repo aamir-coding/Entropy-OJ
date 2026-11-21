@@ -43,12 +43,12 @@ const envSchema = z
 
     // Groq (Feature 1: Debug Socratic Hint Copilot)
     GROQ_API_KEY: z.string().optional().transform((v) => v || undefined),
-    GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
+    GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
     GROQ_RPM_LIMIT: z.coerce.number().int().default(30),
 
     // Gemini (Feature 2: Problem-Setting Co-Pilot)
     GEMINI_API_KEY: z.string().optional().transform((v) => v || undefined),
-    GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+    GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
     GEMINI_RPM_LIMIT: z.coerce.number().int().default(10),
     GEMINI_RPD_LIMIT: z.coerce.number().int().default(1500),
 
@@ -87,4 +87,3 @@ export const env = {
   ...parsedEnv.data,
   isProduction: parsedEnv.data.NODE_ENV === 'production',
 };
-

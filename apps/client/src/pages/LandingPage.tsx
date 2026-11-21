@@ -374,7 +374,7 @@ export const LandingPage: React.FC = () => {
                   fontFamily: "var(--font-sans, 'Inter', sans-serif)",
                 }}
               >
-                Live KaTeX LaTeX Rendering, Pre-Flight Sandbox & Gemini 2.5 Flash QA
+                Live KaTeX LaTeX Rendering, Pre-Flight Sandbox & Gemini 3.5 Flash-Lite QA
               </div>
             </div>
 
@@ -389,7 +389,7 @@ export const LandingPage: React.FC = () => {
                 maxWidth: '900px',
               }}
             >
-              Full-lifecycle problem authoring suite for contest administrators and problem setters. Authors compose mathematical statements with real-time KaTeX rendering, validate reference solutions against hidden test suites inside the execution sandbox, and trigger automated Gemini 2.5 Flash QA audits to detect edge-case oversights before publishing.
+              Full-lifecycle problem authoring suite for contest administrators and problem setters. Authors compose mathematical statements with real-time KaTeX rendering, validate reference solutions against hidden test suites inside the execution sandbox, and trigger automated Gemini 3.5 Flash-Lite QA audits to detect edge-case oversights before publishing.
             </div>
 
             {/* Technical Specification Chips */}
@@ -404,7 +404,7 @@ export const LandingPage: React.FC = () => {
               {[
                 { label: 'Math Engine', value: 'KaTeX LaTeX Rendering' },
                 { label: 'Pre-Flight', value: 'Sandbox Author Validator' },
-                { label: 'QA Auditor', value: 'Gemini 2.5 Flash (~1M Context)' },
+                { label: 'QA Auditor', value: 'Gemini 3.5 Flash-Lite (~1M Context)' },
                 { label: 'Privacy', value: 'Read-only Deterministic Review' },
               ].map((spec, i) => (
                 <div
@@ -575,7 +575,7 @@ export const LandingPage: React.FC = () => {
             aiActiveTab === 'copilot'
               ? [
                   { label: 'Guardrail', value: '0% Code Leakage (AST Stripper)' },
-                  { label: 'Inference', value: 'Groq LLaMA 3.3 70B & Gemini' },
+                  { label: 'Inference', value: 'Groq model & Gemini' },
                 ]
               : [
                   { label: 'Asynchronous', value: 'BullMQ Complexity Classifier' },
@@ -645,7 +645,7 @@ export const LandingPage: React.FC = () => {
                 'MongoDB 7',
                 'Monaco Editor',
                 'KaTeX LaTeX',
-                'Gemini 2.5 Flash',
+                'Gemini 3.5 Flash-Lite',
                 'Linux ulimit & rusage',
                 'Three.js & Canvas',
               ].map((tech, i) => (

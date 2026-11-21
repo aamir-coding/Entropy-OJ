@@ -30,7 +30,7 @@ class MockGeminiReviewProvider implements AIProvider {
     return {
       content: JSON.stringify(sampleResponse),
       provider: this.name,
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash-lite',
     };
   }
 }

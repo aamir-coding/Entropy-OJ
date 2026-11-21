@@ -885,7 +885,7 @@ export const AdminStudioPreviewWidget: React.FC = () => {
           </div>
         )}
 
-        {/* ── SUBTAB 3: Gemini 2.5 Flash QA Audit (3-Column Spacious Grid) ── */}
+        {/* ── SUBTAB 3: Gemini 3.5 Flash-Lite QA Audit (3-Column Spacious Grid) ── */}
         {activeSubTab === 'qa' && (
           <div
             style={{
@@ -912,7 +912,7 @@ export const AdminStudioPreviewWidget: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                 <Sparkles size={16} style={{ color: '#a78bfa' }} />
                 <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f3e8ff' }}>
-                  Gemini 2.5 Flash Problem Quality Auditor
+                  Gemini 3.5 Flash-Lite Problem Quality Auditor
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.72rem' }}>

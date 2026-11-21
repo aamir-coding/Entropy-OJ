@@ -25,7 +25,7 @@ export class GroqProvider implements AIProvider {
 
   constructor(config: GroqProviderConfig = {}) {
     this.apiKey = config.apiKey || process.env.GROQ_API_KEY;
-    this.defaultModel = config.defaultModel || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+    this.defaultModel = config.defaultModel || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
     const rpm = config.rpmLimit || (process.env.GROQ_RPM_LIMIT ? parseInt(process.env.GROQ_RPM_LIMIT, 10) : 30);
     this.rateLimiter = new TokenBucketLimiter(rpm, getSharedRedisClient(), 'ratelimit:provider:groq');
   }
